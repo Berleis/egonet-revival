@@ -1,6 +1,4 @@
 using System.Text.Json;
-using System.Collections.Concurrent;
-using System.Threading;
 using RaceNetShowdown.Server;
 using RaceNetShowdown.Server.Data;
 using RaceNetShowdown.Server.Infrastructure;
@@ -13,17 +11,8 @@ public sealed class RaceNetResponder
     private const string HtmlContentType = "text/html";
     private const string XmlContentType = "text/xml; charset=utf-8";
     private const string EgoNetContentType = "application/egonet-stream";
-    private const long CapturedFriendChallengeId = 237_570;
-    private const long CapturedFriendResultToBeat = 1_055;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    private readonly ConcurrentDictionary<string, IReadOnlyList<RaceNetPrincipal>> _principalsBySession = new();
-    private readonly ConcurrentDictionary<string, List<RaceNetIssuedChallenge>> _issuedChallengesBySession = new();
-    private readonly ConcurrentDictionary<string, ChallengeSessionResult> _challengeResultsBySession = new();
-    private readonly ConcurrentDictionary<long, byte[]> _ghostDataBySlot = new();
-    private byte[]? _lastUploadedGhostData;
-    private long _nextIssuedChallengeId = 10_000;
 
     public RaceNetResponder(RaceNetOptions options)
     {
@@ -32,18 +21,26 @@ public sealed class RaceNetResponder
 
     private RaceNetOptions Options { get; }
 
-    public RaceNetResponse BuildResponse(
+    public async Task<RaceNetResponse> BuildResponseAsync(
         HttpRequest request,
         CapturedBody body,
         RaceNetSessionInfo? session,
-        RaceNetChallengeSnapshot? challengeSnapshot)
+        RaceNetChallengeSnapshot? challengeSnapshot,
+        IRaceNetStore store,
+        CancellationToken cancellationToken)
     {
         var path = request.Path.Value?.ToLowerInvariant() ?? "/";
         var egoNetFunction = request.Headers["X-EgoNet-Function"].ToString();
 
         if (!string.IsNullOrWhiteSpace(egoNetFunction))
         {
-            return BuildEgoNetResponse(egoNetFunction, body, session, challengeSnapshot);
+            return await BuildEgoNetResponseAsync(
+                egoNetFunction,
+                body,
+                session,
+                challengeSnapshot,
+                store,
+                cancellationToken);
         }
 
         if (path is "/" or "/health")
@@ -136,11 +133,13 @@ public sealed class RaceNetResponder
         });
     }
 
-    private RaceNetResponse BuildEgoNetResponse(
+    private async Task<RaceNetResponse> BuildEgoNetResponseAsync(
         string functionName,
         CapturedBody body,
         RaceNetSessionInfo? session,
-        RaceNetChallengeSnapshot? challengeSnapshot)
+        RaceNetChallengeSnapshot? challengeSnapshot,
+        IRaceNetStore store,
+        CancellationToken cancellationToken)
     {
         var normalized = functionName.Trim();
 
@@ -161,16 +160,16 @@ public sealed class RaceNetResponder
             "RaceNet.LinkAccount" => EgoNet(headers),
             "RaceNetRP6.GetRaceEvent" => EgoNet(headers),
             "RaceNetRP6.PostEventBest" => EgoNet(headers),
-            "AsynchronousChallengeService.AcceptChallenge" => ChallengeLifecycleEgoNet(headers, normalized, body, session),
-            "AsynchronousChallengeService.DownloadGhost" => ChallengeLifecycleEgoNet(headers, normalized, body, session),
-            "AsynchronousChallengeService.GetCompletedIssuedChallenges" => ChallengeEgoNet(headers, normalized, body, session, snapshot),
-            "AsynchronousChallengeService.GetFriendChallenges" => ChallengeEgoNet(headers, normalized, body, session, snapshot),
-            "AsynchronousChallengeService.GetFriendsOverview" => ChallengeEgoNet(headers, normalized, body, session, snapshot),
-            "AsynchronousChallengeService.GetHighestID" => ChallengeEgoNet(headers, normalized, body, session, snapshot),
-            "AsynchronousChallengeService.IssueChallenge" => ChallengeLifecycleEgoNet(headers, normalized, body, session),
-            "AsynchronousChallengeService.SubmitChallengeResult" => ChallengeLifecycleEgoNet(headers, normalized, body, session),
-            "AsynchronousChallengeService.SubmitPersonalRecord" => ChallengeLifecycleEgoNet(headers, normalized, body, session),
-            "AsynchronousChallengeService.UploadGhost" => ChallengeLifecycleEgoNet(headers, normalized, body, session),
+            "AsynchronousChallengeService.AcceptChallenge" => await ChallengeLifecycleEgoNetAsync(headers, normalized, body, session, store, cancellationToken),
+            "AsynchronousChallengeService.DownloadGhost" => await ChallengeLifecycleEgoNetAsync(headers, normalized, body, session, store, cancellationToken),
+            "AsynchronousChallengeService.GetCompletedIssuedChallenges" => await ChallengeEgoNetAsync(headers, normalized, body, session, snapshot, store, cancellationToken),
+            "AsynchronousChallengeService.GetFriendChallenges" => await ChallengeEgoNetAsync(headers, normalized, body, session, snapshot, store, cancellationToken),
+            "AsynchronousChallengeService.GetFriendsOverview" => await ChallengeEgoNetAsync(headers, normalized, body, session, snapshot, store, cancellationToken),
+            "AsynchronousChallengeService.GetHighestID" => await ChallengeEgoNetAsync(headers, normalized, body, session, snapshot, store, cancellationToken),
+            "AsynchronousChallengeService.IssueChallenge" => await ChallengeLifecycleEgoNetAsync(headers, normalized, body, session, store, cancellationToken),
+            "AsynchronousChallengeService.SubmitChallengeResult" => await ChallengeLifecycleEgoNetAsync(headers, normalized, body, session, store, cancellationToken),
+            "AsynchronousChallengeService.SubmitPersonalRecord" => await ChallengeLifecycleEgoNetAsync(headers, normalized, body, session, store, cancellationToken),
+            "AsynchronousChallengeService.UploadGhost" => await ChallengeLifecycleEgoNetAsync(headers, normalized, body, session, store, cancellationToken),
             "LanguageService.FetchLanguageData" => EgoNet(headers),
             "StatisticsService.SubmitChatUsage" => EgoNet(headers),
             "StatisticsService.SubmitConnectionAttempts" => EgoNet(headers),
@@ -203,27 +202,31 @@ public sealed class RaceNetResponder
         return new RaceNetResponse(EgoNetContentType, string.Empty, headers);
     }
 
-    private RaceNetResponse ChallengeEgoNet(
+    private async Task<RaceNetResponse> ChallengeEgoNetAsync(
         IReadOnlyDictionary<string, string> headers,
         string functionName,
         CapturedBody body,
         RaceNetSessionInfo? session,
-        RaceNetChallengeSnapshot snapshot)
+        RaceNetChallengeSnapshot snapshot,
+        IRaceNetStore store,
+        CancellationToken cancellationToken)
     {
-        var sessionKey = session?.SessionId ?? "local-racenet-session";
+        session ??= new RaceNetSessionInfo("local-racenet-session", 0, "local-player", "Local Player");
         var requestContext = EgoNetRequestParser.ReadChallengeContext(body);
         var parsedPrincipals = requestContext.Principals;
         if (parsedPrincipals.Count > 0)
         {
-            _principalsBySession[sessionKey] = parsedPrincipals;
+            await store.SavePrincipalsAsync(session, parsedPrincipals, cancellationToken);
         }
 
-        var principals = _principalsBySession.TryGetValue(sessionKey, out var storedPrincipals)
-            ? storedPrincipals
-            : parsedPrincipals;
+        var principals = parsedPrincipals.Count > 0
+            ? parsedPrincipals
+            : await store.GetPrincipalsAsync(session, cancellationToken);
 
-        var issuedChallenges = GetIssuedChallenges(sessionKey);
-        snapshot = ApplySessionResult(sessionKey, snapshot);
+        var issuedChallenges = await store.GetIssuedChallengesAsync(
+            session,
+            requestContext.Presence,
+            cancellationToken);
         var responseBody = EgoNetChallengePayloads.Build(
             functionName,
             snapshot,
@@ -237,32 +240,30 @@ public sealed class RaceNetResponder
         return new RaceNetResponse(EgoNetContentType, responseBody, headers);
     }
 
-    private RaceNetResponse ChallengeLifecycleEgoNet(
+    private async Task<RaceNetResponse> ChallengeLifecycleEgoNetAsync(
         IReadOnlyDictionary<string, string> headers,
         string functionName,
         CapturedBody body,
-        RaceNetSessionInfo? session)
+        RaceNetSessionInfo? session,
+        IRaceNetStore store,
+        CancellationToken cancellationToken)
     {
-        var sessionKey = session?.SessionId ?? "local-racenet-session";
+        session ??= new RaceNetSessionInfo("local-racenet-session", 0, "local-player", "Local Player");
         var requestContext = EgoNetRequestParser.ReadChallengeContext(body);
         if (requestContext.Principals.Count > 0)
         {
-            _principalsBySession[sessionKey] = requestContext.Principals;
+            await store.SavePrincipalsAsync(session, requestContext.Principals, cancellationToken);
         }
 
         if (functionName == "AsynchronousChallengeService.IssueChallenge" &&
             requestContext.Presence is not null &&
             requestContext.ChallengeData is not null)
         {
-            var challengeId = Interlocked.Increment(ref _nextIssuedChallengeId);
-            var issuedChallenge = new RaceNetIssuedChallenge(
-                challengeId,
-                ResolveEgonetId(sessionKey, requestContext.Presence),
+            var issuedChallenge = await store.IssueChallengeAsync(
+                session,
                 requestContext.Presence,
                 requestContext.ChallengeData,
-                DateTimeOffset.UtcNow.AddDays(30),
-                challengeId);
-            StoreIssuedChallenge(sessionKey, issuedChallenge);
+                cancellationToken);
             var responseBody = EgoNetBinary.Dictionary(
                 EgoNetBinary.Si64("GhostSlotID", issuedChallenge.GhostSlotId));
             return new RaceNetResponse(EgoNetContentType, responseBody, headers);
@@ -272,28 +273,38 @@ public sealed class RaceNetResponder
             requestContext.GhostSlotId is not null &&
             requestContext.GhostData is not null)
         {
-            StoreGhostData(requestContext.GhostSlotId.Value, requestContext.GhostData);
+            await store.SaveGhostDataAsync(
+                session,
+                requestContext.GhostSlotId.Value,
+                requestContext.GhostData,
+                cancellationToken);
+
+            Console.WriteLine(
+                $"{DateTime.Now:HH:mm:ss} ghost-upload: slot={requestContext.GhostSlotId.Value} bytes={requestContext.GhostData.Length}");
         }
 
         if (functionName == "AsynchronousChallengeService.DownloadGhost" &&
-            requestContext.GhostSlotId is not null &&
-            TryGetGhostData(requestContext.GhostSlotId.Value, out var ghostData))
+            requestContext.GhostSlotId is not null)
         {
-            var responseBody = BuildGhostDownloadResponse(requestContext.GhostSlotId.Value, ghostData);
-            var responseHeaders = headers
-                .Concat([new KeyValuePair<string, string>("Cache-Control", "private, s-maxage=0")])
-                .ToDictionary(value => value.Key, value => value.Value, StringComparer.OrdinalIgnoreCase);
+            var ghostData = await store.GetGhostDataAsync(requestContext.GhostSlotId.Value, cancellationToken);
+            if (ghostData is not null)
+            {
+                var responseBody = BuildGhostDownloadResponse(requestContext.GhostSlotId.Value, ghostData);
+                var responseHeaders = headers
+                    .Concat([new KeyValuePair<string, string>("Cache-Control", "private, s-maxage=0")])
+                    .ToDictionary(value => value.Key, value => value.Value, StringComparer.OrdinalIgnoreCase);
 
-            Console.WriteLine(
-                $"{DateTime.Now:HH:mm:ss} ghost-download: slot={requestContext.GhostSlotId.Value} bytes={ghostData.Length} format={Options.GhostDownloadPayloadFormat}");
+                Console.WriteLine(
+                    $"{DateTime.Now:HH:mm:ss} ghost-download: slot={requestContext.GhostSlotId.Value} bytes={ghostData.Length} format={Options.GhostDownloadPayloadFormat}");
 
-            return new RaceNetResponse(HtmlContentType, responseBody, responseHeaders);
+                return new RaceNetResponse(HtmlContentType, responseBody, responseHeaders);
+            }
         }
 
         if (functionName == "AsynchronousChallengeService.SubmitChallengeResult" &&
             requestContext.ChallengeResult is not null)
         {
-            StoreChallengeResult(sessionKey, requestContext.ChallengeResult);
+            await store.SaveChallengeResultAsync(session, requestContext.ChallengeResult, cancellationToken);
         }
 
         var presence = requestContext.Presence is null
@@ -309,36 +320,6 @@ public sealed class RaceNetResponder
         return EgoNet(headers);
     }
 
-    private void StoreGhostData(long ghostSlotId, byte[] ghostData)
-    {
-        var copy = ghostData.ToArray();
-        _ghostDataBySlot[ghostSlotId] = copy;
-        Volatile.Write(ref _lastUploadedGhostData, copy);
-
-        Console.WriteLine(
-            $"{DateTime.Now:HH:mm:ss} ghost-upload: slot={ghostSlotId} bytes={copy.Length}");
-    }
-
-    private bool TryGetGhostData(long ghostSlotId, out byte[] ghostData)
-    {
-        if (_ghostDataBySlot.TryGetValue(ghostSlotId, out ghostData!))
-        {
-            return true;
-        }
-
-        var fallback = Volatile.Read(ref _lastUploadedGhostData);
-        if (fallback is not null)
-        {
-            ghostData = fallback;
-            Console.WriteLine(
-                $"{DateTime.Now:HH:mm:ss} ghost-download: slot={ghostSlotId} using latest uploaded ghost fallback");
-            return true;
-        }
-
-        ghostData = [];
-        return false;
-    }
-
     private byte[] BuildGhostDownloadResponse(long ghostSlotId, byte[] ghostData)
     {
         return Options.GhostDownloadPayloadFormat.Trim() switch
@@ -352,120 +333,4 @@ public sealed class RaceNetResponder
             _ => EgoNetBinary.BlobValue(ghostData)
         };
     }
-
-    private long ResolveEgonetId(string sessionKey, RaceNetPrincipal presence)
-    {
-        if (_principalsBySession.TryGetValue(sessionKey, out var principals))
-        {
-            for (var i = 0; i < principals.Count; i++)
-            {
-                if (principals[i].SteamId == presence.SteamId)
-                {
-                    return 10_000L + i + 1;
-                }
-            }
-        }
-
-        return 10_000L + Math.Abs((long)(presence.SteamId % 100_000));
-    }
-
-    private void StoreIssuedChallenge(string sessionKey, RaceNetIssuedChallenge issuedChallenge)
-    {
-        var issuedChallenges = _issuedChallengesBySession.GetOrAdd(sessionKey, _ => []);
-        lock (issuedChallenges)
-        {
-            issuedChallenges.RemoveAll(value =>
-                value.ChallengeId == issuedChallenge.ChallengeId ||
-                value.GhostSlotId == issuedChallenge.GhostSlotId);
-            issuedChallenges.Add(issuedChallenge);
-        }
-
-        Console.WriteLine(
-            $"{DateTime.Now:HH:mm:ss} challenge-flow: mirrored challenge {issuedChallenge.ChallengeId} for {issuedChallenge.Presence.Name} result={issuedChallenge.ChallengeData.ResultToBeat}");
-    }
-
-    private void StoreChallengeResult(string sessionKey, EgoNetSubmittedChallengeResult result)
-    {
-        var resultToBeat = FindResultToBeat(sessionKey, result.ChallengeId) ?? CapturedFriendResultToBeat;
-        var dominated = result.Result >= resultToBeat;
-
-        _challengeResultsBySession[sessionKey] = new ChallengeSessionResult(
-            result.ChallengeId,
-            result.Result,
-            result.Attempts,
-            dominated);
-
-        Console.WriteLine(
-            $"{DateTime.Now:HH:mm:ss} challenge-flow: result challenge={result.ChallengeId} result={result.Result} target={resultToBeat} attempts={result.Attempts} dominated={dominated}");
-    }
-
-    private long? FindResultToBeat(string sessionKey, long challengeId)
-    {
-        var catalogResult = EgoNetChallengePayloads.TryGetCatalogResultToBeat(challengeId);
-        if (catalogResult is not null)
-        {
-            return catalogResult.Value;
-        }
-
-        if (!_issuedChallengesBySession.TryGetValue(sessionKey, out var issuedChallenges))
-        {
-            return null;
-        }
-
-        lock (issuedChallenges)
-        {
-            return issuedChallenges
-                .FirstOrDefault(value => value.ChallengeId == challengeId)
-                ?.ChallengeData
-                .ResultToBeat;
-        }
-    }
-
-    private RaceNetChallengeSnapshot ApplySessionResult(string sessionKey, RaceNetChallengeSnapshot snapshot)
-    {
-        if (!_challengeResultsBySession.TryGetValue(sessionKey, out var result) || !result.Dominated)
-        {
-            return snapshot;
-        }
-
-        var friends = snapshot.Friends
-            .Select((friend, index) => index == 0
-                ? friend with
-                {
-                    ChallengeId = Math.Max(friend.ChallengeId, result.ChallengeId),
-                    BestResult = Math.Max(friend.BestResult, result.Result),
-                    YourBestResult = Math.Max(friend.YourBestResult, result.Result),
-                    Tally = Math.Max(friend.Tally, 1)
-                }
-                : friend)
-            .ToArray();
-
-        return snapshot with
-        {
-            HighChallengeId = Math.Max(snapshot.HighChallengeId, result.ChallengeId),
-            ChallengeCount = Math.Max(snapshot.ChallengeCount, 1),
-            OverallTally = Math.Max(snapshot.OverallTally, 1),
-            BestResult = Math.Max(snapshot.BestResult, result.Result),
-            Friends = friends
-        };
-    }
-
-    private IReadOnlyList<RaceNetIssuedChallenge> GetIssuedChallenges(string sessionKey)
-    {
-        if (!_issuedChallengesBySession.TryGetValue(sessionKey, out var issuedChallenges))
-        {
-            return [];
-        }
-
-        lock (issuedChallenges)
-        {
-            return issuedChallenges.ToArray();
-        }
-    }
-
-    private sealed record ChallengeSessionResult(
-        long ChallengeId,
-        long Result,
-        int Attempts,
-        bool Dominated);
 }

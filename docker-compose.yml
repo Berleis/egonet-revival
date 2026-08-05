@@ -10,9 +10,11 @@ services:
       RaceNet__ListenAnyIp: "true"
       RaceNet__CaptureRequests: "false"
       RaceNet__RecordCalls: "false"
-      RaceNet__StoreProvider: "Local"
+      RaceNet__StoreProvider: "Sqlite"
       RaceNet__UseSha1ServerCertificate: "false"
       RaceNet__ChallengePayloadFormat: "BinaryOverviewCapturedSummary"
       RaceNet__GhostDownloadPayloadFormat: "GhostDataOnly"
+      ConnectionStrings__RaceNet: "Data Source=/app/data/egonet-revival.db"
     volumes:
       - ./data/certs:/app/certs
+      - ./data/db:/app/data

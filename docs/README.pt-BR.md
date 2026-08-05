@@ -23,12 +23,12 @@ Funcionando no servidor atual:
 - UploadGhost.
 - DownloadGhost usando ghost enviado pelo jogo.
 - SubmitChallengeResult / SubmitPersonalRecord.
-- Mais de um desafio para o mesmo amigo na mesma sessao do servidor.
+- Persistencia SQLite para jogadores, amigos, challenges, ghosts e resultados.
+- Mais de um desafio para o mesmo amigo.
 
 Ainda nao finalizado:
 
-- Persistencia real de challenges/ghosts entre reinicios.
-- Banco de dados de producao para varios jogadores.
+- Teste publico mais amplo com varias contas Steam reais.
 - Painel/admin.
 - Separacao formal por perfis de jogo.
 
@@ -104,16 +104,23 @@ E persiste certificados em:
 data/certs
 ```
 
-Nao envie essa pasta para o Git. Ela precisa continuar estavel no servidor porque todos os jogadores precisam patchar o jogo com a mesma CA gerada por esse deploy.
+E persiste o estado de jogo em SQLite:
+
+```txt
+data/db/egonet-revival.db
+```
+
+Nao envie essas pastas para o Git. `data/certs` precisa continuar estavel no servidor porque todos os jogadores precisam patchar o jogo com a mesma CA gerada por esse deploy.
 
 Configuracao principal do compose:
 
 - `ListenAnyIp = true`
 - portas `80` e `443` expostas
+- `StoreProvider = Sqlite`
 - `CaptureRequests = false`
 - `RecordCalls = false`
 
-O modo publico ainda precisa de persistencia real para challenges e ghosts antes de ser considerado pronto para uso continuo. Por enquanto, o estado fica em memoria e se perde quando o container reinicia.
+O modo publico guarda jogadores, amigos observados, challenges enviados, ghost cars enviados e resultados de challenges no SQLite. O historico de requests/responses continua desativado, exceto se `RecordCalls` for habilitado manualmente.
 
 ## GitHub Actions
 
