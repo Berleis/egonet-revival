@@ -175,17 +175,28 @@ public sealed class EntityFrameworkRaceNetStore(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
     {
-        return await dbContext.PlayerFriends
-            .Where(value => value.PlayerProfileId == session.PlayerProfileId)
-            .OrderByDescending(value => dbContext.Challenges.Any(challenge =>
-                challenge.TargetPlayerProfileId == session.PlayerProfileId &&
-                challenge.IssuerPlayerProfileId == value.FriendPlayerProfileId &&
-                challenge.Status == "open"))
-            .ThenBy(value => value.DisplayName)
-            .Select(value => new RaceNetPrincipal(
-                ulong.Parse(value.SteamId, CultureInfo.InvariantCulture),
-                value.DisplayName))
+        var challengedFriendIds = await dbContext.Challenges
+            .Where(value =>
+                value.TargetPlayerProfileId == session.PlayerProfileId &&
+                value.Status == "open")
+            .Select(value => value.IssuerPlayerProfileId)
+            .Distinct()
             .ToArrayAsync(cancellationToken);
+        var challengedFriendSet = challengedFriendIds.ToHashSet();
+        var friends = await dbContext.PlayerFriends
+            .AsNoTracking()
+            .Where(value => value.PlayerProfileId == session.PlayerProfileId)
+            .ToArrayAsync(cancellationToken);
+
+        return friends
+            .OrderByDescending(value => challengedFriendSet.Contains(value.FriendPlayerProfileId))
+            .ThenBy(value => value.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(value => ulong.TryParse(value.SteamId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var steamId)
+                ? new RaceNetPrincipal(steamId, value.DisplayName)
+                : null)
+            .Where(value => value is not null)
+            .Select(value => value!)
+            .ToArray();
     }
 
     public async Task<RaceNetIssuedChallenge> IssueChallengeAsync(
