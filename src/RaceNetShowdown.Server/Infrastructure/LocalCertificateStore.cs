@@ -267,7 +267,9 @@ public static class LocalCertificateStore
                 return true;
             }
 
-            return !certificate.HasPrivateKey || !HasCrlDistributionPoint(certificate);
+            return !certificate.HasPrivateKey ||
+                   !HasExtension(certificate, "2.5.29.31") ||
+                   !HasExtension(certificate, "2.5.29.35");
         }
         catch
         {
@@ -306,6 +308,11 @@ public static class LocalCertificateStore
         serverRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
             new OidCollection { new("1.3.6.1.5.5.7.3.1") },
             false));
+        serverRequest.CertificateExtensions.Add(
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(
+                rootWithPrivateKey,
+                includeKeyIdentifier: true,
+                includeIssuerAndSerial: true));
         serverRequest.CertificateExtensions.Add(
             CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(
                 [options.RevocationListUrl],
@@ -447,6 +454,7 @@ public static class LocalCertificateStore
         builder.AppendLine("basicConstraints = CA:false");
         builder.AppendLine("keyUsage = digitalSignature, keyEncipherment");
         builder.AppendLine("extendedKeyUsage = serverAuth");
+        builder.AppendLine("authorityKeyIdentifier = keyid,issuer");
         builder.AppendLine("subjectAltName = @alt_names");
         builder.AppendLine($"crlDistributionPoints = URI:{revocationListUrl}");
         builder.AppendLine();
@@ -511,10 +519,10 @@ public static class LocalCertificateStore
         File.WriteAllBytes(rootCrlPath, crlBytes);
     }
 
-    private static bool HasCrlDistributionPoint(X509Certificate2 certificate)
+    private static bool HasExtension(X509Certificate2 certificate, string oid)
     {
         return certificate.Extensions
             .Cast<X509Extension>()
-            .Any(extension => string.Equals(extension.Oid?.Value, "2.5.29.31", StringComparison.Ordinal));
+            .Any(extension => string.Equals(extension.Oid?.Value, oid, StringComparison.Ordinal));
     }
 }
