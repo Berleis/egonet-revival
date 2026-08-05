@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RaceNetShowdown.Patcher/RaceNetShowdown.Patcher.csproj" />
+    <Project Path="src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj" />
+    <Project Path="src/RaceNetShowdown.TlsProbe/RaceNetShowdown.TlsProbe.csproj" />
+  </Folder>
+</Solution>

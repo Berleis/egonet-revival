@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+artifacts/
+build-check/
+TestResults/
+
+# Local IDE state
+.vs/
+.vscode/
+
+# Local RaceNet runtime/debug artifacts
+data/
+src/**/logs/
+src/**/certs/
+debug/
+.research/
+.tmp-build/
+.tmp-egonet-server/
+external/
+
+# Local databases and secrets
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.pfx
+*.cer
+*.crt
+*.key
+*.log
+
+# OS files
+Thumbs.db
+desktop.ini

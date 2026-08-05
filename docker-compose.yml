@@ -1,0 +1,17 @@
+services:
+  egonet-revival:
+    build: .
+    container_name: egonet-revival
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      RaceNet__ListenAnyIp: "true"
+      RaceNet__CaptureRequests: "false"
+      RaceNet__RecordCalls: "false"
+      RaceNet__StoreProvider: "Local"
+      RaceNet__ChallengePayloadFormat: "BinaryOverviewCapturedSummary"
+      RaceNet__GhostDownloadPayloadFormat: "GhostDataOnly"
+    volumes:
+      - ./data/certs:/app/certs
