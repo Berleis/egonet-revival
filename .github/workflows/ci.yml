@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore EgoNetRevival.sln
+
+      - name: Build
+        run: dotnet build EgoNetRevival.sln --configuration Release --no-restore
+
+      - name: Docker build
+        run: docker build --tag egonet-revival:ci .
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Deploy to Droplet
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          DROPLET_PORT: ${{ secrets.DROPLET_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+
+          test -n "${DROPLET_HOST}"
+          test -n "${DROPLET_USER}"
+          test -n "${DROPLET_SSH_KEY}"
+
+          SSH_PORT="${DROPLET_PORT:-22}"
+          APP_PATH="${DEPLOY_PATH:-/opt/egonet-revival}"
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "${DROPLET_SSH_KEY}" > ~/.ssh/egonet_revival
+          chmod 600 ~/.ssh/egonet_revival
+          ssh-keyscan -p "${SSH_PORT}" "${DROPLET_HOST}" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/egonet_revival -p "${SSH_PORT}" "${DROPLET_USER}@${DROPLET_HOST}" "
+            set -e
+            if [ ! -d '${APP_PATH}/.git' ]; then
+              sudo mkdir -p '${APP_PATH}'
+              sudo chown -R \$(whoami):\$(whoami) '${APP_PATH}'
+              git clone https://github.com/${{ github.repository }}.git '${APP_PATH}'
+            fi
+            cd '${APP_PATH}'
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose up -d --build
+            docker compose ps
+          "
