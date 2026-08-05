@@ -11,7 +11,7 @@ services:
       RaceNet__CaptureRequests: "false"
       RaceNet__RecordCalls: "false"
       RaceNet__StoreProvider: "Sqlite"
-      RaceNet__UseSha1ServerCertificate: "false"
+      RaceNet__UseSha1ServerCertificate: "true"
       RaceNet__ChallengePayloadFormat: "BinaryOverviewCapturedSummary"
       RaceNet__GhostDownloadPayloadFormat: "GhostDataOnly"
       ConnectionStrings__RaceNet: "Data Source=/app/data/egonet-revival.db"
