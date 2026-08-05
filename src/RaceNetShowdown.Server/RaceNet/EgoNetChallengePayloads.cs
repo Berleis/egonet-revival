@@ -623,35 +623,55 @@ public static class EgoNetChallengePayloads
         RaceNetChallengeSnapshot snapshot,
         IReadOnlyList<RaceNetPrincipal> principals)
     {
-        if (snapshot.Friends.Count == 0)
-        {
-            return [];
-        }
-
         if (principals.Count == 0)
         {
             return snapshot.Friends;
         }
 
         var count = Math.Min(principals.Count, MaxFriendsReturnedToShowdown);
-        var merged = new RaceNetFriendChallenge[count];
+        var merged = new List<RaceNetFriendChallenge>(count);
+        var friendsBySteamId = snapshot.Friends
+            .Where(value => !string.IsNullOrWhiteSpace(value.SteamId))
+            .GroupBy(value => value.SteamId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(value => value.Key, value => value.First(), StringComparer.OrdinalIgnoreCase);
+        var friendsByName = snapshot.Friends
+            .GroupBy(value => value.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(value => value.Key, value => value.First(), StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < count; i++)
         {
-            var template = snapshot.Friends[i % snapshot.Friends.Count];
             var principal = principals[i];
             var steamId = principal.SteamId.ToString(CultureInfo.InvariantCulture);
-            merged[i] = template with
+            var friend = friendsBySteamId.TryGetValue(steamId, out var steamMatch)
+                ? steamMatch
+                : friendsByName.TryGetValue(principal.Name, out var nameMatch)
+                    ? nameMatch
+                    : new RaceNetFriendChallenge(
+                        EgonetId: 10_000L + i + 1,
+                        SteamId: steamId,
+                        Name: principal.Name,
+                        Presence: 1,
+                        ChallengeId: 0,
+                        RaceEventId: 1,
+                        VehicleId: 1,
+                        BestResult: 0,
+                        YourBestResult: 0,
+                        Tally: 0,
+                        ExpiresAt: DateTimeOffset.UtcNow.AddDays(30),
+                        GhostSlotId: 0);
+
+            merged.Add(friend with
             {
-                EgonetId = 10_000L + i + 1,
+                EgonetId = friend.EgonetId > 0 ? friend.EgonetId : 10_000L + i + 1,
                 SteamId = steamId,
-                Name = principal.Name,
-                ChallengeId = i + 1,
-                GhostSlotId = i + 1
-            };
+                Name = principal.Name
+            });
         }
 
-        return merged;
+        return merged
+            .OrderByDescending(value => value.ChallengeId > 0)
+            .ThenBy(value => value.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static Action<BinaryWriter> ToFriendOverviewValue(
@@ -1009,7 +1029,7 @@ public static class EgoNetChallengePayloads
             return 0;
         }
 
-        var requestedChallengeCount = Math.Max(snapshot.ChallengeCount, CapturedChallengeCatalog.Length);
+        var requestedChallengeCount = snapshot.ChallengeCount;
         return Math.Min(friends.Count, Math.Min(requestedChallengeCount, 20));
     }
 

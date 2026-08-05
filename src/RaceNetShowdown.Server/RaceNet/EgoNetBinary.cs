@@ -156,7 +156,7 @@ internal sealed record EgoNetChallengeRequestContext(
     int? RaceEventId,
     int? VehicleId);
 
-internal sealed record EgoNetSubmittedChallengeResult(
+public sealed record EgoNetSubmittedChallengeResult(
     long ChallengeId,
     long Result,
     int Attempts);
@@ -166,6 +166,43 @@ internal static class EgoNetRequestParser
     public static IReadOnlyList<RaceNetPrincipal> ReadPrincipals(CapturedBody body)
     {
         return ReadChallengeContext(body).Principals;
+    }
+
+    public static string? ReadTopLevelString(CapturedBody body, string fieldName)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return null;
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == fieldName && tag == "dstr")
+                {
+                    return ReadString(reader);
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
     }
 
     public static EgoNetChallengeRequestContext ReadChallengeContext(CapturedBody body)

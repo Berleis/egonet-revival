@@ -2,6 +2,7 @@ using RaceNetShowdown.Server.Infrastructure;
 using RaceNetShowdown.Server.RaceNet;
 using RaceNetShowdown.Server;
 using RaceNetShowdown.Server.Data;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Authentication;
 
@@ -28,6 +29,21 @@ if (string.Equals(raceNetOptions.StoreProvider, "SqlServer", StringComparison.Or
     builder.Services.AddDbContext<RaceNetDbContext>(options =>
     {
         options.UseSqlServer(connectionString);
+    });
+    builder.Services.AddScoped<IRaceNetStore, EntityFrameworkRaceNetStore>();
+}
+else if (string.Equals(raceNetOptions.StoreProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+{
+    var connectionString = builder.Configuration.GetConnectionString("RaceNet");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("RaceNet:StoreProvider is Sqlite, but ConnectionStrings:RaceNet is empty.");
+    }
+
+    EnsureSqliteDirectory(connectionString);
+    builder.Services.AddDbContext<RaceNetDbContext>(options =>
+    {
+        options.UseSqlite(connectionString);
     });
     builder.Services.AddScoped<IRaceNetStore, EntityFrameworkRaceNetStore>();
 }
@@ -113,13 +129,19 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
     var egoNetFunction = context.Request.Headers["X-EgoNet-Function"].ToString();
     var session = string.IsNullOrWhiteSpace(egoNetFunction)
         ? null
-        : await store.EnsureSessionAsync(context, context.RequestAborted);
+        : await store.EnsureSessionAsync(context, body, context.RequestAborted);
     var challengeSnapshot = NeedsChallengeSnapshot(egoNetFunction)
         ? await store.GetChallengeSnapshotAsync(
             session ?? throw new InvalidOperationException("RaceNet session was not created."),
             context.RequestAborted)
         : null;
-    var response = responder.BuildResponse(context.Request, body, session, challengeSnapshot);
+    var response = await responder.BuildResponseAsync(
+        context.Request,
+        body,
+        session,
+        challengeSnapshot,
+        store,
+        context.RequestAborted);
 
     if (captureLogger is not null)
     {
@@ -194,4 +216,19 @@ static bool NeedsChallengeSnapshot(string egoNetFunction)
         "AsynchronousChallengeService.SubmitChallengeResult" or
         "AsynchronousChallengeService.SubmitPersonalRecord" or
         "AsynchronousChallengeService.UploadGhost";
+}
+
+static void EnsureSqliteDirectory(string connectionString)
+{
+    var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+    if (string.IsNullOrWhiteSpace(dataSource) || dataSource is ":memory:")
+    {
+        return;
+    }
+
+    var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
+    if (!string.IsNullOrWhiteSpace(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
 }

@@ -6,9 +6,13 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 {
     public DbSet<PlayerProfile> PlayerProfiles => Set<PlayerProfile>();
 
+    public DbSet<PlayerFriend> PlayerFriends => Set<PlayerFriend>();
+
     public DbSet<RaceNetSession> RaceNetSessions => Set<RaceNetSession>();
 
     public DbSet<ChallengeRecord> Challenges => Set<ChallengeRecord>();
+
+    public DbSet<GhostRecord> Ghosts => Set<GhostRecord>();
 
     public DbSet<ChallengeResultRecord> ChallengeResults => Set<ChallengeResultRecord>();
 
@@ -23,6 +27,25 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
             entity.Property(value => value.DisplayName).HasMaxLength(128);
         });
 
+        modelBuilder.Entity<PlayerFriend>(entity =>
+        {
+            entity.HasIndex(value => new { value.PlayerProfileId, value.SteamId }).IsUnique();
+            entity.Property(value => value.SteamId).HasMaxLength(32);
+            entity.Property(value => value.DisplayName).HasMaxLength(128);
+
+            entity
+                .HasOne(value => value.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.PlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(value => value.FriendPlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.FriendPlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<RaceNetSession>(entity =>
         {
             entity.HasIndex(value => value.SessionId).IsUnique();
@@ -34,6 +57,7 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
         modelBuilder.Entity<ChallengeRecord>(entity =>
         {
             entity.HasIndex(value => value.EgoNetChallengeId).IsUnique();
+            entity.HasIndex(value => value.GhostSlotId).IsUnique();
             entity.Property(value => value.EventKey).HasMaxLength(128);
             entity.Property(value => value.VehicleKey).HasMaxLength(128);
             entity.Property(value => value.Status).HasMaxLength(32);
@@ -49,6 +73,23 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
                 .WithMany()
                 .HasForeignKey(value => value.TargetPlayerProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<GhostRecord>(entity =>
+        {
+            entity.HasIndex(value => value.GhostSlotId).IsUnique();
+
+            entity
+                .HasOne(value => value.OwnerPlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.OwnerPlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(value => value.ChallengeRecord)
+                .WithMany()
+                .HasForeignKey(value => value.ChallengeRecordId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ChallengeResultRecord>(entity =>
