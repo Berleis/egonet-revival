@@ -139,8 +139,7 @@ public static class EgoNetChallengePayloads
                 EgoNetBinary.Ui64("HighChallengeID", checked((ulong)highChallengeId)),
                 EgoNetBinary.Ui64("BestResult", checked((ulong)bestResult))),
 
-            "AsynchronousChallengeService.GetCompletedIssuedChallenges" => EgoNetBinary.Dictionary(
-                EgoNetBinary.Vector("Challenges")),
+            "AsynchronousChallengeService.GetCompletedIssuedChallenges" => BuildCompletedIssuedChallengesPayload(),
 
             "AsynchronousChallengeService.GetFriendChallenges" => BuildFriendChallengesPayload(
                 activeFriends,
@@ -154,7 +153,8 @@ public static class EgoNetChallengePayloads
                 challengeRaceEventId,
                 challengeVehicleId,
                 overviewPayloadMode,
-                activeChallengeCount)
+                activeChallengeCount,
+                Math.Min(issuedChallenges.Count, 20))
         };
     }
 
@@ -165,7 +165,8 @@ public static class EgoNetChallengePayloads
         int challengeRaceEventId,
         int challengeVehicleId,
         FriendsOverviewPayloadMode mode,
-        int activeChallengeCount)
+        int activeChallengeCount,
+        int usedCount)
     {
         var overviewFriends = mode switch
         {
@@ -173,7 +174,6 @@ public static class EgoNetChallengePayloads
             FriendsOverviewPayloadMode.NestedChallengeActiveSi32 => friends.Take(activeChallengeCount).ToArray(),
             _ => friends
         };
-        var usedCount = overviewFriends.Count;
         var friendsData = EgoNetBinary.Vector(
             "FriendsData",
             overviewFriends
@@ -301,6 +301,16 @@ public static class EgoNetChallengePayloads
 
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Vector("Challenges", challengeEntries));
+    }
+
+    private static byte[] BuildCompletedIssuedChallengesPayload()
+    {
+        return EgoNetBinary.Dictionary(
+            EgoNetBinary.Dict("Overview",
+                EgoNetBinary.Si32("Wins", 0),
+                EgoNetBinary.Si32("Losses", 0),
+                EgoNetBinary.Si32("OverallTally", 0)),
+            EgoNetBinary.Vector("Completed"));
     }
 
     private static IReadOnlyList<RaceNetIssuedChallenge> SelectIssuedChallenges(

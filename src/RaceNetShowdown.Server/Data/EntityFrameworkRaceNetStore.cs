@@ -29,7 +29,8 @@ public sealed class EntityFrameworkRaceNetStore(
                 .Include(value => value.PlayerProfile)
                 .FirstOrDefaultAsync(value => value.SessionId == sessionId, cancellationToken);
 
-            if (existingSession?.PlayerProfile is not null)
+            if (existingSession?.PlayerProfile is not null &&
+                IsWireCompatibleSessionId(existingSession.SessionId))
             {
                 existingSession.LastSeenAt = now;
                 existingSession.PlayerProfile.LastSeenAt = now;
@@ -53,6 +54,18 @@ public sealed class EntityFrameworkRaceNetStore(
         }
 
         var profile = await FindOrCreateProfileAsync(loginName, remoteAddress, now, cancellationToken);
+        if (profile.Id > 0)
+        {
+            var recentProfileSession = await FindRecentProfileSessionAsync(
+                profile.Id,
+                remoteAddress,
+                now,
+                cancellationToken);
+            if (recentProfileSession is not null)
+            {
+                return recentProfileSession;
+            }
+        }
 
         sessionId = CreateSessionId();
         var session = new RaceNetSession
@@ -73,6 +86,35 @@ public sealed class EntityFrameworkRaceNetStore(
         return ToSessionInfo(session);
     }
 
+    private async Task<RaceNetSessionInfo?> FindRecentProfileSessionAsync(
+        long playerProfileId,
+        string remoteAddress,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var profileSessions = await dbContext.RaceNetSessions
+            .Include(value => value.PlayerProfile)
+            .Where(value =>
+                value.PlayerProfileId == playerProfileId &&
+                value.RemoteAddress == remoteAddress)
+            .ToListAsync(cancellationToken);
+        var recentSession = profileSessions
+            .OrderByDescending(value => value.LastSeenAt)
+            .FirstOrDefault();
+
+        if (recentSession?.PlayerProfile is null ||
+            !IsWireCompatibleSessionId(recentSession.SessionId))
+        {
+            return null;
+        }
+
+        recentSession.LastSeenAt = now;
+        recentSession.PlayerProfile.LastSeenAt = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToSessionInfo(recentSession);
+    }
+
     private async Task<RaceNetSessionInfo?> FindRecentRemoteSessionAsync(
         string remoteAddress,
         DateTimeOffset now,
@@ -86,7 +128,8 @@ public sealed class EntityFrameworkRaceNetStore(
             .OrderByDescending(value => value.LastSeenAt)
             .FirstOrDefault();
 
-        if (recentSession?.PlayerProfile is null)
+        if (recentSession?.PlayerProfile is null ||
+            !IsWireCompatibleSessionId(recentSession.SessionId))
         {
             return null;
         }
@@ -602,6 +645,13 @@ public sealed class EntityFrameworkRaceNetStore(
 
     private static string CreateSessionId()
     {
-        return $"local-{Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant()}";
+        return Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+    }
+
+    private static bool IsWireCompatibleSessionId(string sessionId)
+    {
+        return sessionId.Length == 32 &&
+            sessionId.All(value =>
+                value is >= '0' and <= '9' or >= 'A' and <= 'F');
     }
 }
