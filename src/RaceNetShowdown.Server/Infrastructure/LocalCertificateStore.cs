@@ -14,6 +14,8 @@ public sealed record LocalCertificateBundle(
 
 public static class LocalCertificateStore
 {
+    // The game binary can only be patched in place when the replacement DER keeps this exact length.
+    private const int ExpectedRootCertificateLength = 1003;
     private const string Sha1RsaOid = "1.2.840.113549.1.1.5";
     private const string Sha256RsaOid = "1.2.840.113549.1.1.11";
 
@@ -26,7 +28,10 @@ public static class LocalCertificateStore
         var rootPfxPath = Path.Combine(certDirectory, "codemasters-local-root-ca.pfx");
         var serverPfxPath = Path.Combine(certDirectory, "prod.egonet.codemasters.com.pfx");
 
-        if (!File.Exists(rootPfxPath) || !File.Exists(rootCerPath) || !File.Exists(serverPfxPath))
+        if (!File.Exists(rootPfxPath) ||
+            !File.Exists(rootCerPath) ||
+            !File.Exists(serverPfxPath) ||
+            RootCertificateNeedsRegeneration(rootCerPath))
         {
             GenerateCertificates(rootCerPath, rootPfxPath, serverPfxPath, options);
         }
@@ -42,12 +47,38 @@ public static class LocalCertificateStore
             }
         }
 
-        var serverCertificate = X509CertificateLoader.LoadPkcs12FromFile(
-            serverPfxPath,
-            options.CertificatePassword,
-            X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.UserKeySet);
+        var serverCertificate = LoadServerCertificate(serverPfxPath, options);
 
         return new LocalCertificateBundle(serverCertificate, rootCerPath, serverPfxPath);
+    }
+
+    private static X509Certificate2 LoadServerCertificate(string serverPfxPath, RaceNetOptions options)
+    {
+        var keyStorageOptions = new[]
+        {
+            X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.UserKeySet,
+            X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet,
+            X509KeyStorageFlags.Exportable
+        };
+
+        foreach (var keyStorageFlags in keyStorageOptions)
+        {
+            try
+            {
+                return X509CertificateLoader.LoadPkcs12FromFile(
+                    serverPfxPath,
+                    options.CertificatePassword,
+                    keyStorageFlags);
+            }
+            catch (CryptographicException) when (keyStorageFlags != keyStorageOptions[^1])
+            {
+            }
+        }
+
+        return X509CertificateLoader.LoadPkcs12FromFile(
+            serverPfxPath,
+            options.CertificatePassword,
+            keyStorageOptions[^1]);
     }
 
     private static void GenerateCertificates(
@@ -57,6 +88,37 @@ public static class LocalCertificateStore
         RaceNetOptions options)
     {
         using var rootKey = RSA.Create(2048);
+        var lastGeneratedLength = 0;
+
+        for (var extensionPadding = -1; extensionPadding <= 256; extensionPadding++)
+        {
+            using var rootCertificate = CreateRootCertificate(rootKey, extensionPadding);
+            using var rootWithPrivateKey = X509CertificateLoader.LoadPkcs12(
+                rootCertificate.Export(X509ContentType.Pkcs12, options.CertificatePassword),
+                options.CertificatePassword,
+                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+
+            var rootCerBytes = rootWithPrivateKey.Export(X509ContentType.Cert);
+            lastGeneratedLength = rootCerBytes.Length;
+
+            if (rootCerBytes.Length != ExpectedRootCertificateLength)
+            {
+                continue;
+            }
+
+            File.WriteAllBytes(rootCerPath, rootCerBytes);
+            File.WriteAllBytes(rootPfxPath, rootWithPrivateKey.Export(X509ContentType.Pkcs12, options.CertificatePassword));
+
+            GenerateServerCertificate(rootWithPrivateKey, serverPfxPath, Path.GetDirectoryName(serverPfxPath)!, options);
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Could not generate a {ExpectedRootCertificateLength}-byte root certificate. Last generated length: {lastGeneratedLength}.");
+    }
+
+    private static X509Certificate2 CreateRootCertificate(RSA rootKey, int extensionPadding)
+    {
         var rootRequest = new CertificateRequest(
             "CN=Codemasters Online Root CA, OU=Codemasters Online, O=Codemasters Software Ltd, S=Warwickshire, C=UK",
             rootKey,
@@ -69,19 +131,23 @@ public static class LocalCertificateStore
             true));
         rootRequest.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(rootRequest.PublicKey, false));
 
-        using var rootCertificate = rootRequest.CreateSelfSigned(
+        if (extensionPadding >= 0)
+        {
+            // Non-critical padding keeps the local CA patch-compatible across Windows and Linux generators.
+            rootRequest.CertificateExtensions.Add(new X509Extension(
+                new Oid("1.2.3.4", "EgoNet Revival certificate padding"),
+                new byte[extensionPadding],
+                false));
+        }
+
+        return rootRequest.CreateSelfSigned(
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow.AddYears(10));
+    }
 
-        using var rootWithPrivateKey = X509CertificateLoader.LoadPkcs12(
-            rootCertificate.Export(X509ContentType.Pkcs12, options.CertificatePassword),
-            options.CertificatePassword,
-            X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
-
-        File.WriteAllBytes(rootCerPath, rootWithPrivateKey.Export(X509ContentType.Cert));
-        File.WriteAllBytes(rootPfxPath, rootWithPrivateKey.Export(X509ContentType.Pkcs12, options.CertificatePassword));
-
-        GenerateServerCertificate(rootWithPrivateKey, serverPfxPath, Path.GetDirectoryName(serverPfxPath)!, options);
+    private static bool RootCertificateNeedsRegeneration(string rootCerPath)
+    {
+        return !File.Exists(rootCerPath) || new FileInfo(rootCerPath).Length != ExpectedRootCertificateLength;
     }
 
     private static bool ServerCertificateNeedsRegeneration(string serverPfxPath, RaceNetOptions options)
