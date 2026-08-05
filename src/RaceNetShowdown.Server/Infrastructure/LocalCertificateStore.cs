@@ -290,7 +290,17 @@ public static class LocalCertificateStore
             serial);
 
         using var serverWithPrivateKey = serverCertificate.CopyWithPrivateKey(serverKey);
-        File.WriteAllBytes(serverPfxPath, serverWithPrivateKey.Export(X509ContentType.Pkcs12, options.CertificatePassword));
+        using var rootPublicCertificate = X509CertificateLoader.LoadCertificate(
+            rootWithPrivateKey.Export(X509ContentType.Cert));
+        var certificateChain = new X509Certificate2Collection
+        {
+            serverWithPrivateKey,
+            rootPublicCertificate
+        };
+        var serverPfxBytes = certificateChain.Export(X509ContentType.Pkcs12, options.CertificatePassword)
+            ?? throw new InvalidOperationException("Could not export server certificate bundle.");
+
+        File.WriteAllBytes(serverPfxPath, serverPfxBytes);
     }
 
     private static void GenerateServerCertificateWithOpenSsl(
