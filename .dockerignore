@@ -8,7 +8,7 @@ external
 .research
 .tmp-build
 .tmp-egonet-server
-data
+/data
 src/**/bin
 src/**/obj
 src/**/logs

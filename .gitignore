@@ -10,7 +10,7 @@ TestResults/
 .vscode/
 
 # Local RaceNet runtime/debug artifacts
-data/
+/data/
 src/**/logs/
 src/**/certs/
 debug/
