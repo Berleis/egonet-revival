@@ -49,7 +49,7 @@ public static class LocalCertificateStore
                    options.CertificatePassword,
                    X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet))
         {
-            if (ServerCertificateNeedsRegeneration(serverPfxPath, options))
+            if (ServerCertificateNeedsRegeneration(serverPfxPath, rootCertificate, options))
             {
                 GenerateServerCertificate(rootCertificate, serverPfxPath, certDirectory, options);
             }
@@ -186,7 +186,10 @@ public static class LocalCertificateStore
         return !File.Exists(rootCerPath) || new FileInfo(rootCerPath).Length != ExpectedRootCertificateLength;
     }
 
-    private static bool ServerCertificateNeedsRegeneration(string serverPfxPath, RaceNetOptions options)
+    private static bool ServerCertificateNeedsRegeneration(
+        string serverPfxPath,
+        X509Certificate2 rootCertificate,
+        RaceNetOptions options)
     {
         if (!File.Exists(serverPfxPath))
         {
@@ -208,6 +211,11 @@ public static class LocalCertificateStore
 
             var commonName = certificate.GetNameInfo(X509NameType.SimpleName, false);
             if (!string.Equals(commonName, options.ServerCertificateCommonName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!certificate.IssuerName.RawData.AsSpan().SequenceEqual(rootCertificate.SubjectName.RawData))
             {
                 return true;
             }
@@ -338,18 +346,12 @@ public static class LocalCertificateStore
 
     private static void EnsureOpenSslRootFiles(X509Certificate2 rootWithPrivateKey, string rootPemPath, string rootKeyPath)
     {
-        if (!File.Exists(rootPemPath))
-        {
-            File.WriteAllText(rootPemPath, rootWithPrivateKey.ExportCertificatePem(), Encoding.ASCII);
-        }
+        File.WriteAllText(rootPemPath, rootWithPrivateKey.ExportCertificatePem(), Encoding.ASCII);
 
-        if (!File.Exists(rootKeyPath))
-        {
-            using var rootKey = rootWithPrivateKey.GetRSAPrivateKey()
-                ?? throw new InvalidOperationException("The local RaceNet root certificate has no RSA private key.");
+        using var rootKey = rootWithPrivateKey.GetRSAPrivateKey()
+            ?? throw new InvalidOperationException("The local RaceNet root certificate has no RSA private key.");
 
-            File.WriteAllText(rootKeyPath, rootKey.ExportPkcs8PrivateKeyPem(), Encoding.ASCII);
-        }
+        File.WriteAllText(rootKeyPath, rootKey.ExportPkcs8PrivateKeyPem(), Encoding.ASCII);
     }
 
     private static void WriteOpenSslServerConfig(
