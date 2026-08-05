@@ -172,9 +172,7 @@ public static class EgoNetChallengePayloads
             FriendsOverviewPayloadMode.NestedChallengeActiveSi32 => friends.Take(activeChallengeCount).ToArray(),
             _ => friends
         };
-        var usedCount = mode == FriendsOverviewPayloadMode.CapturedSummary
-            ? activeChallengeCount
-            : overviewFriends.Count;
+        var usedCount = overviewFriends.Count;
         var friendsData = EgoNetBinary.Vector(
             "FriendsData",
             overviewFriends
