@@ -35,6 +35,8 @@ public sealed class RaceNetOptions
 
     public bool UseSha1ServerCertificate { get; init; } = true;
 
+    public string RevocationListUrl { get; init; } = "http://prod.egonet.codemasters.com/codemasters-local-root-ca.crl";
+
     public int BodyPreviewBytes { get; init; } = 8192;
 
     public string ChallengePayloadFormat { get; init; } = "BinaryOverviewResponseOnly";

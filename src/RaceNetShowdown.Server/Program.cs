@@ -122,6 +122,18 @@ app.MapMethods("/racenet-root-ca.cer", ["GET", "HEAD"], () =>
         "application/pkix-cert",
         "codemasters-local-root-ca.cer"));
 
+app.MapMethods("/codemasters-local-root-ca.crl", ["GET", "HEAD"], () =>
+    Results.File(
+        certificateBundle.RootRevocationListPath,
+        "application/pkix-crl",
+        "codemasters-local-root-ca.crl"));
+
+app.MapMethods("/racenet-root-ca.crl", ["GET", "HEAD"], () =>
+    Results.File(
+        certificateBundle.RootRevocationListPath,
+        "application/pkix-crl",
+        "codemasters-local-root-ca.crl"));
+
 app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
 {
     var body = await RequestBodyReader.ReadAsync(context.Request, raceNetOptions.BodyPreviewBytes);

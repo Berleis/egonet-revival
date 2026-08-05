@@ -1,5 +1,6 @@
 using System.Net;
 using System.Diagnostics;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -10,6 +11,7 @@ namespace RaceNetShowdown.Server.Infrastructure;
 public sealed record LocalCertificateBundle(
     X509Certificate2 ServerCertificate,
     string RootCertificatePath,
+    string RootRevocationListPath,
     string ServerCertificatePath);
 
 public static class LocalCertificateStore
@@ -34,6 +36,7 @@ public static class LocalCertificateStore
 
         var rootCerPath = Path.Combine(certDirectory, "codemasters-local-root-ca.cer");
         var rootPfxPath = Path.Combine(certDirectory, "codemasters-local-root-ca.pfx");
+        var rootCrlPath = Path.Combine(certDirectory, "codemasters-local-root-ca.crl");
         var serverPfxPath = Path.Combine(certDirectory, "prod.egonet.codemasters.com.pfx");
 
         if (!File.Exists(rootPfxPath) ||
@@ -42,7 +45,7 @@ public static class LocalCertificateStore
             RootCertificateFilesMismatch(rootCerPath, rootPfxPath, options) ||
             RootCertificateNeedsRegeneration(rootCerPath))
         {
-            GenerateCertificates(rootCerPath, rootPfxPath, serverPfxPath, options);
+            GenerateCertificates(rootCerPath, rootPfxPath, rootCrlPath, serverPfxPath, options);
         }
 
         using (var rootCertificate = X509CertificateLoader.LoadPkcs12FromFile(
@@ -50,7 +53,12 @@ public static class LocalCertificateStore
                    options.CertificatePassword,
                    X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet))
         {
-            if (ServerCertificateNeedsRegeneration(serverPfxPath, rootCertificate, options))
+            if (!File.Exists(rootCrlPath))
+            {
+                WriteRevocationList(rootCertificate, rootCrlPath);
+            }
+
+            if (ServerCertificateNeedsRegeneration(serverPfxPath, rootCrlPath, rootCertificate, options))
             {
                 GenerateServerCertificate(rootCertificate, serverPfxPath, certDirectory, options);
             }
@@ -58,7 +66,7 @@ public static class LocalCertificateStore
 
         var serverCertificate = LoadServerCertificate(serverPfxPath, options);
 
-        return new LocalCertificateBundle(serverCertificate, rootCerPath, serverPfxPath);
+        return new LocalCertificateBundle(serverCertificate, rootCerPath, rootCrlPath, serverPfxPath);
     }
 
     private static X509Certificate2 LoadServerCertificate(string serverPfxPath, RaceNetOptions options)
@@ -118,6 +126,7 @@ public static class LocalCertificateStore
     private static void GenerateCertificates(
         string rootCerPath,
         string rootPfxPath,
+        string rootCrlPath,
         string serverPfxPath,
         RaceNetOptions options)
     {
@@ -150,6 +159,7 @@ public static class LocalCertificateStore
 
                     File.WriteAllBytes(rootCerPath, rootCerBytes);
                     File.WriteAllBytes(rootPfxPath, rootWithPrivateKey.Export(X509ContentType.Pkcs12, options.CertificatePassword));
+                    WriteRevocationList(rootWithPrivateKey, rootCrlPath);
 
                     GenerateServerCertificate(rootWithPrivateKey, serverPfxPath, Path.GetDirectoryName(serverPfxPath)!, options);
                     return;
@@ -214,9 +224,15 @@ public static class LocalCertificateStore
 
     private static bool ServerCertificateNeedsRegeneration(
         string serverPfxPath,
+        string rootCrlPath,
         X509Certificate2 rootCertificate,
         RaceNetOptions options)
     {
+        if (!File.Exists(rootCrlPath))
+        {
+            return true;
+        }
+
         if (options.UseSha1ServerCertificate)
         {
             return true;
@@ -251,7 +267,7 @@ public static class LocalCertificateStore
                 return true;
             }
 
-            return !certificate.HasPrivateKey;
+            return !certificate.HasPrivateKey || !HasCrlDistributionPoint(certificate);
         }
         catch
         {
@@ -290,6 +306,10 @@ public static class LocalCertificateStore
         serverRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
             new OidCollection { new("1.3.6.1.5.5.7.3.1") },
             false));
+        serverRequest.CertificateExtensions.Add(
+            CertificateRevocationListBuilder.BuildCrlDistributionPointExtension(
+                [options.RevocationListUrl],
+                false));
 
         var subjectAlternativeNames = new SubjectAlternativeNameBuilder();
         foreach (var hostname in options.Hostnames.Append(commonName).Distinct(StringComparer.OrdinalIgnoreCase))
@@ -347,7 +367,7 @@ public static class LocalCertificateStore
         var serverPemPath = Path.Combine(certDirectory, $"{commonName}.pem");
 
         EnsureOpenSslRootFiles(rootWithPrivateKey, rootPemPath, rootKeyPath);
-        WriteOpenSslServerConfig(serverConfigPath, commonName, options.Hostnames);
+        WriteOpenSslServerConfig(serverConfigPath, commonName, options.Hostnames, options.RevocationListUrl);
 
         RunOpenSsl("genrsa", "-out", serverKeyPath, "2048");
         RunOpenSsl("req", "-new", "-key", serverKeyPath, "-out", serverCsrPath, "-config", serverConfigPath);
@@ -398,7 +418,8 @@ public static class LocalCertificateStore
     private static void WriteOpenSslServerConfig(
         string serverConfigPath,
         string commonName,
-        IReadOnlyCollection<string> hostnames)
+        IReadOnlyCollection<string> hostnames,
+        string revocationListUrl)
     {
         var dnsNames = hostnames
             .Append(commonName)
@@ -427,6 +448,7 @@ public static class LocalCertificateStore
         builder.AppendLine("keyUsage = digitalSignature, keyEncipherment");
         builder.AppendLine("extendedKeyUsage = serverAuth");
         builder.AppendLine("subjectAltName = @alt_names");
+        builder.AppendLine($"crlDistributionPoints = URI:{revocationListUrl}");
         builder.AppendLine();
         builder.AppendLine("[ alt_names ]");
 
@@ -473,5 +495,26 @@ public static class LocalCertificateStore
             throw new InvalidOperationException(
                 $"openssl failed with exit code {process.ExitCode}.{Environment.NewLine}{standardOutput}{standardError}");
         }
+    }
+
+    private static void WriteRevocationList(X509Certificate2 rootWithPrivateKey, string rootCrlPath)
+    {
+        var builder = new CertificateRevocationListBuilder();
+        var crlBytes = builder.Build(
+            rootWithPrivateKey,
+            BigInteger.One,
+            DateTimeOffset.UtcNow.AddYears(1),
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1,
+            DateTimeOffset.UtcNow.AddMinutes(-5));
+
+        File.WriteAllBytes(rootCrlPath, crlBytes);
+    }
+
+    private static bool HasCrlDistributionPoint(X509Certificate2 certificate)
+    {
+        return certificate.Extensions
+            .Cast<X509Extension>()
+            .Any(extension => string.Equals(extension.Oid?.Value, "2.5.29.31", StringComparison.Ordinal));
     }
 }
