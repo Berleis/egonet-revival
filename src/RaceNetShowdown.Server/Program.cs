@@ -100,7 +100,7 @@ RequestCaptureLogger? captureLogger = raceNetOptions.CaptureRequests
 
 var responder = new RaceNetResponder(raceNetOptions);
 
-app.MapGet("/racenet-root-ca.cer", () =>
+app.MapMethods("/racenet-root-ca.cer", ["GET", "HEAD"], () =>
     Results.File(
         certificateBundle.RootCertificatePath,
         "application/pkix-cert",
