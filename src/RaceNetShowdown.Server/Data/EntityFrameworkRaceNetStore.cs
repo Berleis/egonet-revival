@@ -42,6 +42,16 @@ public sealed class EntityFrameworkRaceNetStore(
         var remoteAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = context.Request.Headers.UserAgent.ToString();
         var loginName = EgoNetRequestParser.ReadTopLevelString(body, "Name");
+
+        if (string.IsNullOrWhiteSpace(loginName))
+        {
+            var recentRemoteSession = await FindRecentRemoteSessionAsync(remoteAddress, now, cancellationToken);
+            if (recentRemoteSession is not null)
+            {
+                return recentRemoteSession;
+            }
+        }
+
         var profile = await FindOrCreateProfileAsync(loginName, remoteAddress, now, cancellationToken);
 
         sessionId = CreateSessionId();
@@ -61,6 +71,31 @@ public sealed class EntityFrameworkRaceNetStore(
         logger.LogDebug("RaceNet profile/session created: {Profile} {Session}", profile.ExternalId, sessionId);
 
         return ToSessionInfo(session);
+    }
+
+    private async Task<RaceNetSessionInfo?> FindRecentRemoteSessionAsync(
+        string remoteAddress,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var remoteSessions = await dbContext.RaceNetSessions
+            .Include(value => value.PlayerProfile)
+            .Where(value => value.RemoteAddress == remoteAddress)
+            .ToListAsync(cancellationToken);
+        var recentSession = remoteSessions
+            .OrderByDescending(value => value.LastSeenAt)
+            .FirstOrDefault();
+
+        if (recentSession?.PlayerProfile is null)
+        {
+            return null;
+        }
+
+        recentSession.LastSeenAt = now;
+        recentSession.PlayerProfile.LastSeenAt = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToSessionInfo(recentSession);
     }
 
     public async Task RecordCallAsync(
@@ -108,11 +143,11 @@ public sealed class EntityFrameworkRaceNetStore(
             .Where(value =>
                 value.TargetPlayerProfileId == session.PlayerProfileId &&
                 value.Status == "open")
-            .OrderByDescending(value => value.CreatedAt)
-            .Take(20)
             .ToListAsync(cancellationToken);
 
         var friends = challenges
+            .OrderByDescending(value => value.CreatedAt)
+            .Take(20)
             .Select(challenge => ToFriendChallenge(challenge, session.PlayerProfileId))
             .ToArray();
         var challengedFriendCount = friends
@@ -274,12 +309,11 @@ public sealed class EntityFrameworkRaceNetStore(
                   value.IssuerPlayerProfile.DisplayName == target.Name)));
         }
 
-        var challenges = await query
-            .OrderByDescending(value => value.CreatedAt)
-            .Take(20)
-            .ToListAsync(cancellationToken);
+        var challenges = await query.ToListAsync(cancellationToken);
 
         return challenges
+            .OrderByDescending(value => value.CreatedAt)
+            .Take(20)
             .Select(value =>
             {
                 var otherProfile = value.IssuerPlayerProfileId == session.PlayerProfileId
@@ -335,10 +369,15 @@ public sealed class EntityFrameworkRaceNetStore(
             .AsNoTracking()
             .FirstOrDefaultAsync(value => value.GhostSlotId == ghostSlotId, cancellationToken);
 
-        ghost ??= await dbContext.Ghosts
-            .AsNoTracking()
-            .OrderByDescending(value => value.UploadedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        if (ghost is null)
+        {
+            var ghosts = await dbContext.Ghosts
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+            ghost = ghosts
+                .OrderByDescending(value => value.UploadedAt)
+                .FirstOrDefault();
+        }
 
         return ghost?.Data.ToArray();
     }
