@@ -139,7 +139,8 @@ public static class EgoNetChallengePayloads
                 EgoNetBinary.Ui64("HighChallengeID", checked((ulong)highChallengeId)),
                 EgoNetBinary.Ui64("BestResult", checked((ulong)bestResult))),
 
-            "AsynchronousChallengeService.GetCompletedIssuedChallenges" => [],
+            "AsynchronousChallengeService.GetCompletedIssuedChallenges" => EgoNetBinary.Dictionary(
+                EgoNetBinary.Vector("Challenges")),
 
             "AsynchronousChallengeService.GetFriendChallenges" => BuildFriendChallengesPayload(
                 activeFriends,
