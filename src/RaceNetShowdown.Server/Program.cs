@@ -143,6 +143,13 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
         store,
         context.RequestAborted);
 
+    app.Logger.LogInformation(
+        "RaceNet call {Function} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
+        string.IsNullOrWhiteSpace(egoNetFunction) ? "<none>" : egoNetFunction,
+        response.StatusCode,
+        body.BodyBytes.Length,
+        response.BodyBytes.Length);
+
     if (captureLogger is not null)
     {
         await captureLogger.WriteAsync(context, body, response);

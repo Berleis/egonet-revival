@@ -58,7 +58,7 @@ public sealed class EntityFrameworkRaceNetStore(
         dbContext.RaceNetSessions.Add(session);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("RaceNet profile/session created: {Profile} {Session}", profile.ExternalId, sessionId);
+        logger.LogDebug("RaceNet profile/session created: {Profile} {Session}", profile.ExternalId, sessionId);
 
         return ToSessionInfo(session);
     }

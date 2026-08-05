@@ -237,6 +237,15 @@ public sealed class RaceNetResponder
             requestContext.RaceEventId,
             requestContext.VehicleId);
 
+        var presence = requestContext.Presence is null
+            ? "presence=<none>"
+            : $"presence={requestContext.Presence.Name}/{requestContext.Presence.SteamId}";
+        var raceEvent = requestContext.RaceEventId?.ToString() ?? "<none>";
+        var vehicle = requestContext.VehicleId?.ToString() ?? "<none>";
+
+        Console.WriteLine(
+            $"{DateTime.Now:HH:mm:ss} challenge-query: {functionName} request={body.BodyBytes.Length} bytes response={responseBody.Length} bytes parsedPrincipals={parsedPrincipals.Count} savedPrincipals={principals.Count} issued={issuedChallenges.Count} snapshotFriends={snapshot.Friends.Count} snapshotChallenges={snapshot.ChallengeCount} highId={snapshot.HighChallengeId} {presence} raceEvent={raceEvent} vehicle={vehicle}");
+
         return new RaceNetResponse(EgoNetContentType, responseBody, headers);
     }
 
