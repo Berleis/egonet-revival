@@ -142,6 +142,15 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
         challengeSnapshot,
         store,
         context.RequestAborted);
+    if (!string.IsNullOrWhiteSpace(egoNetFunction))
+    {
+        app.Logger.LogInformation(
+            "RaceNet call {Function} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
+            egoNetFunction,
+            response.StatusCode,
+            body.BodyBytes.Length,
+            response.BodyBytes.Length);
+    }
 
     if (captureLogger is not null)
     {
