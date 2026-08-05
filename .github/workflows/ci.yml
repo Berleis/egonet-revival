@@ -32,6 +32,9 @@ jobs:
       - name: Build
         run: dotnet build EgoNetRevival.sln --configuration Release --no-restore
 
+      - name: Verify certificate generation
+        run: dotnet run --project src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj --configuration Release --no-build -- --regenerate-certs
+
       - name: Docker build
         run: docker build --tag egonet-revival:ci .
 
