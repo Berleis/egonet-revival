@@ -18,6 +18,14 @@ public static class LocalCertificateStore
     private const int ExpectedRootCertificateLength = 1003;
     private const string Sha1RsaOid = "1.2.840.113549.1.1.5";
     private const string Sha256RsaOid = "1.2.840.113549.1.1.11";
+    private static readonly string[] PaddingExtensionOids =
+    [
+        "1.2.3",
+        "1.2.3.4",
+        "1.3.6.1.4",
+        "2.5.29.1",
+        "1.2.840.113549.1"
+    ];
 
     public static LocalCertificateBundle Ensure(string contentRoot, RaceNetOptions options)
     {
@@ -90,37 +98,53 @@ public static class LocalCertificateStore
         using var rootKey = RSA.Create(2048);
         var lastGeneratedLength = 0;
 
-        for (var extensionPadding = -1; extensionPadding <= 256; extensionPadding++)
+        foreach (var paddingExtensionOid in PaddingExtensionOids)
         {
-            using var rootCertificate = CreateRootCertificate(rootKey, extensionPadding);
-            using var rootWithPrivateKey = X509CertificateLoader.LoadPkcs12(
-                rootCertificate.Export(X509ContentType.Pkcs12, options.CertificatePassword),
-                options.CertificatePassword,
-                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
-
-            var rootCerBytes = rootWithPrivateKey.Export(X509ContentType.Cert);
-            lastGeneratedLength = rootCerBytes.Length;
-
-            if (rootCerBytes.Length != ExpectedRootCertificateLength)
+            for (var serialLength = 1; serialLength <= 32; serialLength++)
             {
-                continue;
+                for (var extensionPadding = -1; extensionPadding <= 256; extensionPadding++)
+                {
+                    using var rootCertificate = CreateRootCertificate(
+                        rootKey,
+                        serialLength,
+                        extensionPadding,
+                        paddingExtensionOid);
+                    using var rootWithPrivateKey = X509CertificateLoader.LoadPkcs12(
+                        rootCertificate.Export(X509ContentType.Pkcs12, options.CertificatePassword),
+                        options.CertificatePassword,
+                        X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+
+                    var rootCerBytes = rootWithPrivateKey.Export(X509ContentType.Cert);
+                    lastGeneratedLength = rootCerBytes.Length;
+
+                    if (rootCerBytes.Length != ExpectedRootCertificateLength)
+                    {
+                        continue;
+                    }
+
+                    File.WriteAllBytes(rootCerPath, rootCerBytes);
+                    File.WriteAllBytes(rootPfxPath, rootWithPrivateKey.Export(X509ContentType.Pkcs12, options.CertificatePassword));
+
+                    GenerateServerCertificate(rootWithPrivateKey, serverPfxPath, Path.GetDirectoryName(serverPfxPath)!, options);
+                    return;
+                }
             }
-
-            File.WriteAllBytes(rootCerPath, rootCerBytes);
-            File.WriteAllBytes(rootPfxPath, rootWithPrivateKey.Export(X509ContentType.Pkcs12, options.CertificatePassword));
-
-            GenerateServerCertificate(rootWithPrivateKey, serverPfxPath, Path.GetDirectoryName(serverPfxPath)!, options);
-            return;
         }
 
         throw new InvalidOperationException(
             $"Could not generate a {ExpectedRootCertificateLength}-byte root certificate. Last generated length: {lastGeneratedLength}.");
     }
 
-    private static X509Certificate2 CreateRootCertificate(RSA rootKey, int extensionPadding)
+    private static X509Certificate2 CreateRootCertificate(
+        RSA rootKey,
+        int serialLength,
+        int extensionPadding,
+        string paddingExtensionOid)
     {
+        var subjectName = new X500DistinguishedName(
+            "CN=Codemasters Online Root CA, OU=Codemasters Online, O=Codemasters Software Ltd, S=Warwickshire, C=UK");
         var rootRequest = new CertificateRequest(
-            "CN=Codemasters Online Root CA, OU=Codemasters Online, O=Codemasters Software Ltd, S=Warwickshire, C=UK",
+            subjectName,
             rootKey,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
@@ -135,14 +159,26 @@ public static class LocalCertificateStore
         {
             // Non-critical padding keeps the local CA patch-compatible across Windows and Linux generators.
             rootRequest.CertificateExtensions.Add(new X509Extension(
-                new Oid("1.2.3.4", "EgoNet Revival certificate padding"),
+                new Oid(paddingExtensionOid, "EgoNet Revival certificate padding"),
                 new byte[extensionPadding],
                 false));
         }
 
-        return rootRequest.CreateSelfSigned(
+        using var publicCertificate = rootRequest.Create(
+            subjectName,
+            X509SignatureGenerator.CreateForRSA(rootKey, RSASignaturePadding.Pkcs1),
             DateTimeOffset.UtcNow.AddDays(-1),
-            DateTimeOffset.UtcNow.AddYears(10));
+            DateTimeOffset.UtcNow.AddYears(10),
+            CreateSerialNumber(serialLength));
+
+        return publicCertificate.CopyWithPrivateKey(rootKey);
+    }
+
+    private static byte[] CreateSerialNumber(int length)
+    {
+        var serial = new byte[length];
+        Array.Fill(serial, (byte)0x11);
+        return serial;
     }
 
     private static bool RootCertificateNeedsRegeneration(string rootCerPath)

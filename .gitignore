@@ -11,6 +11,7 @@ TestResults/
 
 # Local RaceNet runtime/debug artifacts
 /data/
+/certs/
 src/**/logs/
 src/**/certs/
 debug/
