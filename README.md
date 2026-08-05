@@ -170,6 +170,32 @@ Each player needs to:
 2. Run `patch-game-from-server.cmd`.
 3. Enter the server IP/host when prompted.
 
+Example `hosts` entries:
+
+```txt
+142.93.206.37 prod.egonet.codemasters.com
+142.93.206.37 egonet.codemasters.com
+142.93.206.37 racenet.codemasters.com
+142.93.206.37 api.racenet.codemasters.com
+142.93.206.37 showdown.racenet.codemasters.com
+142.93.206.37 racenet.com
+142.93.206.37 www.racenet.com
+142.93.206.37 api.racenet.com
+```
+
+Run the patch script from the repository directory:
+
+```powershell
+cd "C:\Users\dyego\Desktop\Dirt Showdown"
+.\patch-game-from-server.cmd
+```
+
+When prompted, enter:
+
+```txt
+142.93.206.37
+```
+
 The script downloads the CA from:
 
 ```txt
