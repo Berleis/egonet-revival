@@ -39,6 +39,7 @@ public static class LocalCertificateStore
         if (!File.Exists(rootPfxPath) ||
             !File.Exists(rootCerPath) ||
             !File.Exists(serverPfxPath) ||
+            RootCertificateFilesMismatch(rootCerPath, rootPfxPath, options) ||
             RootCertificateNeedsRegeneration(rootCerPath))
         {
             GenerateCertificates(rootCerPath, rootPfxPath, serverPfxPath, options);
@@ -87,6 +88,31 @@ public static class LocalCertificateStore
             serverPfxPath,
             options.CertificatePassword,
             keyStorageOptions[^1]);
+    }
+
+    private static bool RootCertificateFilesMismatch(
+        string rootCerPath,
+        string rootPfxPath,
+        RaceNetOptions options)
+    {
+        try
+        {
+            using var rootCer = X509CertificateLoader.LoadCertificateFromFile(rootCerPath);
+            using var rootPfx = X509CertificateLoader.LoadPkcs12FromFile(
+                rootPfxPath,
+                options.CertificatePassword,
+                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+
+            return !rootCer.RawData.SequenceEqual(rootPfx.Export(X509ContentType.Cert));
+        }
+        catch (CryptographicException)
+        {
+            return true;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
     }
 
     private static void GenerateCertificates(

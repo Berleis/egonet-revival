@@ -135,22 +135,15 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
             session ?? throw new InvalidOperationException("RaceNet session was not created."),
             context.RequestAborted)
         : null;
-    var response = await responder.BuildResponseAsync(
-        context.Request,
-        body,
-        session,
-        challengeSnapshot,
-        store,
-        context.RequestAborted);
-    if (!string.IsNullOrWhiteSpace(egoNetFunction))
-    {
-        app.Logger.LogInformation(
-            "RaceNet call {Function} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
-            egoNetFunction,
-            response.StatusCode,
-            body.BodyBytes.Length,
-            response.BodyBytes.Length);
-    }
+    var response = store is LocalRaceNetStore
+        ? responder.BuildLocalResponse(context.Request, body, session, challengeSnapshot)
+        : await responder.BuildResponseAsync(
+            context.Request,
+            body,
+            session,
+            challengeSnapshot,
+            store,
+            context.RequestAborted);
 
     app.Logger.LogInformation(
         "RaceNet call {Function} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
