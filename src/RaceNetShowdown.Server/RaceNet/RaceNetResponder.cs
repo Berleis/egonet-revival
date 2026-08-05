@@ -320,7 +320,7 @@ public sealed class RaceNetResponder
         IReadOnlyDictionary<string, string> headers,
         RaceNetSessionInfo? session)
     {
-        return EgoNet(headers);
+        return new RaceNetResponse(HtmlContentType, string.Empty, headers);
     }
 
     private RaceNetResponse BuildLocalEgoNetResponse(
