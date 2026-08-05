@@ -320,10 +320,7 @@ public sealed class RaceNetResponder
         IReadOnlyDictionary<string, string> headers,
         RaceNetSessionInfo? session)
     {
-        var body = EgoNetBinary.Dictionary(
-            EgoNetBinary.Si64("PrincipalId", session?.PlayerProfileId ?? 0));
-
-        return new RaceNetResponse(HtmlContentType, body, headers);
+        return EgoNet(headers);
     }
 
     private RaceNetResponse BuildLocalEgoNetResponse(
