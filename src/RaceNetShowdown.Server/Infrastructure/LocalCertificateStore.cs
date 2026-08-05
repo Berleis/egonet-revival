@@ -191,6 +191,11 @@ public static class LocalCertificateStore
         X509Certificate2 rootCertificate,
         RaceNetOptions options)
     {
+        if (options.UseSha1ServerCertificate)
+        {
+            return true;
+        }
+
         if (!File.Exists(serverPfxPath))
         {
             return true;
