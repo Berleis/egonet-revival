@@ -78,11 +78,13 @@ public sealed class EntityFrameworkRaceNetStore(
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var recentSession = await dbContext.RaceNetSessions
+        var remoteSessions = await dbContext.RaceNetSessions
             .Include(value => value.PlayerProfile)
             .Where(value => value.RemoteAddress == remoteAddress)
+            .ToListAsync(cancellationToken);
+        var recentSession = remoteSessions
             .OrderByDescending(value => value.LastSeenAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefault();
 
         if (recentSession?.PlayerProfile is null)
         {
@@ -141,11 +143,11 @@ public sealed class EntityFrameworkRaceNetStore(
             .Where(value =>
                 value.TargetPlayerProfileId == session.PlayerProfileId &&
                 value.Status == "open")
-            .OrderByDescending(value => value.CreatedAt)
-            .Take(20)
             .ToListAsync(cancellationToken);
 
         var friends = challenges
+            .OrderByDescending(value => value.CreatedAt)
+            .Take(20)
             .Select(challenge => ToFriendChallenge(challenge, session.PlayerProfileId))
             .ToArray();
         var challengedFriendCount = friends
@@ -307,12 +309,11 @@ public sealed class EntityFrameworkRaceNetStore(
                   value.IssuerPlayerProfile.DisplayName == target.Name)));
         }
 
-        var challenges = await query
-            .OrderByDescending(value => value.CreatedAt)
-            .Take(20)
-            .ToListAsync(cancellationToken);
+        var challenges = await query.ToListAsync(cancellationToken);
 
         return challenges
+            .OrderByDescending(value => value.CreatedAt)
+            .Take(20)
             .Select(value =>
             {
                 var otherProfile = value.IssuerPlayerProfileId == session.PlayerProfileId
@@ -368,10 +369,15 @@ public sealed class EntityFrameworkRaceNetStore(
             .AsNoTracking()
             .FirstOrDefaultAsync(value => value.GhostSlotId == ghostSlotId, cancellationToken);
 
-        ghost ??= await dbContext.Ghosts
-            .AsNoTracking()
-            .OrderByDescending(value => value.UploadedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        if (ghost is null)
+        {
+            var ghosts = await dbContext.Ghosts
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+            ghost = ghosts
+                .OrderByDescending(value => value.UploadedAt)
+                .FirstOrDefault();
+        }
 
         return ghost?.Data.ToArray();
     }
