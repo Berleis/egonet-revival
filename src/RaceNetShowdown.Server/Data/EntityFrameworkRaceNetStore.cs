@@ -42,6 +42,16 @@ public sealed class EntityFrameworkRaceNetStore(
         var remoteAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = context.Request.Headers.UserAgent.ToString();
         var loginName = EgoNetRequestParser.ReadTopLevelString(body, "Name");
+
+        if (string.IsNullOrWhiteSpace(loginName))
+        {
+            var recentRemoteSession = await FindRecentRemoteSessionAsync(remoteAddress, now, cancellationToken);
+            if (recentRemoteSession is not null)
+            {
+                return recentRemoteSession;
+            }
+        }
+
         var profile = await FindOrCreateProfileAsync(loginName, remoteAddress, now, cancellationToken);
 
         sessionId = CreateSessionId();
@@ -61,6 +71,29 @@ public sealed class EntityFrameworkRaceNetStore(
         logger.LogDebug("RaceNet profile/session created: {Profile} {Session}", profile.ExternalId, sessionId);
 
         return ToSessionInfo(session);
+    }
+
+    private async Task<RaceNetSessionInfo?> FindRecentRemoteSessionAsync(
+        string remoteAddress,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var recentSession = await dbContext.RaceNetSessions
+            .Include(value => value.PlayerProfile)
+            .Where(value => value.RemoteAddress == remoteAddress)
+            .OrderByDescending(value => value.LastSeenAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (recentSession?.PlayerProfile is null)
+        {
+            return null;
+        }
+
+        recentSession.LastSeenAt = now;
+        recentSession.PlayerProfile.LastSeenAt = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return ToSessionInfo(recentSession);
     }
 
     public async Task RecordCallAsync(
