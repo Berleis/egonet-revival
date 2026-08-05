@@ -269,6 +269,12 @@ public sealed class RaceNetResponder
             return new RaceNetResponse(EgoNetContentType, responseBody, headers);
         }
 
+        if (functionName == "AsynchronousChallengeService.IssueChallenge")
+        {
+            Console.WriteLine(
+                $"{DateTime.Now:HH:mm:ss} challenge-flow: IssueChallenge payload incomplete presence={requestContext.Presence is not null} challengeData={requestContext.ChallengeData is not null}");
+        }
+
         if (functionName == "AsynchronousChallengeService.UploadGhost" &&
             requestContext.GhostSlotId is not null &&
             requestContext.GhostData is not null)
