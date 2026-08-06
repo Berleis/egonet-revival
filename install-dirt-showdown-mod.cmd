@@ -82,10 +82,37 @@ function Get-DerSequenceLength([byte[]]$Bytes, [int]$Offset) {
     return 2 + $lengthBytes + $length
 }
 
+function Test-ContainsAscii([byte[]]$Bytes, [string]$Text) {
+    $pattern = [Text.Encoding]::ASCII.GetBytes($Text)
+    if ($Bytes.Length -lt $pattern.Length) {
+        return $false
+    }
+
+    for ($offset = 0; $offset -le $Bytes.Length - $pattern.Length; $offset++) {
+        $matched = $true
+        for ($index = 0; $index -lt $pattern.Length; $index++) {
+            if ($Bytes[$offset + $index] -ne $pattern[$index]) {
+                $matched = $false
+                break
+            }
+        }
+
+        if ($matched) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Find-CodemastersRootCertificates([byte[]]$Bytes) {
     $results = New-Object System.Collections.Generic.List[object]
 
     for ($offset = 0; $offset -lt $Bytes.Length - 8; $offset++) {
+        if ($Bytes[$offset] -ne 0x30) {
+            continue
+        }
+
         $length = Get-DerSequenceLength -Bytes $Bytes -Offset $offset
         if ($null -eq $length -or $length -lt 256 -or $length -gt 8192 -or $offset + $length -gt $Bytes.Length) {
             continue
@@ -93,6 +120,10 @@ function Find-CodemastersRootCertificates([byte[]]$Bytes) {
 
         $candidateBytes = New-Object byte[] $length
         [Array]::Copy($Bytes, $offset, $candidateBytes, 0, $length)
+
+        if (-not (Test-ContainsAscii -Bytes $candidateBytes -Text "Codemasters")) {
+            continue
+        }
 
         try {
             $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList @(,$candidateBytes)
@@ -122,6 +153,7 @@ function Patch-Executable([string]$ExecutablePath, [byte[]]$RootBytes) {
         return
     }
 
+    Write-Host "Patching $([IO.Path]::GetFileName($ExecutablePath))..."
     $bytes = [IO.File]::ReadAllBytes($ExecutablePath)
     $candidates = Find-CodemastersRootCertificates -Bytes $bytes
 
@@ -240,6 +272,7 @@ certutil -addstore -f Root $certificatePath | Out-Host
 certutil -urlcache * delete | Out-Null
 Write-Host "Root certificate installed."
 
+Write-Host "Patching game executables..."
 Patch-Executable -ExecutablePath (Join-Path $GamePath "showdown.exe") -RootBytes $rootBytes
 Patch-Executable -ExecutablePath (Join-Path $GamePath "showdown_avx.exe") -RootBytes $rootBytes
 
