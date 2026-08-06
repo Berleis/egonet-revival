@@ -171,15 +171,14 @@ Com isso, mudancas futuras devem entrar por PR, passar no GitHub Actions e receb
 
 ## Jogadores Externos
 
-Fluxo recomendado com pacote de mod:
+Fluxo recomendado para jogadores:
 
-1. Baixar `EgoNetRevival-DiRTShowdown-Mod.zip` na release do projeto.
-2. Extrair em qualquer pasta.
-3. Fechar o DiRT Showdown.
-4. Rodar `install-dirt-showdown-mod.cmd` como Administrador.
-5. Abrir o DiRT Showdown e entrar no RaceNet.
+1. Baixar `install-dirt-showdown-mod.cmd`.
+2. Fechar o DiRT Showdown.
+3. Rodar `install-dirt-showdown-mod.cmd` como Administrador.
+4. Abrir o DiRT Showdown e entrar no RaceNet.
 
-O instalador atualiza o arquivo `hosts` do Windows, baixa e instala a CA raiz do servidor, patcha `showdown.exe` e `showdown_avx.exe`, limpa o DNS e valida o endpoint HTTPS de saude.
+O instalador e um unico arquivo de comando do Windows. Ele atualiza o arquivo `hosts`, baixa e instala a CA raiz do servidor, patcha `showdown.exe` e `showdown_avx.exe`, limpa o DNS e valida o endpoint HTTPS de saude.
 
 Fluxo manual:
 
@@ -217,26 +216,9 @@ http://IP_DO_SERVIDOR/racenet-root-ca.cer
 
 Depois ele patcha `showdown.exe` e `showdown_avx.exe` com essa CA.
 
-## Gerando O Pacote De Mod Para Jogadores
-
-Na raiz do repositorio:
-
-```powershell
-.\build-dirt-showdown-mod-package.cmd
-```
-
-O arquivo gerado fica em:
-
-```txt
-artifacts\EgoNetRevival-DiRTShowdown-Mod.zip
-```
-
-Esse ZIP e feito para jogadores comuns. Ele inclui um patcher Windows self-contained e nao exige .NET SDK.
-
 ## Scripts
 
-- `install-dirt-showdown-mod.cmd`: instalador simples para jogadores usarem o servico hospedado do DiRT Showdown.
-- `build-dirt-showdown-mod-package.cmd`: cria o ZIP distribuivel para jogadores.
+- `install-dirt-showdown-mod.cmd`: instalador autocontido para jogadores usarem o servico hospedado do DiRT Showdown.
 - `patch-game.cmd`: gera/verifica a CA local e patcha o DiRT Showdown para usar o servidor local.
 - `patch-game-from-server.cmd`: baixa a CA do servidor hospedado e patcha o jogo para esse servidor.
 - `restore-game-patch.cmd`: restaura os executaveis originais a partir dos backups.

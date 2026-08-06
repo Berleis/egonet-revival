@@ -171,15 +171,14 @@ With this setup, future changes must go through PRs, pass GitHub Actions, and re
 
 ## External Players
 
-Recommended mod package flow:
+Recommended player flow:
 
-1. Download `EgoNetRevival-DiRTShowdown-Mod.zip` from the project release.
-2. Extract it anywhere.
-3. Close DiRT Showdown.
-4. Run `install-dirt-showdown-mod.cmd` as Administrator.
-5. Open DiRT Showdown and enter RaceNet.
+1. Download `install-dirt-showdown-mod.cmd`.
+2. Close DiRT Showdown.
+3. Run `install-dirt-showdown-mod.cmd` as Administrator.
+4. Open DiRT Showdown and enter RaceNet.
 
-The installer updates the Windows `hosts` file, downloads and installs the server root certificate, patches `showdown.exe` and `showdown_avx.exe`, flushes DNS, and verifies the HTTPS health endpoint.
+The installer is a single self-contained Windows command file. It updates the Windows `hosts` file, downloads and installs the server root certificate, patches `showdown.exe` and `showdown_avx.exe`, flushes DNS, and verifies the HTTPS health endpoint.
 
 Manual flow:
 
@@ -217,26 +216,9 @@ http://SERVER_IP/racenet-root-ca.cer
 
 Then it patches `showdown.exe` and `showdown_avx.exe` with that CA.
 
-## Building The Player Mod Package
-
-From the repository root:
-
-```powershell
-.\build-dirt-showdown-mod-package.cmd
-```
-
-The output is:
-
-```txt
-artifacts\EgoNetRevival-DiRTShowdown-Mod.zip
-```
-
-This ZIP is intended for normal players. It includes a self-contained Windows patcher and does not require the .NET SDK.
-
 ## Scripts
 
-- `install-dirt-showdown-mod.cmd`: player-friendly installer for the hosted DiRT Showdown service.
-- `build-dirt-showdown-mod-package.cmd`: creates the distributable player ZIP.
+- `install-dirt-showdown-mod.cmd`: self-contained player installer for the hosted DiRT Showdown service.
 - `patch-game.cmd`: generates/verifies the local CA and patches DiRT Showdown for local server use.
 - `patch-game-from-server.cmd`: downloads the hosted server CA and patches the game for that server.
 - `restore-game-patch.cmd`: restores original executables from backups.
