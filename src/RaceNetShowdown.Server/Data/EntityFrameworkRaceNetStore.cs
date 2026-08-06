@@ -456,6 +456,7 @@ public sealed class EntityFrameworkRaceNetStore(
 
         if (dominated)
         {
+            challenge.Status = "completed";
             challenge.CompletedAt = DateTimeOffset.UtcNow;
         }
 
