@@ -7,9 +7,12 @@ const string RootCertificateRelativePath = @"src\RaceNetShowdown.Server\certs\co
 const int ExpectedRootCertificateLength = 1003;
 
 var command = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "status";
-var gamePath = args.Length > 1 ? args[1] : DefaultGamePath;
-var repoRoot = FindRepoRoot();
-var rootCertificatePath = Path.Combine(repoRoot, RootCertificateRelativePath);
+var gamePath = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
+    ? args[1]
+    : DefaultGamePath;
+var rootCertificatePath = args.Length > 2 && !string.IsNullOrWhiteSpace(args[2])
+    ? Path.GetFullPath(args[2])
+    : Path.Combine(FindRepoRoot(), RootCertificateRelativePath);
 
 if (!Directory.Exists(gamePath))
 {
@@ -55,6 +58,7 @@ switch (command)
         Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- status");
         Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- patch");
         Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- restore");
+        Console.WriteLine("  RaceNetShowdown.Patcher.exe patch \"C:\\Path\\To\\DiRT Showdown\" \"C:\\Path\\To\\root-ca.cer\"");
         Console.WriteLine();
         Console.WriteLine($"Default game path: {DefaultGamePath}");
         return 2;

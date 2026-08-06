@@ -171,11 +171,17 @@ Con esto, los cambios futuros deben entrar por PR, pasar GitHub Actions y recibi
 
 ## Jugadores Externos
 
-Cada jugador necesita:
+Flujo recomendado con paquete de mod:
 
-1. Apuntar `prod.egonet.codemasters.com` a la IP del servidor en el archivo `hosts`.
-2. Ejecutar `patch-game-from-server.cmd`.
-3. Informar la IP/host del servidor cuando el script lo pida.
+1. Descargar `EgoNetRevival-DiRTShowdown-Mod.zip` desde la release del proyecto.
+2. Extraerlo en cualquier carpeta.
+3. Cerrar DiRT Showdown.
+4. Ejecutar `install-dirt-showdown-mod.cmd` como Administrador.
+5. Abrir DiRT Showdown y entrar en RaceNet.
+
+El instalador actualiza el archivo `hosts` de Windows, descarga e instala la CA raiz del servidor, parchea `showdown.exe` y `showdown_avx.exe`, limpia el DNS y valida el endpoint HTTPS de salud.
+
+Flujo manual:
 
 Ejemplo de entradas en `hosts`:
 
@@ -211,8 +217,26 @@ http://IP_DEL_SERVIDOR/racenet-root-ca.cer
 
 Luego parchea `showdown.exe` y `showdown_avx.exe` con esa CA.
 
+## Generar El Paquete De Mod Para Jugadores
+
+Desde la raiz del repositorio:
+
+```powershell
+.\build-dirt-showdown-mod-package.cmd
+```
+
+El archivo generado queda en:
+
+```txt
+artifacts\EgoNetRevival-DiRTShowdown-Mod.zip
+```
+
+Este ZIP esta pensado para jugadores comunes. Incluye un patcher Windows self-contained y no requiere .NET SDK.
+
 ## Scripts
 
+- `install-dirt-showdown-mod.cmd`: instalador simple para que jugadores usen el servicio hospedado de DiRT Showdown.
+- `build-dirt-showdown-mod-package.cmd`: crea el ZIP distribuible para jugadores.
 - `patch-game.cmd`: genera/verifica la CA local y parchea DiRT Showdown para usar el servidor local.
 - `patch-game-from-server.cmd`: descarga la CA del servidor hospedado y parchea el juego para ese servidor.
 - `restore-game-patch.cmd`: restaura los ejecutables originales desde backups.
