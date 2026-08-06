@@ -184,7 +184,12 @@ $hostNames = @(
 )
 
 $hostsPath = Join-Path $env:SystemRoot "System32\drivers\etc\hosts"
-$existingHosts = Get-Content -LiteralPath $hostsPath -ErrorAction Stop
+$hostsItem = Get-Item -LiteralPath $hostsPath -ErrorAction Stop
+if (($hostsItem.Attributes -band [IO.FileAttributes]::ReadOnly) -ne 0) {
+    $hostsItem.Attributes = $hostsItem.Attributes -band (-bnot [IO.FileAttributes]::ReadOnly)
+}
+
+$existingHosts = [IO.File]::ReadAllLines($hostsPath)
 $cleanHosts = New-Object System.Collections.Generic.List[string]
 
 foreach ($line in $existingHosts) {
@@ -212,7 +217,7 @@ foreach ($hostName in $hostNames) {
     $cleanHosts.Add("$Server $hostName") | Out-Null
 }
 
-Set-Content -LiteralPath $hostsPath -Value $cleanHosts.ToArray() -Encoding ASCII
+[IO.File]::WriteAllLines($hostsPath, [string[]]$cleanHosts.ToArray(), [Text.Encoding]::ASCII)
 Write-Host "Windows hosts file updated."
 
 ipconfig /flushdns | Out-Null
