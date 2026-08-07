@@ -6,6 +6,18 @@ Idioma principal: [English](../README.md) | Traduccion: [Portugues (Brasil)](REA
 
 El proyecto nacio para recuperar funciones de RaceNet en DiRT Showdown para PC, especialmente Challenges, ghosts y logros que dependen del servicio descontinuado. El objetivo a largo plazo es mantener una base comun para agregar otros juegos EgoNet/RaceNet mas adelante.
 
+## Aviso Sobre Rankings de Logros
+
+Este proyecto esta orientado a la preservacion de juegos y a restaurar funcionalidades EgoNet/RaceNet descontinuadas. No esta aprobado por Steam Hunters y no debe usarse para competir en rankings de Steam Hunters ni para validacion de logros en esa plataforma. El servidor no desbloquea logros directamente, no edita partidas guardadas y no cambia estadisticas de Steam; solo restaura el flujo online que usaba el juego.
+
+## Apoya el Proyecto
+
+EgoNet Revival es gratuito y open source. El apoyo financiero es opcional y ayuda a cubrir el hosting del servidor publico, almacenamiento, ancho de banda, cuentas de prueba y trabajo futuro en otros juegos de Codemasters afectados por servicios EgoNet/RaceNet descontinuados.
+
+Apoyar el proyecto no compra logros, acceso privado, desbloqueos prioritarios ni trato especial. El objetivo es la preservacion de juegos y la restauracion de los flujos online normales dentro del juego.
+
+Link de apoyo: [PayPal](https://www.paypal.com/donate/?hosted_button_id=T495EZZJMZHEC)
+
 ## Juegos Soportados
 
 | Juego | Plataforma | Estado |
