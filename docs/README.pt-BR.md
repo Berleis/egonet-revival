@@ -1,10 +1,83 @@
 # EgoNet Revival
 
-Servidor ASP.NET Core para emular endpoints EgoNet/RaceNet usados por jogos antigos da Codemasters.
+Servidor ASP.NET Core open-source para substituir serviços EgoNet/RaceNet descontinuados da Codemasters.
 
-Idioma principal: [English](../README.md) | Traduções: [Espanhol](README.es.md)
+O EgoNet Revival atualmente foca em restaurar o fluxo de Challenges do RaceNet no DiRT Showdown para Steam/PC. A ideia de longo prazo é manter uma base comum para suportar outros jogos da Codemasters afetados por serviços EgoNet/RaceNet descontinuados.
 
-O projeto nasceu para recuperar os recursos RaceNet do DiRT Showdown no PC, principalmente Challenges, ghosts e conquistas que dependem do serviço descontinuado. A ideia de longo prazo é manter uma base comum para adicionar outros jogos EgoNet/RaceNet depois.
+Idioma principal: [English](../README.md) | Tradução: [Espanhol](README.es.md)
+
+## Estado Atual
+
+| Jogo | Plataforma | Estado |
+| --- | --- | --- |
+| DiRT Showdown | Steam / PC | Em teste público, fluxo de Challenges funcional |
+
+Funcionando atualmente no DiRT Showdown:
+
+- Login e tick de sessão EgoNet/RaceNet.
+- Visão geral de amigos e Challenges.
+- View Challenges.
+- IssueChallenge depois de terminar um evento.
+- AcceptChallenge.
+- UploadGhost e DownloadGhost.
+- SubmitChallengeResult / SubmitPersonalRecord.
+- Persistência SQLite para jogadores, amigos, challenges, ghosts e resultados.
+- Mais de um desafio para o mesmo amigo.
+
+Ainda em melhoria:
+
+- Teste público mais amplo com várias contas Steam reais.
+- Painel/admin.
+- Perfis compartilhados mais limpos para jogos futuros.
+
+## Instalar o Mod do DiRT Showdown
+
+Este é o fluxo recomendado para jogadores comuns que só querem usar o servidor público hospedado.
+
+Requisitos:
+
+- Windows.
+- Versão Steam do DiRT Showdown instalada.
+- Acesso de Administrador no PC.
+- O jogo precisa estar fechado antes da instalação.
+
+Passos:
+
+1. Baixe [`install-dirt-showdown-mod.cmd`](../install-dirt-showdown-mod.cmd).
+2. Se o navegador salvar como `.txt`, renomeie de volta para `.cmd`.
+3. Clique com o botão direito em `install-dirt-showdown-mod.cmd`.
+4. Clique em `Executar como administrador`.
+5. Aceite a permissão do Windows.
+6. Espere até o instalador mostrar `Done. Open DiRT Showdown and enter RaceNet.`
+7. Abra o DiRT Showdown normalmente pela Steam.
+8. Entre em RaceNet / Challenges dentro do jogo.
+
+Se o DiRT Showdown não estiver instalado na pasta padrão da Steam, rode o instalador pelo Prompt de Comando ou PowerShell informando o caminho personalizado:
+
+```powershell
+.\install-dirt-showdown-mod.cmd 142.93.206.37 "D:\SteamLibrary\steamapps\common\DiRT Showdown"
+```
+
+O instalador é autocontido. Ele:
+
+- aponta os hostnames RaceNet/EgoNet para o servidor hospedado;
+- baixa e instala o certificado raiz do servidor;
+- patcha `showdown.exe` e `showdown_avx.exe` com esse certificado;
+- cria backups `.racenet-original.bak` antes de alterar os executáveis;
+- limpa o cache DNS do Windows;
+- testa o endpoint HTTPS de saúde.
+
+Para desfazer o patch dos executáveis, use a opção `Verificar integridade dos arquivos do jogo` na Steam para o DiRT Showdown. Se também quiser remover completamente o redirecionamento, apague o bloco `EgoNet Revival DiRT Showdown` do arquivo `hosts` do Windows.
+
+## Como Funciona
+
+O DiRT Showdown ainda tenta conversar com os endpoints RaceNet/EgoNet originais, mas esses serviços não estão mais disponíveis. O EgoNet Revival recria as partes desse serviço que o jogo precisa para Challenges.
+
+O instalador redireciona os hostnames RaceNet do jogo para o servidor substituto e instala uma autoridade certificadora local que o executável do jogo passa a confiar depois do patch. Depois disso, o jogo consegue fazer suas requisições HTTPS normais novamente.
+
+O servidor recebe os payloads binários EgoNet originais do jogo, lê a função de serviço solicitada e retorna respostas compatíveis. Para o DiRT Showdown, ele armazena perfis de jogadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost e resultados de challenges em SQLite.
+
+Isto não é um desbloqueador de conquistas, editor de save ou editor de estatísticas da Steam. As conquistas continuam sendo acionadas pelo próprio jogo quando o fluxo restaurado dentro do jogo é concluído.
 
 ## Aviso Sobre Rankings de Conquistas
 
@@ -18,41 +91,16 @@ Apoiar o projeto não compra conquistas, acesso privado, desbloqueios prioritár
 
 Link de apoio: [PayPal](https://www.paypal.com/donate/?hosted_button_id=T495EZZJMZHEC)
 
-## Jogos Suportados
+## Ambiente de Desenvolvimento
 
-| Jogo | Plataforma | Estado |
-| --- | --- | --- |
-| DiRT Showdown | Steam / PC | Em teste, Challenges parcialmente funcionais |
+Requisitos:
 
-## DiRT Showdown
+- .NET SDK compatível com o target framework da solution.
+- Visual Studio ou `dotnet` CLI.
+- Acesso de Administrador se for usar diretamente as portas `80` e `443`.
+- DiRT Showdown instalado localmente para testes de ponta a ponta.
 
-Funcionando no servidor atual:
-
-- Fluxo básico EgoNet Login/Tick.
-- Tela de Challenges com amigos.
-- View Challenges.
-- IssueChallenge depois de terminar evento.
-- UploadGhost.
-- DownloadGhost usando ghost enviado pelo jogo.
-- SubmitChallengeResult / SubmitPersonalRecord.
-- Persistência SQLite para jogadores, amigos, challenges, ghosts e resultados.
-- Mais de um desafio para o mesmo amigo.
-
-Ainda não finalizado:
-
-- Teste público mais amplo com várias contas Steam reais.
-- Painel/admin.
-- Separação formal por perfis de jogo.
-
-## Estrutura
-
-- `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado hoje pelo DiRT Showdown.
-- `src/RaceNetShowdown.Patcher`: ferramenta que troca a CA RaceNet embutida no executável do jogo.
-- `src/RaceNetShowdown.TlsProbe`: ferramenta de diagnóstico TLS para ver se um jogo chega na porta 443 antes de virar request HTTP.
-
-Os nomes internos ainda carregam `Showdown` porque esse foi o primeiro jogo implementado. A intenção é extrair interfaces compartilhadas e perfis por jogo conforme novos jogos forem adicionados.
-
-## Como Rodar Localmente
+Fluxo local:
 
 1. Feche o DiRT Showdown.
 2. Rode `patch-game.cmd` como Administrador.
@@ -61,43 +109,23 @@ Os nomes internos ainda carregam `Showdown` porque esse foi o primeiro jogo impl
 5. Rode com o perfil `RaceNetShowdown.Server`.
 6. Abra o jogo e entre nas telas RaceNet.
 
-O servidor escuta por padrão:
+O servidor local escuta em:
 
 - `http://127.0.0.1:80`
 - `https://127.0.0.1:443`
 
-O jogo precisa resolver `prod.egonet.codemasters.com` para a máquina que está rodando o servidor.
-
-## Logs e Armazenamento
-
-Por padrão o projeto não grava payloads de requests/responses em disco nem no banco.
-
-Configurações relevantes em `src/RaceNetShowdown.Server/appsettings.json`:
+Por padrão, a captura de payloads de requests/responses fica desativada:
 
 ```json
 "CaptureRequests": false,
 "RecordCalls": false
 ```
 
-Use `CaptureRequests = true` apenas para engenharia reversa/debug local. Isso cria arquivos em `src/RaceNetShowdown.Server/logs`, que não devem ser enviados para o Git.
+Use essas opções apenas para engenharia reversa local ou diagnóstico. Payloads capturados e certificados locais não devem ser enviados para o Git.
 
-Use `RecordCalls = true` apenas se quiser guardar histórico de chamadas no banco durante diagnóstico.
+## Hospedagem Pública
 
-## Vários Desafios Para o Mesmo Amigo
-
-Antes de tornar o serviço público, valide este fluxo:
-
-1. Inicie o servidor.
-2. Com a conta A, termine um evento e envie um challenge para a conta B.
-3. Sem reiniciar o servidor, termine outro evento e envie outro challenge para a mesma conta B.
-4. Entre com a conta B e abra `Challenges > View Challenges` nesse amigo.
-5. A tela deve listar mais de um challenge para o mesmo jogador.
-
-## Hospedagem com Docker
-
-O caminho recomendado para teste público é uma VPS pequena com Docker, como um Droplet Basic da DigitalOcean.
-
-No servidor:
+O servidor público pode rodar em uma VPS pequena com Docker.
 
 ```sh
 git clone https://github.com/Berleis/egonet-revival.git
@@ -105,150 +133,35 @@ cd egonet-revival
 docker compose up -d --build
 ```
 
-O `docker-compose.yml` publica:
+O `docker-compose.yml` expõe:
 
 - `80:80`
 - `443:443`
 
-E persiste certificados em:
+Dados persistentes de runtime:
 
-```txt
-data/certs
-```
+- `data/certs`: certificados raiz/servidor gerados.
+- `data/db/egonet-revival.db`: estado de jogo em SQLite.
 
-E persiste o estado de jogo em SQLite:
+Não envie essas pastas para o Git. A pasta `data/certs` precisa continuar estável em um servidor público porque os jogadores patcham o jogo com o certificado raiz gerado por esse deploy.
 
-```txt
-data/db/egonet-revival.db
-```
+## Estrutura do Repositório
 
-Não envie essas pastas para o Git. `data/certs` precisa continuar estável no servidor porque todos os jogadores precisam patchar o jogo com a mesma CA gerada por esse deploy.
+- `install-dirt-showdown-mod.cmd`: instalador autocontido para jogadores comuns usarem o serviço hospedado do DiRT Showdown.
+- `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado atualmente pelo DiRT Showdown.
+- `src/RaceNetShowdown.Patcher`: ferramenta de patch usada pelos scripts locais de desenvolvimento.
+- `src/RaceNetShowdown.TlsProbe`: ferramenta de diagnóstico TLS para investigar conexões iniciais.
+- `patch-game.cmd`: script de desenvolvimento para testar servidor local.
+- `patch-game-from-server.cmd`: script de desenvolvimento para patchar usando a CA de um servidor hospedado.
+- `restore-game-patch.cmd`: script de desenvolvimento para restaurar backups locais.
+- `status-game-patch.cmd`: script de desenvolvimento para verificar o estado do patch.
+- `regenerate-certs.cmd`: script de desenvolvimento para regenerar/verificar certificados.
+- `probe-tls.cmd`: script de desenvolvimento para rodar diagnóstico TLS.
 
-Configuração principal do compose:
-
-- `ListenAnyIp = true`
-- portas `80` e `443` expostas
-- `StoreProvider = Sqlite`
-- `CaptureRequests = false`
-- `RecordCalls = false`
-
-O modo público guarda jogadores, amigos observados, challenges enviados, ghost cars enviados e resultados de challenges no SQLite. O histórico de requests/responses continua desativado, exceto se `RecordCalls` for habilitado manualmente.
-
-## GitHub Actions
-
-O workflow `.github/workflows/ci.yml` roda em:
-
-- pull requests para `main`;
-- pushes na `main`.
-
-Em pull requests, ele executa:
-
-- restore da solution;
-- build em Release;
-- build da imagem Docker.
-
-Em pushes na `main`, depois do build passar, ele faz deploy no Droplet via SSH e executa:
-
-```sh
-git fetch origin main
-git reset --hard origin/main
-docker compose up -d --build
-docker compose ps
-```
-
-Secrets necessários no GitHub:
-
-- `DROPLET_HOST`: IP público do Droplet.
-- `DROPLET_USER`: usuário SSH, normalmente `root` no primeiro setup.
-- `DROPLET_SSH_KEY`: chave privada SSH usada pelo GitHub Actions.
-- `DROPLET_PORT`: opcional, usa `22` se ficar vazio.
-- `DEPLOY_PATH`: opcional, usa `/opt/egonet-revival` se ficar vazio.
-
-O job de deploy usa o ambiente `production`. Se quiser aprovação manual antes do deploy em produção, configure required reviewers nesse environment no GitHub.
-
-## Proteção da Branch Main
-
-Depois do primeiro workflow aparecer no GitHub:
-
-1. Vá em `Settings > Branches`.
-2. Crie uma branch protection rule para `main`.
-3. Marque `Require a pull request before merging`.
-4. Marque `Require approvals` e coloque `1`.
-5. Marque `Require status checks to pass before merging`.
-6. Selecione o check `Build`.
-7. Marque `Require conversation resolution before merging`.
-8. Marque `Do not allow bypassing the above settings` se quiser que até admin siga a regra.
-
-Com isso, mudanças futuras devem entrar por PR, passar no GitHub Actions e receber sua aprovação antes do merge na `main`.
-
-## Jogadores Externos
-
-Fluxo recomendado para jogadores:
-
-1. Baixar `install-dirt-showdown-mod.cmd`.
-2. Fechar o DiRT Showdown.
-3. Rodar `install-dirt-showdown-mod.cmd` como Administrador.
-4. Abrir o DiRT Showdown e entrar no RaceNet.
-
-O instalador é um único arquivo de comando do Windows. Ele atualiza o arquivo `hosts`, baixa e instala a CA raiz do servidor, patcha `showdown.exe` e `showdown_avx.exe`, limpa o DNS e valida o endpoint HTTPS de saúde.
-
-Fluxo manual:
-
-Exemplo de entradas no `hosts`:
-
-```txt
-142.93.206.37 prod.egonet.codemasters.com
-142.93.206.37 egonet.codemasters.com
-142.93.206.37 racenet.codemasters.com
-142.93.206.37 api.racenet.codemasters.com
-142.93.206.37 showdown.racenet.codemasters.com
-142.93.206.37 racenet.com
-142.93.206.37 www.racenet.com
-142.93.206.37 api.racenet.com
-```
-
-Rode o script de patch a partir da pasta do repositório:
-
-```powershell
-cd "C:\Users\dyego\Desktop\Dirt Showdown"
-.\patch-game-from-server.cmd
-```
-
-Quando o script pedir, informe:
-
-```txt
-142.93.206.37
-```
-
-O script baixa a CA em:
-
-```txt
-http://IP_DO_SERVIDOR/racenet-root-ca.cer
-```
-
-Depois ele patcha `showdown.exe` e `showdown_avx.exe` com essa CA.
-
-## Scripts
-
-- `install-dirt-showdown-mod.cmd`: instalador autocontido para jogadores usarem o serviço hospedado do DiRT Showdown.
-- `patch-game.cmd`: gera/verifica a CA local e patcha o DiRT Showdown para usar o servidor local.
-- `patch-game-from-server.cmd`: baixa a CA do servidor hospedado e patcha o jogo para esse servidor.
-- `restore-game-patch.cmd`: restaura os executáveis originais a partir dos backups.
-- `status-game-patch.cmd`: mostra se os executáveis estão patchados.
-- `regenerate-certs.cmd`: gera/verifica certificados sem iniciar o servidor.
-- `probe-tls.cmd`: roda o diagnóstico TLS.
+Os nomes internos ainda carregam `Showdown` porque DiRT Showdown é o primeiro jogo implementado. A intenção é extrair interfaces compartilhadas e perfis por jogo conforme novos jogos forem adicionados.
 
 ## TLS Probe
 
-`RaceNetShowdown.TlsProbe` é uma ferramenta de diagnóstico. Ela não faz parte do caminho normal do servidor.
+`RaceNetShowdown.TlsProbe` é apenas uma ferramenta de diagnóstico. Ela não faz parte do caminho normal do servidor e não é necessária para jogadores.
 
-Ela escuta nas portas `80` e `443` e imprime os primeiros bytes enviados pelo jogo, especialmente o `TLS ClientHello`. Isso ajuda quando o jogo falha antes da request chegar no ASP.NET. Ela mostra:
-
-- se o jogo está chegando no IP esperado;
-- se a conexão chega em `127.0.0.1` ou outro endereço;
-- versão TLS anunciada;
-- cipher suites;
-- se existe SNI;
-- se a falha acontece antes ou depois do handshake HTTPS.
-
-Você não precisa do TLS Probe para uso normal. Ele fica no repositório porque deve ser útil para investigar outros jogos EgoNet/RaceNet.
+Ela escuta nas portas `80` e `443` e imprime os primeiros bytes enviados pelo jogo, especialmente o `TLS ClientHello`. Isso ajuda a diagnosticar falhas que acontecem antes de uma request chegar ao ASP.NET.

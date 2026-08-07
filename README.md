@@ -1,10 +1,83 @@
 # EgoNet Revival
 
-ASP.NET Core server for emulating EgoNet/RaceNet endpoints used by older Codemasters games.
+Open-source ASP.NET Core replacement server for discontinued Codemasters EgoNet/RaceNet services.
+
+EgoNet Revival currently focuses on restoring the DiRT Showdown RaceNet Challenge flow on Steam/PC. The long-term goal is to keep a shared foundation that can support other Codemasters games affected by discontinued EgoNet/RaceNet services.
 
 Translations: [Portuguese (Brazil)](docs/README.pt-BR.md) | [Spanish](docs/README.es.md)
 
-This project started as an effort to restore DiRT Showdown RaceNet features on PC, especially Challenges, ghost downloads/uploads, and achievements that depend on the discontinued service. The long-term goal is to keep a shared foundation that can support other EgoNet/RaceNet games later.
+## Current Status
+
+| Game | Platform | Status |
+| --- | --- | --- |
+| DiRT Showdown | Steam / PC | Public testing, Challenge flow functional |
+
+Currently working for DiRT Showdown:
+
+- EgoNet/RaceNet login and session tick.
+- Friends and Challenges overview.
+- View Challenges.
+- IssueChallenge after finishing an event.
+- AcceptChallenge.
+- UploadGhost and DownloadGhost.
+- SubmitChallengeResult / SubmitPersonalRecord.
+- Persistent SQLite storage for players, friends, challenges, ghosts, and results.
+- Multiple challenges for the same friend.
+
+Still being improved:
+
+- Wider public testing with multiple real Steam accounts.
+- Admin/dashboard tooling.
+- Cleaner shared profiles for future games.
+
+## Install the DiRT Showdown Mod
+
+This is the recommended flow for regular players who only want to use the hosted public server.
+
+Requirements:
+
+- Windows.
+- Steam version of DiRT Showdown installed.
+- Administrator access on the PC.
+- The game must be closed before installing.
+
+Steps:
+
+1. Download [`install-dirt-showdown-mod.cmd`](install-dirt-showdown-mod.cmd).
+2. If your browser saves it as `.txt`, rename it back to `.cmd`.
+3. Right-click `install-dirt-showdown-mod.cmd`.
+4. Click `Run as administrator`.
+5. Accept the Windows permission prompt.
+6. Wait until the installer prints `Done. Open DiRT Showdown and enter RaceNet.`
+7. Open DiRT Showdown normally through Steam.
+8. Enter RaceNet / Challenges in-game.
+
+If DiRT Showdown is not installed in the default Steam folder, run the installer from Command Prompt or PowerShell with your custom path:
+
+```powershell
+.\install-dirt-showdown-mod.cmd 142.93.206.37 "D:\SteamLibrary\steamapps\common\DiRT Showdown"
+```
+
+The installer is self-contained. It:
+
+- points the RaceNet/EgoNet hostnames to the hosted server;
+- downloads and installs the server root certificate;
+- patches `showdown.exe` and `showdown_avx.exe` with that certificate;
+- creates `.racenet-original.bak` backups before changing executables;
+- flushes the Windows DNS cache;
+- tests the HTTPS health endpoint.
+
+To undo the executable patch, use Steam's `Verify integrity of game files` option for DiRT Showdown. If you also want to fully remove the redirect, delete the `EgoNet Revival DiRT Showdown` block from the Windows `hosts` file.
+
+## How It Works
+
+DiRT Showdown still tries to talk to the original RaceNet/EgoNet endpoints, but those services are no longer available. EgoNet Revival recreates the parts of that service that the game needs for Challenges.
+
+The installer redirects the game's RaceNet hostnames to the replacement server and installs a local certificate authority that the game executable is patched to trust. After that, the game can make its normal HTTPS requests again.
+
+The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite.
+
+This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the game itself when the restored in-game flow is completed.
 
 ## Competitive Achievement Tracking Notice
 
@@ -18,41 +91,16 @@ Supporting the project does not buy achievements, private access, priority unloc
 
 Support link: [PayPal](https://www.paypal.com/donate/?hosted_button_id=T495EZZJMZHEC)
 
-## Supported Games
+## Development Setup
 
-| Game | Platform | Status |
-| --- | --- | --- |
-| DiRT Showdown | Steam / PC | Testing, Challenges partially functional |
+Requirements:
 
-## DiRT Showdown
+- .NET SDK compatible with the solution target framework.
+- Visual Studio or the `dotnet` CLI.
+- Administrator access if binding directly to ports `80` and `443`.
+- DiRT Showdown installed locally for end-to-end testing.
 
-Currently working:
-
-- Basic EgoNet Login/Tick flow.
-- Challenges screen with friends.
-- View Challenges.
-- IssueChallenge after finishing an event.
-- UploadGhost.
-- DownloadGhost using ghost data uploaded by the game.
-- SubmitChallengeResult / SubmitPersonalRecord.
-- Persistent SQLite storage for players, friends, challenges, ghosts, and results.
-- Multiple challenges for the same friend.
-
-Not finished yet:
-
-- Wider public testing with multiple real Steam accounts.
-- Admin/dashboard tooling.
-- Formal per-game profile separation.
-
-## Structure
-
-- `src/RaceNetShowdown.Server`: ASP.NET Core server currently used by DiRT Showdown.
-- `src/RaceNetShowdown.Patcher`: tool that replaces the RaceNet CA embedded in the game executable.
-- `src/RaceNetShowdown.TlsProbe`: TLS diagnostics tool for checking whether a game reaches port 443 before becoming an HTTP request.
-
-The internal project names still include `Showdown` because DiRT Showdown is the first implemented game. The intended direction is to extract shared interfaces and per-game profiles as more games are added.
-
-## Local Setup
+Local flow:
 
 1. Close DiRT Showdown.
 2. Run `patch-game.cmd` as Administrator.
@@ -61,43 +109,23 @@ The internal project names still include `Showdown` because DiRT Showdown is the
 5. Run the `RaceNetShowdown.Server` profile.
 6. Open the game and enter the RaceNet screens.
 
-The server listens on:
+The local server listens on:
 
 - `http://127.0.0.1:80`
 - `https://127.0.0.1:443`
 
-The game must resolve `prod.egonet.codemasters.com` to the machine running the server.
-
-## Logging And Storage
-
-By default, the project does not write request/response payloads to disk or to the database.
-
-Relevant settings in `src/RaceNetShowdown.Server/appsettings.json`:
+By default, request/response payload capture is disabled:
 
 ```json
 "CaptureRequests": false,
 "RecordCalls": false
 ```
 
-Use `CaptureRequests = true` only for local reverse-engineering/debugging. It creates files under `src/RaceNetShowdown.Server/logs`, which should not be committed.
+Use those settings only for local reverse-engineering or diagnostics. Captured payloads and local certificates should not be committed.
 
-Use `RecordCalls = true` only when you intentionally want database call history for diagnostics.
+## Public Hosting
 
-## Multiple Challenges For One Friend
-
-Before making the service public, validate this flow:
-
-1. Start the server.
-2. On account A, finish an event and send a challenge to account B.
-3. Without restarting the server, finish another event and send another challenge to the same account B.
-4. Log in with account B and open `Challenges > View Challenges` for that friend.
-5. The screen should list more than one challenge for the same player.
-
-## Docker Hosting
-
-The recommended public-test path is a small VPS with Docker, such as a DigitalOcean Basic Droplet.
-
-On the server:
+The public server can run on a small VPS with Docker.
 
 ```sh
 git clone https://github.com/Berleis/egonet-revival.git
@@ -105,150 +133,35 @@ cd egonet-revival
 docker compose up -d --build
 ```
 
-`docker-compose.yml` publishes:
+`docker-compose.yml` exposes:
 
 - `80:80`
 - `443:443`
 
-It persists certificates in:
+Persistent runtime data:
 
-```txt
-data/certs
-```
+- `data/certs`: generated server/root certificates.
+- `data/db/egonet-revival.db`: SQLite game state.
 
-It persists gameplay state in SQLite:
+Do not commit those directories. The `data/certs` directory must stay stable on a public server because players patch their game with the root certificate generated by that deployment.
 
-```txt
-data/db/egonet-revival.db
-```
+## Repository Structure
 
-Do not commit these directories. `data/certs` must remain stable on the server because all players need to patch their game with the same CA generated by that deployment.
+- `install-dirt-showdown-mod.cmd`: self-contained installer for regular players using the hosted DiRT Showdown service.
+- `src/RaceNetShowdown.Server`: ASP.NET Core server currently used by DiRT Showdown.
+- `src/RaceNetShowdown.Patcher`: developer patching tool used by the local scripts.
+- `src/RaceNetShowdown.TlsProbe`: TLS diagnostics tool for early connection debugging.
+- `patch-game.cmd`: developer script for local server testing.
+- `patch-game-from-server.cmd`: developer script for patching against a hosted server CA.
+- `restore-game-patch.cmd`: developer script for restoring local backups.
+- `status-game-patch.cmd`: developer script for checking patch status.
+- `regenerate-certs.cmd`: developer script for regenerating/verifying certificates.
+- `probe-tls.cmd`: developer script for running TLS diagnostics.
 
-Main compose settings:
-
-- `ListenAnyIp = true`
-- ports `80` and `443` exposed
-- `StoreProvider = Sqlite`
-- `CaptureRequests = false`
-- `RecordCalls = false`
-
-The public mode stores players, observed friends, issued challenges, uploaded ghost cars, and submitted challenge results in SQLite. Request/response call history is still disabled unless `RecordCalls` is explicitly enabled.
-
-## GitHub Actions
-
-The `.github/workflows/ci.yml` workflow runs on:
-
-- pull requests targeting `main`;
-- pushes to `main`.
-
-For pull requests, it runs:
-
-- solution restore;
-- Release build;
-- Docker image build.
-
-For pushes to `main`, after the build passes, it deploys to the Droplet over SSH and runs:
-
-```sh
-git fetch origin main
-git reset --hard origin/main
-docker compose up -d --build
-docker compose ps
-```
-
-Required GitHub repository secrets:
-
-- `DROPLET_HOST`: public Droplet IP address.
-- `DROPLET_USER`: SSH user, usually `root` during the first setup.
-- `DROPLET_SSH_KEY`: private SSH key used by GitHub Actions.
-- `DROPLET_PORT`: optional, defaults to `22`.
-- `DEPLOY_PATH`: optional, defaults to `/opt/egonet-revival`.
-
-The deploy job uses the `production` environment. If you also want manual approval before production deploys, configure required reviewers for that environment in GitHub.
-
-## Main Branch Protection
-
-After the first workflow appears in GitHub:
-
-1. Go to `Settings > Branches`.
-2. Create a branch protection rule for `main`.
-3. Enable `Require a pull request before merging`.
-4. Enable `Require approvals` and set it to `1`.
-5. Enable `Require status checks to pass before merging`.
-6. Select the `Build` check.
-7. Enable `Require conversation resolution before merging`.
-8. Enable `Do not allow bypassing the above settings` if you want admins to follow the same rule.
-
-With this setup, future changes must go through PRs, pass GitHub Actions, and receive your approval before merging into `main`.
-
-## External Players
-
-Recommended player flow:
-
-1. Download `install-dirt-showdown-mod.cmd`.
-2. Close DiRT Showdown.
-3. Run `install-dirt-showdown-mod.cmd` as Administrator.
-4. Open DiRT Showdown and enter RaceNet.
-
-The installer is a single self-contained Windows command file. It updates the Windows `hosts` file, downloads and installs the server root certificate, patches `showdown.exe` and `showdown_avx.exe`, flushes DNS, and verifies the HTTPS health endpoint.
-
-Manual flow:
-
-Example `hosts` entries:
-
-```txt
-142.93.206.37 prod.egonet.codemasters.com
-142.93.206.37 egonet.codemasters.com
-142.93.206.37 racenet.codemasters.com
-142.93.206.37 api.racenet.codemasters.com
-142.93.206.37 showdown.racenet.codemasters.com
-142.93.206.37 racenet.com
-142.93.206.37 www.racenet.com
-142.93.206.37 api.racenet.com
-```
-
-Run the patch script from the repository directory:
-
-```powershell
-cd "C:\Users\dyego\Desktop\Dirt Showdown"
-.\patch-game-from-server.cmd
-```
-
-When prompted, enter:
-
-```txt
-142.93.206.37
-```
-
-The script downloads the CA from:
-
-```txt
-http://SERVER_IP/racenet-root-ca.cer
-```
-
-Then it patches `showdown.exe` and `showdown_avx.exe` with that CA.
-
-## Scripts
-
-- `install-dirt-showdown-mod.cmd`: self-contained player installer for the hosted DiRT Showdown service.
-- `patch-game.cmd`: generates/verifies the local CA and patches DiRT Showdown for local server use.
-- `patch-game-from-server.cmd`: downloads the hosted server CA and patches the game for that server.
-- `restore-game-patch.cmd`: restores original executables from backups.
-- `status-game-patch.cmd`: shows whether the executables are patched.
-- `regenerate-certs.cmd`: generates/verifies certificates without starting the server.
-- `probe-tls.cmd`: runs TLS diagnostics.
+The internal project names still include `Showdown` because DiRT Showdown is the first implemented game. The intended direction is to extract shared interfaces and per-game profiles as more games are added.
 
 ## TLS Probe
 
-`RaceNetShowdown.TlsProbe` is a diagnostics tool. It is not part of the normal server path.
+`RaceNetShowdown.TlsProbe` is only a diagnostics tool. It is not part of the normal server path and is not needed by players.
 
-It listens on ports `80` and `443` and prints the first bytes sent by the game, especially the `TLS ClientHello`. This helps when the game fails before the request reaches ASP.NET. It can show:
-
-- whether the game is reaching the expected IP;
-- whether the connection arrives on `127.0.0.1` or another address;
-- announced TLS version;
-- cipher suites;
-- whether SNI is present;
-- whether the failure happens before or after the HTTPS handshake.
-
-You do not need TLS Probe for normal use. It remains in the repository because it should be useful when investigating other EgoNet/RaceNet games.
+It listens on ports `80` and `443` and prints the first bytes sent by the game, especially the `TLS ClientHello`. This helps diagnose failures that happen before a request reaches ASP.NET.
