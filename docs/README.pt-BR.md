@@ -12,6 +12,23 @@ Idioma principal: [English](../README.md) | Tradução: [Espanhol](README.es.md)
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Em teste público, fluxo de Challenges funcional |
 
+## Pacotes e Releases por Jogo
+
+Este repositório é uma base compartilhada para vários projetos de restauração EgoNet/RaceNet. Cada jogo tem sua própria pasta de pacote, instalador, notas de release e prefixo de tag.
+
+| Jogo | Pacote | Prefixo de tag | Instalador |
+| --- | --- | --- | --- |
+| DiRT Showdown | [`games/dirt-showdown`](../games/dirt-showdown) | `dirt-showdown-v` | `install-dirt-showdown-mod.cmd` |
+
+As releases são separadas por jogo. Exemplo:
+
+```sh
+git tag dirt-showdown-v0.1.0
+git push origin dirt-showdown-v0.1.0
+```
+
+Isso publica o instalador do DiRT Showdown como asset da release sem misturar com pacotes de outros jogos no futuro.
+
 Funcionando atualmente no DiRT Showdown:
 
 - Login e tick de sessão EgoNet/RaceNet.
@@ -43,14 +60,17 @@ Requisitos:
 
 Passos:
 
-1. Baixe [`install-dirt-showdown-mod.cmd`](../install-dirt-showdown-mod.cmd).
-2. Se o navegador salvar como `.txt`, renomeie de volta para `.cmd`.
-3. Clique com o botão direito em `install-dirt-showdown-mod.cmd`.
-4. Clique em `Executar como administrador`.
-5. Aceite a permissão do Windows.
-6. Espere até o instalador mostrar `Done. Open DiRT Showdown and enter RaceNet.`
-7. Abra o DiRT Showdown normalmente pela Steam.
-8. Entre em RaceNet / Challenges dentro do jogo.
+1. Abra a [página de releases do DiRT Showdown](https://github.com/Berleis/egonet-revival/releases?q=dirt-showdown-v&expanded=true).
+2. Baixe `install-dirt-showdown-mod.cmd` da release `dirt-showdown-v...` mais recente.
+3. Se o navegador salvar como `.txt`, renomeie de volta para `.cmd`.
+4. Clique com o botão direito em `install-dirt-showdown-mod.cmd`.
+5. Clique em `Executar como administrador`.
+6. Aceite a permissão do Windows.
+7. Espere até o instalador mostrar `Done. Open DiRT Showdown and enter RaceNet.`
+8. Abra o DiRT Showdown normalmente pela Steam.
+9. Entre em RaceNet / Challenges dentro do jogo.
+
+Builds de desenvolvimento do mesmo instalador ficam em [`games/dirt-showdown/install-dirt-showdown-mod.cmd`](../games/dirt-showdown/install-dirt-showdown-mod.cmd). O arquivo [`install-dirt-showdown-mod.cmd`](../install-dirt-showdown-mod.cmd) na raiz existe apenas como launcher de compatibilidade para links antigos.
 
 Se o DiRT Showdown não estiver instalado na pasta padrão da Steam, rode o instalador pelo Prompt de Comando ou PowerShell informando o caminho personalizado:
 
@@ -147,7 +167,11 @@ Não envie essas pastas para o Git. A pasta `data/certs` precisa continuar está
 
 ## Estrutura do Repositório
 
-- `install-dirt-showdown-mod.cmd`: instalador autocontido para jogadores comuns usarem o serviço hospedado do DiRT Showdown.
+- `games/games.json`: manifesto dos pacotes de jogos suportados.
+- `games/dirt-showdown`: pacote, instalador e notas de release do DiRT Showdown.
+- `install-dirt-showdown-mod.cmd`: launcher de compatibilidade para links antigos do instalador do DiRT Showdown.
+- `.github/workflows/game-releases.yml`: empacota assets de release por jogo a partir de tags específicas.
+- `scripts/package-game-release.ps1`: empacota um jogo suportado para artifacts de CI/release.
 - `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado atualmente pelo DiRT Showdown.
 - `src/RaceNetShowdown.Patcher`: ferramenta de patch usada pelos scripts locais de desenvolvimento.
 - `src/RaceNetShowdown.TlsProbe`: ferramenta de diagnóstico TLS para investigar conexões iniciais.

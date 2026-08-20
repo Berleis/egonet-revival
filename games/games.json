@@ -1,0 +1,13 @@
+{
+  "games": [
+    {
+      "id": "dirt-showdown",
+      "name": "DiRT Showdown",
+      "platform": "Steam / PC",
+      "status": "public-testing",
+      "packagePath": "games/dirt-showdown",
+      "releaseTagPrefix": "dirt-showdown-v",
+      "installerAsset": "install-dirt-showdown-mod.cmd"
+    }
+  ]
+}
