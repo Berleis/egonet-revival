@@ -126,9 +126,7 @@ public static class EgoNetChallengePayloads
         var bestResult = activeChallengeCount > 0
             ? activeFriends.Min(value => value.BestResult)
             : 0;
-        var tally = activeChallengeCount > 0
-            ? activeFriends.Sum(value => value.Tally)
-            : 0;
+        var tally = snapshot.OverallTally;
 
         return functionName switch
         {
@@ -720,7 +718,7 @@ public static class EgoNetChallengePayloads
         var challengeCount = hasChallenge ? 1 : 0;
         var highChallengeId = hasChallenge ? friend.ChallengeId : 0;
         var bestResult = hasChallenge ? friend.BestResult : 0;
-        var tally = hasChallenge ? friend.Tally : 0;
+        var tally = friend.Tally;
 
         return EgoNetBinary.DictValue(
             EgoNetBinary.Dict("Presence",

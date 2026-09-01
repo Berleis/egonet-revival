@@ -31,6 +31,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Package
         shell: pwsh
         run: ./scripts/package-game-release.ps1 -Game dirt-showdown
@@ -50,20 +55,18 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Package
-        shell: pwsh
-        run: ./scripts/package-game-release.ps1 -Game dirt-showdown
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: dirt-showdown-mod
+          path: artifacts/releases/dirt-showdown
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            artifacts/releases/dirt-showdown/install-dirt-showdown-mod.cmd \
-            artifacts/releases/dirt-showdown/install-dirt-showdown-mod.cmd.sha256 \
-            artifacts/releases/dirt-showdown/README.md \
+            artifacts/releases/dirt-showdown/* \
             --title "DiRT Showdown ${GITHUB_REF_NAME#dirt-showdown-}" \
-            --notes-file games/dirt-showdown/RELEASE_NOTES.md
+            --notes-file artifacts/releases/dirt-showdown/RELEASE_NOTES.md

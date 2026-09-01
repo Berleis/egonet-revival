@@ -2,21 +2,58 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
-const string DefaultGamePath = @"C:\Program Files (x86)\Steam\steamapps\common\DiRT Showdown";
 const string RootCertificateRelativePath = @"src\RaceNetShowdown.Server\certs\codemasters-local-root-ca.cer";
 const int ExpectedRootCertificateLength = 1003;
 
+var gameProfiles = new Dictionary<string, (string DisplayName, string DefaultGamePath, string[] Executables, string[] ProcessNames)>(StringComparer.OrdinalIgnoreCase)
+{
+    ["dirt-showdown"] = (
+        "DiRT Showdown",
+        @"C:\Program Files (x86)\Steam\steamapps\common\DiRT Showdown",
+        ["showdown.exe", "showdown_avx.exe"],
+        ["showdown", "showdown_avx"]),
+    ["grid-2"] = (
+        "GRID 2",
+        @"C:\Program Files (x86)\Steam\steamapps\common\grid 2",
+        ["grid2.exe", "grid2_avx.exe"],
+        ["grid2", "grid2_avx"])
+};
+
 var command = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "status";
-var gamePath = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
-    ? args[1]
-    : DefaultGamePath;
-var rootCertificatePath = args.Length > 2 && !string.IsNullOrWhiteSpace(args[2])
-    ? Path.GetFullPath(args[2])
+var remainingArgs = args.Skip(1).Where(arg => !string.IsNullOrWhiteSpace(arg)).ToList();
+var gameId = "dirt-showdown";
+
+if (remainingArgs.Count >= 2 && remainingArgs[0] is "--game" or "-g")
+{
+    gameId = remainingArgs[1];
+    remainingArgs.RemoveRange(0, 2);
+}
+else if (remainingArgs.Count > 0 && remainingArgs[0].StartsWith("--game=", StringComparison.OrdinalIgnoreCase))
+{
+    gameId = remainingArgs[0]["--game=".Length..];
+    remainingArgs.RemoveAt(0);
+}
+else if (remainingArgs.Count > 0 && gameProfiles.ContainsKey(remainingArgs[0]))
+{
+    gameId = remainingArgs[0];
+    remainingArgs.RemoveAt(0);
+}
+
+if (!gameProfiles.TryGetValue(gameId, out var gameProfile))
+{
+    Fail($"Unknown game profile: {gameId}");
+}
+
+var gamePath = remainingArgs.Count > 0
+    ? remainingArgs[0]
+    : gameProfile.DefaultGamePath;
+var rootCertificatePath = remainingArgs.Count > 1
+    ? Path.GetFullPath(remainingArgs[1])
     : Path.Combine(FindRepoRoot(), RootCertificateRelativePath);
 
 if (!Directory.Exists(gamePath))
 {
-    Fail($"Game folder not found: {gamePath}");
+    Fail($"{gameProfile.DisplayName} folder not found: {gamePath}");
 }
 
 if (!File.Exists(rootCertificatePath))
@@ -31,25 +68,23 @@ if (localRootCertificateBytes.Length != ExpectedRootCertificateLength)
 }
 
 var localRootCertificate = X509CertificateLoader.LoadCertificate(localRootCertificateBytes);
-var executablePaths = new[]
-{
-    Path.Combine(gamePath, "showdown.exe"),
-    Path.Combine(gamePath, "showdown_avx.exe")
-};
+var executablePaths = gameProfile.Executables
+    .Select(executable => Path.Combine(gamePath, executable))
+    .ToArray();
 
 switch (command)
 {
     case "status":
-        PrintStatus(executablePaths, localRootCertificateBytes, localRootCertificate);
+        PrintStatus(gameProfile.DisplayName, executablePaths, localRootCertificateBytes, localRootCertificate);
         return 0;
 
     case "patch":
-        EnsureGameIsClosed();
+        EnsureGameIsClosed(gameProfile.DisplayName, gameProfile.ProcessNames);
         PatchExecutables(executablePaths, localRootCertificateBytes, localRootCertificate);
         return 0;
 
     case "restore":
-        EnsureGameIsClosed();
+        EnsureGameIsClosed(gameProfile.DisplayName, gameProfile.ProcessNames);
         RestoreExecutables(executablePaths);
         return 0;
 
@@ -58,14 +93,22 @@ switch (command)
         Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- status");
         Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- patch");
         Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- restore");
-        Console.WriteLine("  RaceNetShowdown.Patcher.exe patch \"C:\\Path\\To\\DiRT Showdown\" \"C:\\Path\\To\\root-ca.cer\"");
+        Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- status --game grid-2");
+        Console.WriteLine("  dotnet run --project src/RaceNetShowdown.Patcher -- patch --game grid-2 \"C:\\Path\\To\\GRID 2\"");
+        Console.WriteLine("  RaceNetShowdown.Patcher.exe patch --game dirt-showdown \"C:\\Path\\To\\DiRT Showdown\" \"C:\\Path\\To\\root-ca.cer\"");
         Console.WriteLine();
-        Console.WriteLine($"Default game path: {DefaultGamePath}");
+        Console.WriteLine("Game profiles:");
+        foreach (var profile in gameProfiles)
+        {
+            Console.WriteLine($"  {profile.Key}: {profile.Value.DisplayName}");
+            Console.WriteLine($"    default path: {profile.Value.DefaultGamePath}");
+        }
         return 2;
 }
 
-static void PrintStatus(string[] executablePaths, byte[] localRootCertificateBytes, X509Certificate2 localRootCertificate)
+static void PrintStatus(string gameName, string[] executablePaths, byte[] localRootCertificateBytes, X509Certificate2 localRootCertificate)
 {
+    Console.WriteLine($"Game profile: {gameName}");
     Console.WriteLine($"Local RaceNet root: {localRootCertificate.Subject}");
     Console.WriteLine($"Local RaceNet root SHA256: {localRootCertificate.GetCertHashString(HashAlgorithmName.SHA256)}");
     Console.WriteLine();
@@ -224,18 +267,16 @@ static int? TryGetDerSequenceLength(byte[] bytes, int offset)
     return 2 + lengthBytes + length;
 }
 
-static void EnsureGameIsClosed()
+static void EnsureGameIsClosed(string gameName, string[] processNames)
 {
     var running = Process.GetProcesses()
-        .Where(process =>
-            process.ProcessName.Equals("showdown", StringComparison.OrdinalIgnoreCase)
-            || process.ProcessName.Equals("showdown_avx", StringComparison.OrdinalIgnoreCase))
+        .Where(process => processNames.Contains(process.ProcessName, StringComparer.OrdinalIgnoreCase))
         .Select(process => $"{process.ProcessName} ({process.Id})")
         .ToArray();
 
     if (running.Length > 0)
     {
-        Fail("Close DiRT Showdown before patching: " + string.Join(", ", running));
+        Fail($"Close {gameName} before patching: " + string.Join(", ", running));
     }
 }
 
@@ -256,7 +297,7 @@ static string FindRepoRoot()
         directory = directory.Parent;
     }
 
-    Fail("Could not find repository root. Run this tool from the Dirt Showdown workspace.");
+    Fail("Could not find repository root. Run this tool from the EgoNet Revival workspace.");
     return "";
 }
 

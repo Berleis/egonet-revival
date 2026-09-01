@@ -139,6 +139,7 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
     var body = await RequestBodyReader.ReadAsync(context.Request, raceNetOptions.BodyPreviewBytes);
     var store = context.RequestServices.GetRequiredService<IRaceNetStore>();
     var egoNetFunction = context.Request.Headers["X-EgoNet-Function"].ToString();
+    var userAgent = context.Request.Headers.UserAgent.ToString();
     var session = string.IsNullOrWhiteSpace(egoNetFunction)
         ? null
         : await store.EnsureSessionAsync(context, body, context.RequestAborted);
@@ -158,8 +159,12 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
             context.RequestAborted);
 
     app.Logger.LogInformation(
-        "RaceNet call {Function} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
+        "RaceNet call {GameId} {Method} {Path} {Function} UA {UserAgent} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
+        raceNetOptions.GameId,
+        context.Request.Method,
+        $"{context.Request.Path}{context.Request.QueryString}",
         string.IsNullOrWhiteSpace(egoNetFunction) ? "<none>" : egoNetFunction,
+        string.IsNullOrWhiteSpace(userAgent) ? "<none>" : userAgent,
         response.StatusCode,
         body.BodyBytes.Length,
         response.BodyBytes.Length);
@@ -203,12 +208,13 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
 });
 
 app.Logger.LogInformation("EgoNet Revival server starting");
-app.Logger.LogInformation("Active game profile: DiRT Showdown");
+app.Logger.LogInformation("Active game profile: {GameName} ({GameId})", raceNetOptions.GameName, raceNetOptions.GameId);
 app.Logger.LogInformation("HTTP  endpoint: http://127.0.0.1:{Port}", raceNetOptions.HttpPort);
 app.Logger.LogInformation("HTTPS endpoint: https://127.0.0.1:{Port}", raceNetOptions.HttpsPort);
 app.Logger.LogInformation("Listen any IP: {ListenAnyIp}", raceNetOptions.ListenAnyIp);
 app.Logger.LogInformation("RaceNet host should resolve to 127.0.0.1: prod.egonet.codemasters.com");
 app.Logger.LogInformation("RaceNet store provider: {Provider}", raceNetOptions.StoreProvider);
+app.Logger.LogInformation("Discovery mode: {State}", raceNetOptions.DiscoveryMode ? "enabled" : "disabled");
 app.Logger.LogInformation("Challenge payload format: {Format}", raceNetOptions.ChallengePayloadFormat);
 app.Logger.LogInformation("Request capture: {State}", raceNetOptions.CaptureRequests ? "enabled" : "disabled");
 app.Logger.LogInformation("Call persistence log: {State}", raceNetOptions.RecordCalls ? "enabled" : "disabled");

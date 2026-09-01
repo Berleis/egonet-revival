@@ -4,6 +4,8 @@ obj/
 artifacts/
 build-check/
 TestResults/
+releases/
+_local/
 
 # Local IDE state
 .vs/

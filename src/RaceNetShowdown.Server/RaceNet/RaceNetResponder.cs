@@ -38,11 +38,12 @@ public sealed class RaceNetResponder
         RaceNetChallengeSnapshot? challengeSnapshot)
     {
         var path = request.Path.Value?.ToLowerInvariant() ?? "/";
+        var isGrid2Request = IsGrid2RequestPath(path);
         var egoNetFunction = request.Headers["X-EgoNet-Function"].ToString();
 
         if (!string.IsNullOrWhiteSpace(egoNetFunction))
         {
-            return BuildLocalEgoNetResponse(egoNetFunction, body, session, challengeSnapshot);
+            return BuildLocalEgoNetResponse(egoNetFunction, body, session, challengeSnapshot, isGrid2Request);
         }
 
         if (path is "/" or "/health")
@@ -51,7 +52,9 @@ public sealed class RaceNetResponder
             {
                 ok = true,
                 service = "egonet-revival",
-                game = "dirt-showdown",
+                game = Options.GameId,
+                gameName = Options.GameName,
+                discoveryMode = Options.DiscoveryMode,
                 time = DateTimeOffset.Now
             });
         }
@@ -144,6 +147,7 @@ public sealed class RaceNetResponder
         CancellationToken cancellationToken)
     {
         var path = request.Path.Value?.ToLowerInvariant() ?? "/";
+        var isGrid2Request = IsGrid2RequestPath(path);
         var egoNetFunction = request.Headers["X-EgoNet-Function"].ToString();
 
         if (!string.IsNullOrWhiteSpace(egoNetFunction))
@@ -154,6 +158,7 @@ public sealed class RaceNetResponder
                 session,
                 challengeSnapshot,
                 store,
+                isGrid2Request,
                 cancellationToken);
         }
 
@@ -163,7 +168,9 @@ public sealed class RaceNetResponder
             {
                 ok = true,
                 service = "egonet-revival",
-                game = "dirt-showdown",
+                game = Options.GameId,
+                gameName = Options.GameName,
+                discoveryMode = Options.DiscoveryMode,
                 time = DateTimeOffset.Now
             });
         }
@@ -253,6 +260,7 @@ public sealed class RaceNetResponder
         RaceNetSessionInfo? session,
         RaceNetChallengeSnapshot? challengeSnapshot,
         IRaceNetStore store,
+        bool isGrid2Request,
         CancellationToken cancellationToken)
     {
         var normalized = functionName.Trim();
@@ -262,6 +270,15 @@ public sealed class RaceNetResponder
             ["X-EgoNet-Result"] = "0",
             ["X-EgoNet-SessionID"] = session?.SessionId ?? "local-racenet-session"
         };
+
+        if (IsGrid2(isGrid2Request))
+        {
+            var grid2Response = Grid2EgoNetPayloads.TryBuild(normalized, body, session, headers);
+            if (grid2Response is not null)
+            {
+                return grid2Response;
+            }
+        }
 
         var snapshot = challengeSnapshot ?? RaceNetChallengeSeed.CreateSnapshot();
 
@@ -327,7 +344,8 @@ public sealed class RaceNetResponder
         string functionName,
         CapturedBody body,
         RaceNetSessionInfo? session,
-        RaceNetChallengeSnapshot? challengeSnapshot)
+        RaceNetChallengeSnapshot? challengeSnapshot,
+        bool isGrid2Request)
     {
         var normalized = functionName.Trim();
 
@@ -336,6 +354,15 @@ public sealed class RaceNetResponder
             ["X-EgoNet-Result"] = "0",
             ["X-EgoNet-SessionID"] = session?.SessionId ?? "local-racenet-session"
         };
+
+        if (IsGrid2(isGrid2Request))
+        {
+            var grid2Response = Grid2EgoNetPayloads.TryBuild(normalized, body, session, headers);
+            if (grid2Response is not null)
+            {
+                return grid2Response;
+            }
+        }
 
         var snapshot = challengeSnapshot ?? RaceNetChallengeSeed.CreateSnapshot();
 
@@ -788,4 +815,15 @@ public sealed class RaceNetResponder
         long Result,
         int Attempts,
         bool Dominated);
+
+    private bool IsGrid2(bool isGrid2Request)
+    {
+        return isGrid2Request ||
+            string.Equals(Options.GameId, "grid-2", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsGrid2RequestPath(string path)
+    {
+        return path.Contains("grid2", StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -60,11 +60,74 @@ internal static class EgoNetBinary
         });
     }
 
+    public static EgoNetField Ui32(string name, uint value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "ui32");
+            writer.Write(value);
+        });
+    }
+
+    public static EgoNetField Si16(string name, short value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "si16");
+            writer.Write(value);
+        });
+    }
+
+    public static EgoNetField Ui16(string name, ushort value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "ui16");
+            writer.Write(value);
+        });
+    }
+
+    public static EgoNetField Si08(string name, sbyte value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "si08");
+            writer.Write(value);
+        });
+    }
+
+    public static EgoNetField Ui08(string name, byte value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "ui08");
+            writer.Write(value);
+        });
+    }
+
     public static EgoNetField Si64(string name, long value)
     {
         return new EgoNetField(name, writer =>
         {
             WriteTag(writer, "si64");
+            writer.Write(value);
+        });
+    }
+
+    public static EgoNetField Fp32(string name, float value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "fp32");
+            writer.Write(value);
+        });
+    }
+
+    public static EgoNetField Fp64(string name, double value)
+    {
+        return new EgoNetField(name, writer =>
+        {
+            WriteTag(writer, "fp64");
             writer.Write(value);
         });
     }
@@ -523,8 +586,27 @@ internal static class EgoNetRequestParser
                 reader.BaseStream.Position += 4;
                 break;
 
+            case "ui32":
+            case "fp32":
+                reader.BaseStream.Position += 4;
+                break;
+
+            case "si16":
+            case "ui16":
+                reader.BaseStream.Position += 2;
+                break;
+
+            case "si08":
+            case "ui08":
+                reader.BaseStream.Position += 1;
+                break;
+
             case "ui64":
             case "si64":
+                reader.BaseStream.Position += 8;
+                break;
+
+            case "fp64":
                 reader.BaseStream.Position += 8;
                 break;
 

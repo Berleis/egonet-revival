@@ -7,7 +7,9 @@
       "status": "public-testing",
       "packagePath": "games/dirt-showdown",
       "releaseTagPrefix": "dirt-showdown-v",
-      "installerAsset": "install-dirt-showdown-mod.cmd"
+      "installerAsset": "install-dirt-showdown-mod.cmd",
+      "installerProject": "games/dirt-showdown/installer/DirtShowdownModInstaller.csproj",
+      "installerExecutableAsset": "EgoNet Revival - DiRT Showdown Installer.exe"
     }
   ]
 }
