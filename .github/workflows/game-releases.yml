@@ -68,5 +68,6 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             artifacts/releases/dirt-showdown/* \
+            --repo "${GITHUB_REPOSITORY}" \
             --title "DiRT Showdown ${GITHUB_REF_NAME#dirt-showdown-}" \
             --notes-file artifacts/releases/dirt-showdown/RELEASE_NOTES.md
