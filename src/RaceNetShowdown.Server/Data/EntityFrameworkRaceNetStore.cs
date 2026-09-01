@@ -188,21 +188,29 @@ public sealed class EntityFrameworkRaceNetStore(
                 value.Status == "open")
             .ToListAsync(cancellationToken);
 
-        var dominatedChallenges = await dbContext.Challenges
+        var scoredChallenges = await dbContext.Challenges
             .Include(value => value.IssuerPlayerProfile)
             .Include(value => value.Results)
             .Where(value =>
                 value.TargetPlayerProfileId == session.PlayerProfileId &&
                 value.Results.Any(result =>
-                    result.PlayerProfileId == session.PlayerProfileId &&
-                    result.BeatChallenge))
+                    result.PlayerProfileId == session.PlayerProfileId))
             .ToListAsync(cancellationToken);
 
-        var tallyByIssuer = dominatedChallenges
-            .GroupBy(value => value.IssuerPlayerProfileId)
+        var tallyChallenges = scoredChallenges
+            .Select(challenge => new
+            {
+                Challenge = challenge,
+                Result = GetLatestPlayerResult(challenge, session.PlayerProfileId)
+            })
+            .Where(value => value.Result is not null)
+            .ToArray();
+
+        var tallyByIssuer = tallyChallenges
+            .GroupBy(value => value.Challenge.IssuerPlayerProfileId)
             .ToDictionary(
                 value => value.Key,
-                value => (long)value.Count());
+                value => value.Sum(result => result.Result!.BeatChallenge ? 1L : -1L));
 
         var openFriends = openChallenges
             .OrderByDescending(value => value.CreatedAt)
@@ -216,17 +224,18 @@ public sealed class EntityFrameworkRaceNetStore(
         var openIssuerIds = openFriends
             .Select(value => value.EgonetId)
             .ToHashSet();
-        var completedTallyFriends = dominatedChallenges
-            .Where(value => !openIssuerIds.Contains(value.IssuerPlayerProfileId))
-            .GroupBy(value => value.IssuerPlayerProfileId)
+        var completedTallyFriends = tallyChallenges
+            .Where(value => !openIssuerIds.Contains(value.Challenge.IssuerPlayerProfileId))
+            .GroupBy(value => value.Challenge.IssuerPlayerProfileId)
             .Select(group =>
             {
                 var challenge = group
-                    .OrderByDescending(value => value.CompletedAt ?? value.CreatedAt)
+                    .OrderByDescending(value => value.Result!.SubmittedAt)
+                    .Select(value => value.Challenge)
                     .First();
                 return ToCompletedTallyFriend(challenge, tallyByIssuer.GetValueOrDefault(group.Key));
             })
-            .Where(value => value.Tally > 0)
+            .Where(value => value.Tally != 0)
             .ToArray();
 
         var friends = openFriends
@@ -591,6 +600,16 @@ public sealed class EntityFrameworkRaceNetStore(
             profile.Id,
             profile.ExternalId,
             profile.DisplayName);
+    }
+
+    private static ChallengeResultRecord? GetLatestPlayerResult(
+        ChallengeRecord challenge,
+        long playerProfileId)
+    {
+        return challenge.Results
+            .Where(value => value.PlayerProfileId == playerProfileId)
+            .OrderByDescending(value => value.SubmittedAt)
+            .FirstOrDefault();
     }
 
     private static RaceNetFriendChallenge ToFriendChallenge(
