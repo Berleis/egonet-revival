@@ -11,6 +11,7 @@ Translations: [Portuguese (Brazil)](docs/README.pt-BR.md) | [Spanish](docs/READM
 | Game | Platform | Status |
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Public testing, Challenge flow functional |
+| GRID 2 | Steam / PC | Local discovery/prototype only, not ready for players |
 
 ## Game Packages and Releases
 
@@ -18,7 +19,8 @@ This repository is a shared home for multiple EgoNet/RaceNet revival projects. E
 
 | Game | Package | Release tag prefix | Player installer |
 | --- | --- | --- | --- |
-| DiRT Showdown | [`games/dirt-showdown`](games/dirt-showdown) | `dirt-showdown-v` | `install-dirt-showdown-mod.cmd` |
+| DiRT Showdown | [`games/dirt-showdown`](games/dirt-showdown) | `dirt-showdown-v` | `EgoNet Revival - DiRT Showdown Installer.exe` |
+| GRID 2 | Not packaged yet | Not available yet | Not available yet |
 
 Game-specific GitHub Releases are created from tags. For example:
 
@@ -27,7 +29,9 @@ git tag dirt-showdown-v0.1.0
 git push origin dirt-showdown-v0.1.0
 ```
 
-That publishes the DiRT Showdown installer as a release asset without mixing it with future game packages.
+That publishes the DiRT Showdown GUI installer, command-line fallback installer, checksums, README, and release notes without mixing them with future game packages.
+
+Development helper scripts are grouped by game under [`tools`](tools). Player-facing release assets stay under [`games`](games) and GitHub Releases.
 
 Currently working for DiRT Showdown:
 
@@ -40,12 +44,14 @@ Currently working for DiRT Showdown:
 - SubmitChallengeResult / SubmitPersonalRecord.
 - Persistent SQLite storage for players, friends, challenges, ghosts, and results.
 - Multiple challenges for the same friend.
+- Dominated Challenge tally is persisted after a Challenge is beaten.
 
 Still being improved:
 
 - Wider public testing with multiple real Steam accounts.
 - Admin/dashboard tooling.
 - Cleaner shared profiles for future games.
+- GRID 2 local discovery and request capture.
 
 ## Install the DiRT Showdown Mod
 
@@ -61,18 +67,18 @@ Requirements:
 Steps:
 
 1. Open the [DiRT Showdown releases page](https://github.com/Berleis/egonet-revival/releases?q=dirt-showdown-v&expanded=true).
-2. Download `install-dirt-showdown-mod.cmd` from the newest `dirt-showdown-v...` release.
-3. If your browser saves it as `.txt`, rename it back to `.cmd`.
-4. Right-click `install-dirt-showdown-mod.cmd`.
-5. Click `Run as administrator`.
+2. Download `EgoNet Revival - DiRT Showdown Installer.exe` from the newest `dirt-showdown-v...` release.
+3. Right-click the installer.
+4. Click `Run as administrator`.
+5. Choose the DiRT Showdown installation folder if it was not detected automatically.
 6. Accept the Windows permission prompt.
-7. Wait until the installer prints `Done. Open DiRT Showdown and enter RaceNet.`
+7. Click `Install Mod`.
 8. Open DiRT Showdown normally through Steam.
 9. Enter RaceNet / Challenges in-game.
 
-Development builds of the same installer live at [`games/dirt-showdown/install-dirt-showdown-mod.cmd`](games/dirt-showdown/install-dirt-showdown-mod.cmd). The root [`install-dirt-showdown-mod.cmd`](install-dirt-showdown-mod.cmd) file is only a compatibility launcher for older links.
+The release also includes `install-dirt-showdown-mod.cmd` as a command-line fallback. Development builds of that script live at [`games/dirt-showdown/install-dirt-showdown-mod.cmd`](games/dirt-showdown/install-dirt-showdown-mod.cmd). Developer helper scripts live under [`tools/dirt-showdown`](tools/dirt-showdown).
 
-If DiRT Showdown is not installed in the default Steam folder, run the installer from Command Prompt or PowerShell with your custom path:
+If you use the `.cmd` fallback and DiRT Showdown is not installed in the default Steam folder, run it from Command Prompt or PowerShell with your custom path:
 
 ```powershell
 .\install-dirt-showdown-mod.cmd 142.93.206.37 "D:\SteamLibrary\steamapps\common\DiRT Showdown"
@@ -123,7 +129,7 @@ Requirements:
 Local flow:
 
 1. Close DiRT Showdown.
-2. Run `patch-game.cmd` as Administrator.
+2. Run `tools\dirt-showdown\patch-local.cmd` as Administrator.
 3. Open `EgoNetRevival.sln` in Visual Studio.
 4. Select the `RaceNetShowdown.Server` project.
 5. Run the `RaceNetShowdown.Server` profile.
@@ -142,6 +148,8 @@ By default, request/response payload capture is disabled:
 ```
 
 Use those settings only for local reverse-engineering or diagnostics. Captured payloads and local certificates should not be committed.
+
+GRID 2 is currently discovery-only. The helper scripts in [`tools/grid-2`](tools/grid-2) can patch a local GRID 2 install and run the server with request capture enabled, but there is no public GRID 2 release or player installer yet.
 
 ## Public Hosting
 
@@ -168,19 +176,14 @@ Do not commit those directories. The `data/certs` directory must stay stable on 
 ## Repository Structure
 
 - `games/games.json`: manifest of supported game packages.
-- `games/dirt-showdown`: DiRT Showdown package, installer, and release notes.
-- `install-dirt-showdown-mod.cmd`: compatibility launcher for older DiRT Showdown installer links.
+- `games/dirt-showdown`: DiRT Showdown package, GUI installer project, command-line fallback installer, and release notes.
 - `.github/workflows/game-releases.yml`: packages per-game release assets from game-specific tags.
 - `scripts/package-game-release.ps1`: packages one supported game for CI/release artifacts.
 - `src/RaceNetShowdown.Server`: ASP.NET Core server currently used by DiRT Showdown.
 - `src/RaceNetShowdown.Patcher`: developer patching tool used by the local scripts.
 - `src/RaceNetShowdown.TlsProbe`: TLS diagnostics tool for early connection debugging.
-- `patch-game.cmd`: developer script for local server testing.
-- `patch-game-from-server.cmd`: developer script for patching against a hosted server CA.
-- `restore-game-patch.cmd`: developer script for restoring local backups.
-- `status-game-patch.cmd`: developer script for checking patch status.
-- `regenerate-certs.cmd`: developer script for regenerating/verifying certificates.
-- `probe-tls.cmd`: developer script for running TLS diagnostics.
+- `tools/dirt-showdown`: developer scripts for DiRT Showdown local patching, hosted-server patching, restore, status, certificate regeneration, and TLS diagnostics.
+- `tools/grid-2`: early GRID 2 local patching, discovery server, and TLS diagnostics scripts.
 
 The internal project names still include `Showdown` because DiRT Showdown is the first implemented game. The intended direction is to extract shared interfaces and per-game profiles as more games are added.
 

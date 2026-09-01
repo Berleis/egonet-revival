@@ -69,13 +69,16 @@ public sealed class RequestCaptureLogger
         }
 
         Console.WriteLine(
-            "[RaceNet] {0} {1}://{2}{3}{4} {5} -> {6} (request {7} bytes, response {8} bytes)",
+            "[RaceNet] {0} {1}://{2}{3}{4} {5} UA {6} -> {7} (request {8} bytes, response {9} bytes)",
             request.Method,
             request.Scheme,
             request.Host,
             request.Path,
             request.QueryString,
             egoNetFunction,
+            string.IsNullOrWhiteSpace(request.Headers.UserAgent.ToString())
+                ? "<none>"
+                : request.Headers.UserAgent.ToString(),
             response.StatusCode,
             body.Length,
             response.BodyBytes.Length);

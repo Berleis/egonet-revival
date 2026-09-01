@@ -1,17 +1,28 @@
 # DiRT Showdown Mod
 
-This release contains the DiRT Showdown player installer for EgoNet Revival.
+This release contains the DiRT Showdown player installers for EgoNet Revival.
 
-Included asset:
+Included assets:
 
+- `EgoNet Revival - DiRT Showdown Installer.exe`
 - `install-dirt-showdown-mod.cmd`
+- `*.sha256` checksum files
+- `README.md`
+- `RELEASE_NOTES.md`
+
+Recent fixes:
+
+- Fixed Challenge tally after a received Challenge is beaten. Completed/dominated Challenges now continue to count toward the player's tally.
+- Updated the installer flow and packaging so the GUI installer is built and delivered automatically as the DiRT Showdown release asset.
+- Development scripts are now separated under `tools/dirt-showdown`; GRID 2 discovery scripts are separate under `tools/grid-2`.
 
 Install flow:
 
 1. Close DiRT Showdown.
-2. Download `install-dirt-showdown-mod.cmd`.
+2. Download `EgoNet Revival - DiRT Showdown Installer.exe`.
 3. Right-click it.
 4. Run as Administrator.
-5. Open DiRT Showdown through Steam and enter RaceNet / Challenges.
+5. Choose the game folder if needed, then click `Install Mod`.
+6. Open DiRT Showdown through Steam and enter RaceNet / Challenges.
 
 This is an unofficial preservation project. It is not affiliated with Codemasters, EA, Steam, or Steam Hunters.
