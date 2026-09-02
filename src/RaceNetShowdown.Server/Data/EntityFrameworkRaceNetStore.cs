@@ -190,27 +190,25 @@ public sealed class EntityFrameworkRaceNetStore(
 
         var scoredChallenges = await dbContext.Challenges
             .Include(value => value.IssuerPlayerProfile)
+            .Include(value => value.TargetPlayerProfile)
             .Include(value => value.Results)
             .Where(value =>
-                value.TargetPlayerProfileId == session.PlayerProfileId &&
-                value.Results.Any(result =>
-                    result.PlayerProfileId == session.PlayerProfileId))
+                (value.TargetPlayerProfileId == session.PlayerProfileId ||
+                 value.IssuerPlayerProfileId == session.PlayerProfileId) &&
+                value.Results.Any())
             .ToListAsync(cancellationToken);
 
-        var tallyChallenges = scoredChallenges
-            .Select(challenge => new
-            {
-                Challenge = challenge,
-                Result = GetLatestPlayerResult(challenge, session.PlayerProfileId)
-            })
-            .Where(value => value.Result is not null)
+        var tallyEntries = scoredChallenges
+            .Select(challenge => ToTallyEntry(challenge, session.PlayerProfileId))
+            .Where(value => value is not null)
+            .Select(value => value!)
             .ToArray();
 
-        var tallyByIssuer = tallyChallenges
-            .GroupBy(value => value.Challenge.IssuerPlayerProfileId)
+        var tallyByFriend = tallyEntries
+            .GroupBy(value => value.FriendPlayerProfileId)
             .ToDictionary(
                 value => value.Key,
-                value => value.Sum(result => result.Result!.BeatChallenge ? 1L : -1L));
+                value => value.Sum(result => result.TallyDelta));
 
         var openFriends = openChallenges
             .OrderByDescending(value => value.CreatedAt)
@@ -218,22 +216,21 @@ public sealed class EntityFrameworkRaceNetStore(
             .Select(challenge => ToFriendChallenge(
                 challenge,
                 session.PlayerProfileId,
-                tallyByIssuer.GetValueOrDefault(challenge.IssuerPlayerProfileId)))
+                tallyByFriend.GetValueOrDefault(challenge.IssuerPlayerProfileId)))
             .ToArray();
 
         var openIssuerIds = openFriends
             .Select(value => value.EgonetId)
             .ToHashSet();
-        var completedTallyFriends = tallyChallenges
-            .Where(value => !openIssuerIds.Contains(value.Challenge.IssuerPlayerProfileId))
-            .GroupBy(value => value.Challenge.IssuerPlayerProfileId)
+        var completedTallyFriends = tallyEntries
+            .Where(value => !openIssuerIds.Contains(value.FriendPlayerProfileId))
+            .GroupBy(value => value.FriendPlayerProfileId)
             .Select(group =>
             {
-                var challenge = group
-                    .OrderByDescending(value => value.Result!.SubmittedAt)
-                    .Select(value => value.Challenge)
+                var entry = group
+                    .OrderByDescending(value => value.Result.SubmittedAt)
                     .First();
-                return ToCompletedTallyFriend(challenge, tallyByIssuer.GetValueOrDefault(group.Key));
+                return ToTallyFriend(entry, tallyByFriend.GetValueOrDefault(group.Key));
             })
             .Where(value => value.Tally != 0)
             .ToArray();
@@ -249,7 +246,7 @@ public sealed class EntityFrameworkRaceNetStore(
         return new RaceNetChallengeSnapshot(
             HighChallengeId: openFriends.Length == 0 ? 0 : openFriends.Max(value => value.ChallengeId),
             ChallengeCount: challengedFriendCount,
-            OverallTally: friends.Sum(value => value.Tally),
+            OverallTally: friends.Count(value => value.Tally >= 10),
             BestResult: openFriends.Length == 0 ? 0 : openFriends.Min(value => value.BestResult),
             Friends: friends);
     }
@@ -602,6 +599,46 @@ public sealed class EntityFrameworkRaceNetStore(
             profile.DisplayName);
     }
 
+    private static ChallengeTallyEntry? ToTallyEntry(
+        ChallengeRecord challenge,
+        long playerProfileId)
+    {
+        if (challenge.TargetPlayerProfileId == playerProfileId)
+        {
+            var result = GetLatestPlayerResult(challenge, playerProfileId);
+            if (result is null)
+            {
+                return null;
+            }
+
+            return new ChallengeTallyEntry(
+                challenge.IssuerPlayerProfileId,
+                challenge.IssuerPlayerProfile,
+                challenge,
+                result,
+                result.BeatChallenge ? 1 : -1);
+        }
+
+        if (challenge.IssuerPlayerProfileId == playerProfileId &&
+            challenge.TargetPlayerProfileId is long targetPlayerProfileId)
+        {
+            var result = GetLatestPlayerResult(challenge, targetPlayerProfileId);
+            if (result is null)
+            {
+                return null;
+            }
+
+            return new ChallengeTallyEntry(
+                targetPlayerProfileId,
+                challenge.TargetPlayerProfile,
+                challenge,
+                result,
+                result.BeatChallenge ? -1 : 1);
+        }
+
+        return null;
+    }
+
     private static ChallengeResultRecord? GetLatestPlayerResult(
         ChallengeRecord challenge,
         long playerProfileId)
@@ -640,13 +677,14 @@ public sealed class EntityFrameworkRaceNetStore(
             GhostSlotId: checked((int)Math.Clamp(challenge.GhostSlotId, 0, int.MaxValue)));
     }
 
-    private static RaceNetFriendChallenge ToCompletedTallyFriend(ChallengeRecord challenge, long tally)
+    private static RaceNetFriendChallenge ToTallyFriend(ChallengeTallyEntry entry, long tally)
     {
-        var issuer = challenge.IssuerPlayerProfile;
+        var challenge = entry.Challenge;
+        var profile = entry.FriendPlayerProfile;
         return new RaceNetFriendChallenge(
-            EgonetId: issuer?.Id ?? challenge.IssuerPlayerProfileId,
-            SteamId: ReadSteamId(issuer),
-            Name: issuer?.DisplayName ?? "RaceNet Friend",
+            EgonetId: profile?.Id ?? entry.FriendPlayerProfileId,
+            SteamId: ReadSteamId(profile),
+            Name: profile?.DisplayName ?? "RaceNet Friend",
             Presence: 1,
             ChallengeId: 0,
             RaceEventId: challenge.CareerEventId,
@@ -657,6 +695,13 @@ public sealed class EntityFrameworkRaceNetStore(
             ExpiresAt: DateTimeOffset.UtcNow.AddDays(30),
             GhostSlotId: 0);
     }
+
+    private sealed record ChallengeTallyEntry(
+        long FriendPlayerProfileId,
+        PlayerProfile? FriendPlayerProfile,
+        ChallengeRecord Challenge,
+        ChallengeResultRecord Result,
+        long TallyDelta);
 
     private static RaceNetIssuedChallenge ToIssuedChallenge(
         ChallengeRecord challenge,

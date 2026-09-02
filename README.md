@@ -44,7 +44,7 @@ Currently working for DiRT Showdown:
 - SubmitChallengeResult / SubmitPersonalRecord.
 - Persistent SQLite storage for players, friends, challenges, ghosts, and results.
 - Multiple challenges for the same friend.
-- Dominated Challenge tally is persisted after a Challenge is beaten.
+- Challenge tally is calculated as a win/loss score between friends.
 
 Still being improved:
 

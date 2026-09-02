@@ -12,7 +12,7 @@ Included assets:
 
 Recent fixes:
 
-- Fixed Challenge tally after a received Challenge is beaten. Completed/dominated Challenges now continue to count toward the player's tally.
+- Fixed Challenge tally scoring. Completed Challenges now count as a win/loss score between friends instead of only counting beaten Challenges.
 - Updated the installer flow and packaging so the GUI installer is built and delivered automatically as the DiRT Showdown release asset.
 - Development scripts are now separated under `tools/dirt-showdown`; GRID 2 discovery scripts are separate under `tools/grid-2`.
 

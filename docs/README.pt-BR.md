@@ -44,7 +44,7 @@ Funcionando atualmente no DiRT Showdown:
 - SubmitChallengeResult / SubmitPersonalRecord.
 - Persistência SQLite para jogadores, amigos, challenges, ghosts e resultados.
 - Mais de um desafio para o mesmo amigo.
-- Tally de challenges dominados continua salvo depois que um challenge é batido.
+- Tally de challenges é calculado como saldo de vitórias e derrotas entre amigos.
 
 Ainda em melhoria:
 
