@@ -35,7 +35,7 @@ The GUI installer project lives in `installer`. Developer helper scripts live in
 
 ## Current Fixes
 
-- Challenge tally now keeps counting dominated Challenges after they are completed.
+- Challenge tally is now calculated as a win/loss score between friends, including completed Challenges.
 - The installer avoids the previous hosts-file write issue and is packaged automatically as a per-game release asset.
 
 ## Release Tags
