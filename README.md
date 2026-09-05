@@ -45,6 +45,8 @@ Currently working for DiRT Showdown:
 - Persistent SQLite storage for players, friends, challenges, ghosts, and results.
 - Multiple challenges for the same friend.
 - Challenge tally is calculated as a win/loss score between friends.
+- Failed or forfeited challenge results now close the challenge and free the pending slot.
+- Open challenges expire after 7 days.
 
 Still being improved:
 

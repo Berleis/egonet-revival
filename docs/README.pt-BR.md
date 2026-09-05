@@ -45,6 +45,8 @@ Funcionando atualmente no DiRT Showdown:
 - Persistência SQLite para jogadores, amigos, challenges, ghosts e resultados.
 - Mais de um desafio para o mesmo amigo.
 - Tally de challenges é calculado como saldo de vitórias e derrotas entre amigos.
+- Resultados de challenge com falha ou desistência agora encerram o challenge e liberam o slot pendente.
+- Challenges abertos expiram depois de 7 dias.
 
 Ainda em melhoria:
 

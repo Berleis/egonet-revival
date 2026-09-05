@@ -44,7 +44,9 @@ Funciona actualmente en DiRT Showdown:
 - SubmitChallengeResult / SubmitPersonalRecord.
 - Persistencia SQLite para jugadores, amigos, challenges, ghosts y resultados.
 - Más de un desafío para el mismo amigo.
-- El tally de challenges dominados sigue guardado después de superar un challenge.
+- El tally de challenges se calcula como saldo de victorias y derrotas entre amigos.
+- Los resultados de challenge fallidos o abandonados ahora cierran el challenge y liberan el slot pendiente.
+- Los challenges abiertos expiran después de 7 días.
 
 Todavía en mejora:
 

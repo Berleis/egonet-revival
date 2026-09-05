@@ -2,6 +2,8 @@ namespace RaceNetShowdown.Server.Data;
 
 public static class RaceNetChallengeSeed
 {
+    private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
+
     private static readonly (string Name, int TimeMs, long Tally)[] Friends =
     [
         ("TheDebuter", 133320, 0),
@@ -47,7 +49,7 @@ public static class RaceNetChallengeSeed
             BestResult: bestResult,
             YourBestResult: 0,
             Tally: tally,
-            ExpiresAt: now.AddDays(30),
+            ExpiresAt: now.Add(ChallengeLifetime),
             GhostSlotId: index);
     }
 }
