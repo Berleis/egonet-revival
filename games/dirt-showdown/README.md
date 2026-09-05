@@ -36,6 +36,8 @@ The GUI installer project lives in `installer`. Developer helper scripts live in
 ## Current Fixes
 
 - Challenge tally is now calculated as a win/loss score between friends, including completed Challenges.
+- Failed or forfeited Challenge results now close the Challenge and free the pending slot.
+- Open Challenges now expire after 7 days.
 - The installer avoids the previous hosts-file write issue and is packaged automatically as a per-game release asset.
 
 ## Release Tags
