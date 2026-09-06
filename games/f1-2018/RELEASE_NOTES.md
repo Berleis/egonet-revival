@@ -10,6 +10,10 @@ Included assets:
 - `README.md`
 - `RELEASE_NOTES.md`
 
+Changes in v0.1.1:
+
+- Adds the custom F1 2018 Event Activator icon to the Windows executable.
+
 Initial release:
 
 - Reactivates the two expired 2019 weekly Events loaded by F1 2018.

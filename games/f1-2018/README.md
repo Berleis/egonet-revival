@@ -52,7 +52,7 @@ Useful direct options:
 F1 2018 releases use this tag format:
 
 ```text
-f1-2018-v0.1.0
+f1-2018-v0.1.1
 ```
 
 Creating a tag with that prefix publishes the F1 2018 Event Activator as a GitHub Release asset.
