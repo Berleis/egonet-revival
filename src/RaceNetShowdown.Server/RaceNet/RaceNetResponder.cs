@@ -457,7 +457,7 @@ public sealed class RaceNetResponder
                 ResolveLocalEgonetId(sessionKey, requestContext.Presence),
                 requestContext.Presence,
                 requestContext.ChallengeData,
-                DateTimeOffset.UtcNow.AddDays(30),
+                DateTimeOffset.UtcNow.AddDays(7),
                 challengeId);
             StoreLocalIssuedChallenge(sessionKey, issuedChallenge);
             var responseBody = EgoNetBinary.Dictionary(

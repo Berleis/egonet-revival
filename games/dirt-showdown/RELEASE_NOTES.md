@@ -13,6 +13,8 @@ Included assets:
 Recent fixes:
 
 - Fixed Challenge tally scoring. Completed Challenges now count as a win/loss score between friends instead of only counting beaten Challenges.
+- Fixed failed/forfeited Challenge handling. Submitted losses now close the Challenge and free the pending slot.
+- Open Challenges now expire after 7 days.
 - Updated the installer flow and packaging so the GUI installer is built and delivered automatically as the DiRT Showdown release asset.
 - Development scripts are now separated under `tools/dirt-showdown`; GRID 2 discovery scripts are separate under `tools/grid-2`.
 

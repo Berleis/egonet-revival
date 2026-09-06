@@ -10,6 +10,11 @@ public sealed class EntityFrameworkRaceNetStore(
     RaceNetDbContext dbContext,
     ILogger<EntityFrameworkRaceNetStore> logger) : IRaceNetStore
 {
+    private const string ChallengeStatusOpen = "open";
+    private const string ChallengeStatusCompleted = "completed";
+    private const string ChallengeStatusExpired = "expired";
+    private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
+
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
@@ -180,13 +185,18 @@ public sealed class EntityFrameworkRaceNetStore(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
     {
-        var openChallenges = await dbContext.Challenges
+        var now = DateTimeOffset.UtcNow;
+        await ReconcileOpenChallengesAsync(now, cancellationToken);
+
+        var openChallenges = (await dbContext.Challenges
             .Include(value => value.IssuerPlayerProfile)
             .Include(value => value.Results)
             .Where(value =>
                 value.TargetPlayerProfileId == session.PlayerProfileId &&
-                value.Status == "open")
-            .ToListAsync(cancellationToken);
+                value.Status == ChallengeStatusOpen)
+            .ToListAsync(cancellationToken))
+            .Where(value => !IsExpired(value, now))
+            .ToArray();
 
         var scoredChallenges = await dbContext.Challenges
             .Include(value => value.IssuerPlayerProfile)
@@ -298,13 +308,20 @@ public sealed class EntityFrameworkRaceNetStore(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
     {
-        var challengedFriendIds = await dbContext.Challenges
+        var now = DateTimeOffset.UtcNow;
+        await ReconcileOpenChallengesAsync(now, cancellationToken);
+
+        var openChallenges = await dbContext.Challenges
+            .AsNoTracking()
             .Where(value =>
                 value.TargetPlayerProfileId == session.PlayerProfileId &&
-                value.Status == "open")
+                value.Status == ChallengeStatusOpen)
+            .ToArrayAsync(cancellationToken);
+        var challengedFriendIds = openChallenges
+            .Where(value => !IsExpired(value, now))
             .Select(value => value.IssuerPlayerProfileId)
             .Distinct()
-            .ToArrayAsync(cancellationToken);
+            .ToArray();
         var challengedFriendSet = challengedFriendIds.ToHashSet();
         var friends = await dbContext.PlayerFriends
             .AsNoTracking()
@@ -329,6 +346,8 @@ public sealed class EntityFrameworkRaceNetStore(
         CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
+        await ReconcileOpenChallengesAsync(now, cancellationToken);
+
         var targetProfile = await FindOrCreateSteamProfileAsync(target, now, cancellationToken);
         var challengeId = await GetNextChallengeIdAsync(cancellationToken);
         var challenge = new ChallengeRecord
@@ -353,7 +372,7 @@ public sealed class EntityFrameworkRaceNetStore(
             LapTime = challengeData.TimeBased && challengeData.ResultToBeat > 0
                 ? TimeSpan.FromMilliseconds(challengeData.ResultToBeat)
                 : null,
-            Status = "open",
+            Status = ChallengeStatusOpen,
             CreatedAt = now
         };
 
@@ -375,13 +394,16 @@ public sealed class EntityFrameworkRaceNetStore(
         RaceNetPrincipal? target,
         CancellationToken cancellationToken)
     {
+        var now = DateTimeOffset.UtcNow;
+        await ReconcileOpenChallengesAsync(now, cancellationToken);
+
         var query = dbContext.Challenges
             .Include(value => value.IssuerPlayerProfile)
             .Include(value => value.TargetPlayerProfile)
             .Where(value =>
                 (value.IssuerPlayerProfileId == session.PlayerProfileId ||
                  value.TargetPlayerProfileId == session.PlayerProfileId) &&
-                value.Status == "open");
+                value.Status == ChallengeStatusOpen);
 
         if (target is not null)
         {
@@ -397,7 +419,9 @@ public sealed class EntityFrameworkRaceNetStore(
                   value.IssuerPlayerProfile.DisplayName == target.Name)));
         }
 
-        var challenges = await query.ToListAsync(cancellationToken);
+        var challenges = (await query.ToListAsync(cancellationToken))
+            .Where(value => !IsExpired(value, now))
+            .ToArray();
 
         return challenges
             .OrderByDescending(value => value.CreatedAt)
@@ -475,12 +499,30 @@ public sealed class EntityFrameworkRaceNetStore(
         EgoNetSubmittedChallengeResult result,
         CancellationToken cancellationToken)
     {
+        var now = DateTimeOffset.UtcNow;
         var challenge = await dbContext.Challenges
             .Include(value => value.Results)
             .FirstOrDefaultAsync(value => value.EgoNetChallengeId == result.ChallengeId, cancellationToken);
 
         if (challenge is null)
         {
+            return;
+        }
+
+        if (challenge.Status != ChallengeStatusOpen)
+        {
+            logger.LogDebug(
+                "Ignoring result for closed challenge {ChallengeId} with status {Status}",
+                result.ChallengeId,
+                challenge.Status);
+            return;
+        }
+
+        if (IsExpired(challenge, now))
+        {
+            challenge.Status = ChallengeStatusExpired;
+            challenge.CompletedAt = GetChallengeExpiresAt(challenge);
+            await dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
 
@@ -495,17 +537,61 @@ public sealed class EntityFrameworkRaceNetStore(
             Score = result.Result,
             LapTime = challenge.TimeBased && result.Result > 0 ? TimeSpan.FromMilliseconds(result.Result) : null,
             BeatChallenge = dominated,
-            SubmittedAt = DateTimeOffset.UtcNow,
+            SubmittedAt = now,
             RawPayloadHex = string.Empty
         });
 
-        if (dominated)
+        challenge.Status = ChallengeStatusCompleted;
+        challenge.CompletedAt = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ReconcileOpenChallengesAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var activeChallengeCutoff = now.Subtract(ChallengeLifetime);
+        var openChallenges = await dbContext.Challenges
+            .Include(value => value.Results)
+            .Where(value => value.Status == ChallengeStatusOpen)
+            .ToListAsync(cancellationToken);
+        var challengesToClose = openChallenges
+            .Where(value => value.CreatedAt <= activeChallengeCutoff || value.Results.Count > 0)
+            .ToArray();
+
+        if (challengesToClose.Length == 0)
         {
-            challenge.Status = "completed";
-            challenge.CompletedAt = DateTimeOffset.UtcNow;
+            return;
+        }
+
+        var completedCount = 0;
+        var expiredCount = 0;
+        foreach (var challenge in challengesToClose)
+        {
+            var latestResult = challenge.Results
+                .OrderByDescending(value => value.SubmittedAt)
+                .FirstOrDefault();
+
+            if (latestResult is not null)
+            {
+                challenge.Status = ChallengeStatusCompleted;
+                challenge.CompletedAt = latestResult.SubmittedAt;
+                completedCount++;
+                continue;
+            }
+
+            challenge.Status = ChallengeStatusExpired;
+            challenge.CompletedAt = GetChallengeExpiresAt(challenge);
+            expiredCount++;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Reconciled open challenges: completed={CompletedCount} expired={ExpiredCount}",
+            completedCount,
+            expiredCount);
     }
 
     private async Task<PlayerProfile> FindOrCreateProfileAsync(
@@ -673,7 +759,7 @@ public sealed class EntityFrameworkRaceNetStore(
             BestResult: bestResult,
             YourBestResult: playerBest,
             Tally: tally,
-            ExpiresAt: challenge.CreatedAt.AddDays(30),
+            ExpiresAt: GetChallengeExpiresAt(challenge),
             GhostSlotId: checked((int)Math.Clamp(challenge.GhostSlotId, 0, int.MaxValue)));
     }
 
@@ -692,7 +778,7 @@ public sealed class EntityFrameworkRaceNetStore(
             BestResult: 0,
             YourBestResult: 0,
             Tally: tally,
-            ExpiresAt: DateTimeOffset.UtcNow.AddDays(30),
+            ExpiresAt: DateTimeOffset.UtcNow.Add(ChallengeLifetime),
             GhostSlotId: 0);
     }
 
@@ -725,8 +811,18 @@ public sealed class EntityFrameworkRaceNetStore(
                 challenge.Strength,
                 challenge.Power,
                 challenge.Handling),
-            challenge.CreatedAt.AddDays(30),
+            GetChallengeExpiresAt(challenge),
             challenge.GhostSlotId);
+    }
+
+    private static DateTimeOffset GetChallengeExpiresAt(ChallengeRecord challenge)
+    {
+        return challenge.CreatedAt.Add(ChallengeLifetime);
+    }
+
+    private static bool IsExpired(ChallengeRecord challenge, DateTimeOffset now)
+    {
+        return GetChallengeExpiresAt(challenge) <= now;
     }
 
     private static bool IsDominated(bool timeBased, long result, long target)

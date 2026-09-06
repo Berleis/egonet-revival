@@ -6,6 +6,8 @@ namespace RaceNetShowdown.Server.Data;
 
 public sealed class LocalRaceNetStore : IRaceNetStore
 {
+    private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
+
     private static readonly RaceNetSessionInfo LocalSession = new(
         "local-racenet-session",
         0,
@@ -89,7 +91,7 @@ public sealed class LocalRaceNetStore : IRaceNetStore
             ResolveEgonetId(session.SessionId, target),
             target,
             challengeData,
-            DateTimeOffset.UtcNow.AddDays(30),
+            DateTimeOffset.UtcNow.Add(ChallengeLifetime),
             challengeId);
 
         var issuedChallenges = IssuedChallengesBySession.GetOrAdd(session.SessionId, _ => []);

@@ -664,7 +664,7 @@ public static class EgoNetChallengePayloads
                         BestResult: 0,
                         YourBestResult: 0,
                         Tally: 0,
-                        ExpiresAt: DateTimeOffset.UtcNow.AddDays(30),
+                        ExpiresAt: DateTimeOffset.UtcNow.AddDays(7),
                         GhostSlotId: 0);
 
             merged.Add(friend with
