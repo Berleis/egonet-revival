@@ -12,14 +12,16 @@ Translations: [Portuguese (Brazil)](docs/README.pt-BR.md) | [Spanish](docs/READM
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Public testing, Challenge flow functional |
 | GRID 2 | Steam / PC | Local discovery/prototype only, not ready for players |
+| F1 2018 | Steam / PC | Local memory activator for expired Events |
 
 ## Game Packages and Releases
 
 This repository is a shared home for multiple EgoNet/RaceNet revival projects. Each game has its own package folder, installer, release notes, and release tag prefix.
 
-| Game | Package | Release tag prefix | Player installer |
+| Game | Package | Release tag prefix | Player asset |
 | --- | --- | --- | --- |
 | DiRT Showdown | [`games/dirt-showdown`](games/dirt-showdown) | `dirt-showdown-v` | `EgoNet Revival - DiRT Showdown Installer.exe` |
+| F1 2018 | [`games/f1-2018`](games/f1-2018) | `f1-2018-v` | `EgoNet Revival - F1 2018 Event Activator.exe` |
 | GRID 2 | Not packaged yet | Not available yet | Not available yet |
 
 Game-specific GitHub Releases are created from tags. For example:
@@ -29,7 +31,7 @@ git tag dirt-showdown-v0.1.0
 git push origin dirt-showdown-v0.1.0
 ```
 
-That publishes the DiRT Showdown GUI installer, command-line fallback installer, checksums, README, and release notes without mixing them with future game packages.
+That publishes the matching game package assets, checksums, README, and release notes without mixing them with other game packages.
 
 Development helper scripts are grouped by game under [`tools`](tools). Player-facing release assets stay under [`games`](games) and GitHub Releases.
 
@@ -52,6 +54,7 @@ Still being improved:
 - Admin/dashboard tooling.
 - Cleaner shared profiles for future games.
 - GRID 2 local discovery and request capture.
+- Packaging and release flow for the F1 2018 event activator.
 
 ## Install the DiRT Showdown Mod
 
@@ -95,6 +98,54 @@ The installer is self-contained. It:
 
 To undo the executable patch, use Steam's `Verify integrity of game files` option for DiRT Showdown. If you also want to fully remove the redirect, delete the `EgoNet Revival DiRT Showdown` block from the Windows `hosts` file.
 
+## Use the F1 2018 Event Activator
+
+F1 2018 can still load the old 2019 weekly event payloads, but their original timestamps mark both Events as expired. The F1 2018 Event Activator patches those loaded event timestamps in the running game process so the Events can be started and completed normally.
+
+This is separate from the ASP.NET RaceNet server. It does not edit Steam stats, saves, leaderboard files, game assets, certificates, the Windows `hosts` file, or the F1 2018 executable on disk. The achievement is still triggered by F1 2018 itself after the in-game Event is completed.
+
+Download the activator from the latest `f1-2018-v...` release:
+
+https://github.com/Berleis/egonet-revival/releases?q=f1-2018-v&expanded=true
+
+The recommended file is:
+
+```text
+EgoNet Revival - F1 2018 Event Activator.exe
+```
+
+Player flow:
+
+1. Open F1 2018.
+2. Enter the in-game Events screen so the two weekly event payloads are loaded.
+3. Run `EgoNet Revival - F1 2018 Event Activator.exe`.
+4. Return to the Events screen or switch between the current/previous Event if the screen was already open.
+5. Start an Event and finish it.
+
+The release also includes `activate-f1-2018-events.cmd` as a command-line fallback that runs the `.exe` from the same folder.
+
+Development usage:
+
+```bat
+tools\f1-2018\activate-events.cmd
+```
+
+The helper script builds and runs:
+
+```bat
+src\F12018EventActivator\bin\Debug\net10.0\F12018EventActivator.exe
+```
+
+Useful direct options:
+
+```bat
+F12018EventActivator.exe --dry-run
+F12018EventActivator.exe --days 60
+F12018EventActivator.exe --wait 120
+```
+
+`--dry-run` reports what would be patched without writing memory. `--days` controls how far into the future the event expiration is moved. `--wait` waits for the F1 2018 process before applying the patch.
+
 ## How It Works
 
 DiRT Showdown still tries to talk to the original RaceNet/EgoNet endpoints, but those services are no longer available. EgoNet Revival recreates the parts of that service that the game needs for Challenges.
@@ -103,7 +154,7 @@ The installer redirects the game's RaceNet hostnames to the replacement server a
 
 The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite.
 
-This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the game itself when the restored in-game flow is completed.
+This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the games themselves when the restored or reactivated in-game flow is completed.
 
 ## Competitive Achievement Tracking Notice
 
@@ -181,9 +232,11 @@ Do not commit those directories. The `data/certs` directory must stay stable on 
 - `scripts/package-game-release.ps1`: packages one supported game for CI/release artifacts.
 - `src/RaceNetShowdown.Server`: ASP.NET Core server currently used by DiRT Showdown.
 - `src/RaceNetShowdown.Patcher`: developer patching tool used by the local scripts.
+- `src/F12018EventActivator`: F1 2018 process-memory activator for the expired weekly Events.
 - `src/RaceNetShowdown.TlsProbe`: TLS diagnostics tool for early connection debugging.
 - `tools/dirt-showdown`: developer scripts for DiRT Showdown local patching, hosted-server patching, restore, status, certificate regeneration, and TLS diagnostics.
 - `tools/grid-2`: early GRID 2 local patching, discovery server, and TLS diagnostics scripts.
+- `tools/f1-2018`: helper script for the F1 2018 Event Activator.
 
 The internal project names still include `Showdown` because DiRT Showdown is the first implemented game. The intended direction is to extract shared interfaces and per-game profiles as more games are added.
 
