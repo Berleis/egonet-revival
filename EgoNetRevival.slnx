@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/F12018EventActivator/F12018EventActivator.csproj" />
     <Project Path="src/RaceNetShowdown.Patcher/RaceNetShowdown.Patcher.csproj" />
     <Project Path="src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj" />
     <Project Path="src/RaceNetShowdown.TlsProbe/RaceNetShowdown.TlsProbe.csproj" />

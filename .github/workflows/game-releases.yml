@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "games/**"
+      - "src/F12018EventActivator/**"
       - "scripts/package-game-release.ps1"
       - ".github/workflows/game-releases.yml"
   push:
@@ -13,8 +14,10 @@ on:
       - main
     tags:
       - "dirt-showdown-v*"
+      - "f1-2018-v*"
     paths:
       - "games/**"
+      - "src/F12018EventActivator/**"
       - "scripts/package-game-release.ps1"
       - ".github/workflows/game-releases.yml"
   workflow_dispatch:
@@ -26,6 +29,7 @@ jobs:
   package-dirt-showdown:
     name: Package DiRT Showdown
     runs-on: windows-latest
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/dirt-showdown-v')
 
     steps:
       - name: Checkout
@@ -71,3 +75,53 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "DiRT Showdown ${GITHUB_REF_NAME#dirt-showdown-}" \
             --notes-file artifacts/releases/dirt-showdown/RELEASE_NOTES.md
+
+  package-f1-2018:
+    name: Package F1 2018
+    runs-on: windows-latest
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/f1-2018-v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Package
+        shell: pwsh
+        run: ./scripts/package-game-release.ps1 -Game f1-2018
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: f1-2018-event-activator
+          path: artifacts/releases/f1-2018/*
+
+  release-f1-2018:
+    name: Release F1 2018
+    runs-on: ubuntu-latest
+    needs: package-f1-2018
+    if: startsWith(github.ref, 'refs/tags/f1-2018-v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: f1-2018-event-activator
+          path: artifacts/releases/f1-2018
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            artifacts/releases/f1-2018/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "F1 2018 ${GITHUB_REF_NAME#f1-2018-}" \
+            --notes-file artifacts/releases/f1-2018/RELEASE_NOTES.md
