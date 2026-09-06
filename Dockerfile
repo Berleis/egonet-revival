@@ -1,11 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY EgoNetRevival.sln ./
 COPY src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj src/RaceNetShowdown.Server/
-COPY src/RaceNetShowdown.Patcher/RaceNetShowdown.Patcher.csproj src/RaceNetShowdown.Patcher/
-COPY src/RaceNetShowdown.TlsProbe/RaceNetShowdown.TlsProbe.csproj src/RaceNetShowdown.TlsProbe/
-RUN dotnet restore EgoNetRevival.sln
+RUN dotnet restore src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj
 
 COPY . .
 RUN dotnet publish src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj \
