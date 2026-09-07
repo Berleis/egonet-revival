@@ -62,8 +62,9 @@ internal static class Grid2EgoNetPayloads
 
         if (functionName == "RaceNetRivals.GetRivals")
         {
+            var now = DateTimeOffset.UtcNow;
             var rivals = session is null
-                ? Array.Empty<Grid2RivalSnapshot>()
+                ? new Grid2RivalsSnapshot(now, now.AddDays(7), [])
                 : await store.GetGrid2RivalsAsync(session, cancellationToken);
             return Html(BuildRivals(rivals), headers);
         }
@@ -122,7 +123,7 @@ internal static class Grid2EgoNetPayloads
             "RaceNetGlobalDomination.GetPreviousEvent" => Html(BuildPreviousGlobalDomination(null), headers),
             "RaceNetGlobalDomination.PostScore" => Empty(headers),
             "RaceNetRivals.BlockRival" => Empty(headers),
-            "RaceNetRivals.GetRivals" => Html(BuildRivals(Array.Empty<Grid2RivalSnapshot>()), headers),
+            "RaceNetRivals.GetRivals" => Html(BuildRivals(new Grid2RivalsSnapshot(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, [])), headers),
             "RaceNetRivals.PostRivalResults" => Empty(headers),
             "Rivals.GetRivalsSessionData" => Html(BuildRivalsSessionData(Array.Empty<Grid2RivalSessionDataSnapshot>()), headers),
             "Rivals.UpdateRivalsSessionData" => Empty(headers),
@@ -355,13 +356,13 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Si32("VehicleId", row.VehicleId));
     }
 
-    private static byte[] BuildRivals(IReadOnlyList<Grid2RivalSnapshot> rivals)
+    private static byte[] BuildRivals(Grid2RivalsSnapshot rivals)
     {
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Vector(
                 "RivalsList",
-                rivals.Select(BuildRival).ToArray()),
-            EgoNetBinary.Tutc("NextRivalAlloc", DateTimeOffset.UtcNow.AddDays(7)));
+                rivals.Rivals.Select(BuildRival).ToArray()),
+            EgoNetBinary.Tutc("NextRivalAlloc", rivals.ExpiresAt));
     }
 
     private static Action<BinaryWriter> BuildRival(Grid2RivalSnapshot rival)

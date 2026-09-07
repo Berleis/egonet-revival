@@ -12,7 +12,7 @@ Idioma principal: [English](../README.md) | Traducción: [Portugués (Brasil)](R
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | En prueba pública, flujo de Challenges funcional |
 | F1 2018 | Steam / PC | Activador local de memoria para eventos expirados |
-| GRID 2 | Steam / PC | En prueba pública inicial, Desafío Mundial y Rivales funcionales en validación |
+| GRID 2 | Steam / PC | En prueba pública inicial, Desafío Mundial y Rivales con ciclo semanal funcional |
 
 ## Paquetes y Releases por Juego
 
@@ -124,7 +124,7 @@ Pasos:
 
 La release también incluye `install-grid-2-mod.cmd` como alternativa por línea de comandos. Builds de desarrollo de ese script están en [`games/grid-2/install-grid-2-mod.cmd`](../games/grid-2/install-grid-2-mod.cmd). Los scripts auxiliares para desarrolladores están en [`tools/grid-2`](../tools/grid-2).
 
-El soporte de GRID 2 todavía está en prueba pública inicial. Login, Desafío Mundial y Rivales ya funcionan, pero la progresión de Rivales todavía se está validando con más carreras multiplayer reales.
+El soporte de GRID 2 todavía está en prueba pública inicial. Desafío Mundial y Rivales usan el mismo ciclo semanal de RaceNet: viernes a las 10:00 UTC. Los rivales quedan guardados hasta el siguiente reset semanal, pero la progresión de Rivales todavía se está validando con más carreras multiplayer reales.
 
 ## Usar el Activador de Eventos de F1 2018
 
@@ -180,7 +180,7 @@ DiRT Showdown todavía intenta comunicarse con los endpoints originales de RaceN
 
 El instalador redirige los hostnames RaceNet del juego al servidor sustituto e instala una autoridad certificadora local en la que el ejecutable del juego pasa a confiar después del parche. Después de eso, el juego puede volver a hacer sus requests HTTPS normales.
 
-El servidor recibe los payloads binarios EgoNet originales del juego, lee la función de servicio solicitada y devuelve respuestas compatibles. Para DiRT Showdown, guarda perfiles de jugadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost y resultados de challenges en SQLite. Para GRID 2, guarda eventos del Desafío Mundial, puntuaciones enviadas, datos de sesión de Rivales y oponentes recientes encontrados en carreras multiplayer.
+El servidor recibe los payloads binarios EgoNet originales del juego, lee la función de servicio solicitada y devuelve respuestas compatibles. Para DiRT Showdown, guarda perfiles de jugadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost y resultados de challenges en SQLite. Para GRID 2, guarda eventos del Desafío Mundial, puntuaciones enviadas, asignaciones semanales de Rivales, datos de sesión de Rivales y oponentes recientes encontrados en carreras multiplayer.
 
 Esto no es un desbloqueador de logros, editor de partidas guardadas ni editor de estadísticas de Steam. Los logros siguen siendo activados por los propios juegos cuando se completa el flujo restaurado o reactivado dentro del juego.
 

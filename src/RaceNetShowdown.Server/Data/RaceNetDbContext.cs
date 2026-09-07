@@ -26,6 +26,8 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     public DbSet<Grid2RivalOpponentRecord> Grid2RivalOpponents => Set<Grid2RivalOpponentRecord>();
 
+    public DbSet<Grid2RivalAssignmentRecord> Grid2RivalAssignments => Set<Grid2RivalAssignmentRecord>();
+
     public DbSet<RaceNetCallRecord> RaceNetCalls => Set<RaceNetCallRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -165,6 +167,25 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
                 .HasOne(value => value.OpponentPlayerProfile)
                 .WithMany()
                 .HasForeignKey(value => value.OpponentPlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Grid2RivalAssignmentRecord>(entity =>
+        {
+            entity.ToTable("Grid2RivalAssignments");
+            entity.HasIndex(value => new { value.PlayerProfileId, value.StartsAt, value.Type }).IsUnique();
+            entity.HasIndex(value => value.ExpiresAt);
+
+            entity
+                .HasOne(value => value.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.PlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(value => value.RivalPlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.RivalPlayerProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

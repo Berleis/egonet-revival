@@ -52,6 +52,11 @@ public sealed record Grid2GlobalEventSnapshot(
     IReadOnlyList<Grid2GlobalRaceSnapshot> Races,
     IReadOnlyList<Grid2GlobalLeaderboardEntry> LeaderboardEntries);
 
+public sealed record Grid2RivalsSnapshot(
+    DateTimeOffset StartsAt,
+    DateTimeOffset ExpiresAt,
+    IReadOnlyList<Grid2RivalSnapshot> Rivals);
+
 public sealed record Grid2RivalSnapshot(
     ulong SteamId,
     string Name,
