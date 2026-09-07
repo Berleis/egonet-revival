@@ -279,6 +279,27 @@ public sealed class Grid2RivalOpponentRecord
     public DateTimeOffset LastSeenAt { get; set; }
 }
 
+public sealed class Grid2RivalAssignmentRecord
+{
+    public long Id { get; set; }
+
+    public long PlayerProfileId { get; set; }
+
+    public PlayerProfile? PlayerProfile { get; set; }
+
+    public long RivalPlayerProfileId { get; set; }
+
+    public PlayerProfile? RivalPlayerProfile { get; set; }
+
+    public int Type { get; set; }
+
+    public DateTimeOffset StartsAt { get; set; }
+
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
 public sealed class RaceNetCallRecord
 {
     public long Id { get; set; }

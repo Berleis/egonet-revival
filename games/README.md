@@ -8,7 +8,7 @@ Each supported game has its own package folder, installer, notes, and release ta
 | GRID 2 | `games/grid-2` | `grid-2-v` | `EgoNet Revival - GRID 2 Installer.exe`, `install-grid-2-mod.cmd` |
 | F1 2018 | `games/f1-2018` | `f1-2018-v` | `EgoNet Revival - F1 2018 Event Activator.exe`, `activate-f1-2018-events.cmd` |
 
-GRID 2 is in early public testing. The package is available so testers can install against the hosted server, while Rival progression still needs more real multiplayer validation.
+GRID 2 is in early public testing. The package is available so testers can install against the hosted server; Global Challenge and Rivals now share the Friday 10:00 UTC weekly RaceNet cycle.
 
 Future games should follow the same layout:
 

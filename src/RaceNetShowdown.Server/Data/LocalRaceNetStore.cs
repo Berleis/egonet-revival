@@ -217,11 +217,12 @@ public sealed class LocalRaceNetStore : IRaceNetStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<Grid2RivalSnapshot>> GetGrid2RivalsAsync(
+    public Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
     {
-        return Task.FromResult<IReadOnlyList<Grid2RivalSnapshot>>([]);
+        var now = DateTimeOffset.UtcNow;
+        return Task.FromResult(new Grid2RivalsSnapshot(now, now.AddDays(7), []));
     }
 
 

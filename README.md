@@ -11,7 +11,7 @@ Translations: [Portuguese (Brazil)](docs/README.pt-BR.md) | [Spanish](docs/READM
 | Game | Platform | Status |
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Public testing, Challenge flow functional |
-| GRID 2 | Steam / PC | Early public testing, Global Challenge and Rivals prototype functional |
+| GRID 2 | Steam / PC | Early public testing, Global Challenge and weekly Rivals functional |
 | F1 2018 | Steam / PC | Local memory activator for expired Events |
 
 ## Game Packages and Releases
@@ -126,6 +126,8 @@ The release also includes `install-grid-2-mod.cmd` as a command-line fallback. D
 
 Rivals are not hard-coded to specific testers. The server records normal multiplayer race result payloads and uses recent real opponents as priority Rival candidates.
 
+Global Challenge and Rivals share the same weekly RaceNet cycle: Friday at 10:00 UTC. Rivals are assigned once per cycle and cached until the next reset.
+
 ## Use the F1 2018 Event Activator
 
 F1 2018 can still load the old 2019 weekly event payloads, but their original timestamps mark both Events as expired. The F1 2018 Event Activator patches those loaded event timestamps in the running game process so the Events can be started and completed normally.
@@ -180,7 +182,7 @@ DiRT Showdown still tries to talk to the original RaceNet/EgoNet endpoints, but 
 
 The installer redirects the game's RaceNet hostnames to the replacement server and installs a local certificate authority that the game executable is patched to trust. After that, the game can make its normal HTTPS requests again.
 
-The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite. For GRID 2 it stores Global Challenge events, submitted scores, Rival session data, and recent multiplayer opponents used by Rivals.
+The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite. For GRID 2 it stores Global Challenge events, submitted scores, weekly Rival assignments, Rival session data, and recent multiplayer opponents used by Rivals.
 
 This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the games themselves when the restored or reactivated in-game flow is completed.
 

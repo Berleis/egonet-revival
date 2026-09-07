@@ -36,14 +36,14 @@ The GUI installer project lives in `installer`. Developer helper scripts live in
 ## Current Status
 
 - RaceNet login works.
-- Global Challenge events are served by the replacement server and rotate weekly.
+- Global Challenge events are served by the replacement server and rotate weekly on Friday at 10:00 UTC.
 - Global Challenge leaderboards store submitted scores.
-- Rivals loads weekly, custom, and social slots.
+- Rivals loads weekly, custom, and social slots from persisted weekly assignments.
 - Multiplayer race results are recorded from the game's normal `DataMining.EndEvent` payload.
-- Recent multiplayer opponents are used as priority Rival candidates.
+- Recent multiplayer opponents and known friends are used as priority Rival candidates.
 - Rival session data upload/download is stored for follow-up testing.
 
-GRID 2 support is still in early public testing. The core RaceNet screens are working, but rival progression still needs more real multiplayer validation.
+GRID 2 support is still in early public testing. Global Challenge and Rivals use the same Friday 10:00 UTC RaceNet cycle, so the in-game countdown and server allocation expire together. Rival progression still needs more real multiplayer validation.
 
 ## Release Tags
 
