@@ -879,6 +879,7 @@ public sealed class EntityFrameworkRaceNetStore(
         IReadOnlySet<long> selectedProfileIds)
     {
         return OrderGrid2RivalCandidates(candidates.Where(value =>
+                value.HasGrid2Signal &&
                 !selectedProfileIds.Contains(value.Profile.Id)))
             .FirstOrDefault();
     }
@@ -946,7 +947,10 @@ public sealed class EntityFrameworkRaceNetStore(
         int OpponentRaceCount)
     {
         public bool IsRecentOpponent => RecentOpponentAt.HasValue;
+
+        public bool HasGrid2Signal => IsRecentOpponent || SessionDataUpdatedAt.HasValue;
     }
+
     private async Task<Grid2GlobalEventRecord?> LoadGrid2GlobalEventByStatusAsync(
         string status,
         CancellationToken cancellationToken)
