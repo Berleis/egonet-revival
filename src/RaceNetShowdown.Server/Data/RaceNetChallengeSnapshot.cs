@@ -44,3 +44,68 @@ public sealed record RaceNetIssuedChallenge(
     RaceNetChallengeDraft ChallengeData,
     DateTimeOffset ExpiresAt,
     long GhostSlotId);
+
+public sealed record Grid2GlobalEventSnapshot(
+    long RaceNetEventId,
+    DateTimeOffset StartsAt,
+    DateTimeOffset ExpiresAt,
+    IReadOnlyList<Grid2GlobalRaceSnapshot> Races,
+    IReadOnlyList<Grid2GlobalLeaderboardEntry> LeaderboardEntries);
+
+public sealed record Grid2RivalSnapshot(
+    ulong SteamId,
+    string Name,
+    long EgonetId,
+    int Type);
+
+public sealed record Grid2RivalSessionDataSnapshot(
+    long EgonetId,
+    byte[] SessionData);
+
+public sealed record Grid2MultiplayerEventSubmission(
+    long? SaveGameId,
+    long? RaceNetId,
+    IReadOnlyList<Grid2RaceParticipant> HumanParticipants);
+
+public sealed record Grid2RaceParticipant(
+    ulong SteamId,
+    string Name,
+    int? PlayerId,
+    int? Position,
+    int? Status,
+    long? Result,
+    bool? Host,
+    int? VehicleId);
+
+public sealed record Grid2GlobalRaceSnapshot(
+    long RaceNetRaceId,
+    bool HigherIsBetter,
+    int LocationId,
+    int TrackModelId,
+    int TrackModelDlcId,
+    int ConditionsId,
+    int RaceTypeId,
+    long RaceDuration,
+    int VehicleTierId,
+    int VehicleClassId,
+    int VehicleId,
+    int VehicleDlcId,
+    bool SpecialRace,
+    long GhostSlotId,
+    int SortOrder);
+
+public sealed record Grid2GlobalScoreSubmission(
+    long Score,
+    short GameId,
+    long RaceNetEventId,
+    long RaceNetRaceId,
+    int VehicleId);
+
+public sealed record Grid2GlobalLeaderboardEntry(
+    long RaceNetEventId,
+    long RaceNetRaceId,
+    RaceNetPrincipal Presence,
+    long EgonetId,
+    long PersonalBest,
+    int VehicleId,
+    DateTimeOffset SubmittedAt);

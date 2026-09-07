@@ -2,7 +2,7 @@
 
 Open-source ASP.NET Core replacement server for discontinued Codemasters EgoNet/RaceNet services.
 
-EgoNet Revival currently focuses on restoring the DiRT Showdown RaceNet Challenge flow on Steam/PC. The long-term goal is to keep a shared foundation that can support other Codemasters games affected by discontinued EgoNet/RaceNet services.
+EgoNet Revival currently restores the DiRT Showdown RaceNet Challenge flow and is expanding GRID 2 RaceNet support on Steam/PC. The long-term goal is to keep a shared foundation for Codemasters games affected by discontinued EgoNet/RaceNet services.
 
 Translations: [Portuguese (Brazil)](docs/README.pt-BR.md) | [Spanish](docs/README.es.md)
 
@@ -11,7 +11,7 @@ Translations: [Portuguese (Brazil)](docs/README.pt-BR.md) | [Spanish](docs/READM
 | Game | Platform | Status |
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Public testing, Challenge flow functional |
-| GRID 2 | Steam / PC | Local discovery/prototype only, not ready for players |
+| GRID 2 | Steam / PC | Early public testing, Global Challenge and Rivals prototype functional |
 | F1 2018 | Steam / PC | Local memory activator for expired Events |
 
 ## Game Packages and Releases
@@ -21,8 +21,8 @@ This repository is a shared home for multiple EgoNet/RaceNet revival projects. E
 | Game | Package | Release tag prefix | Player asset |
 | --- | --- | --- | --- |
 | DiRT Showdown | [`games/dirt-showdown`](games/dirt-showdown) | `dirt-showdown-v` | `EgoNet Revival - DiRT Showdown Installer.exe` |
+| GRID 2 | [`games/grid-2`](games/grid-2) | `grid-2-v` | `EgoNet Revival - GRID 2 Installer.exe` |
 | F1 2018 | [`games/f1-2018`](games/f1-2018) | `f1-2018-v` | `EgoNet Revival - F1 2018 Event Activator.exe` |
-| GRID 2 | Not packaged yet | Not available yet | Not available yet |
 
 Game-specific GitHub Releases are created from tags. For example:
 
@@ -55,8 +55,8 @@ Still being improved:
 - Wider public testing with multiple real Steam accounts.
 - Admin/dashboard tooling.
 - Cleaner shared profiles for future games.
-- GRID 2 local discovery and request capture.
-- Packaging and release flow for the F1 2018 event activator.
+- GRID 2 Rival progression validation with more real multiplayer sessions.
+- More per-game package polish as new Codemasters restorations are added.
 
 ## Install the DiRT Showdown Mod
 
@@ -99,6 +99,32 @@ The installer is self-contained. It:
 - tests the HTTPS health endpoint.
 
 To undo the executable patch, use Steam's `Verify integrity of game files` option for DiRT Showdown. If you also want to fully remove the redirect, delete the `EgoNet Revival DiRT Showdown` block from the Windows `hosts` file.
+
+## Install the GRID 2 Mod
+
+GRID 2 support is in early public testing. Use this installer when you want to try the hosted replacement server for RaceNet Global Challenge and Rivals.
+
+Requirements:
+
+- Windows.
+- Steam version of GRID 2 installed.
+- Administrator access on the PC.
+- The game must be closed before installing.
+
+Steps:
+
+1. Open the [GRID 2 releases page](https://github.com/Berleis/egonet-revival/releases?q=grid-2-v&expanded=true).
+2. Download `EgoNet Revival - GRID 2 Installer.exe` from the newest `grid-2-v...` release.
+3. Right-click the installer.
+4. Click `Run as administrator`.
+5. Choose the GRID 2 installation folder if it was not detected automatically.
+6. Click `Install Mod`.
+7. Open GRID 2 through Steam.
+8. Enter RaceNet / Rivals / Global Challenge in-game.
+
+The release also includes `install-grid-2-mod.cmd` as a command-line fallback. Development builds of that script live at [`games/grid-2/install-grid-2-mod.cmd`](games/grid-2/install-grid-2-mod.cmd). Developer helper scripts live under [`tools/grid-2`](tools/grid-2).
+
+Rivals are not hard-coded to specific testers. The server records normal multiplayer race result payloads and uses recent real opponents as priority Rival candidates.
 
 ## Use the F1 2018 Event Activator
 
@@ -154,7 +180,7 @@ DiRT Showdown still tries to talk to the original RaceNet/EgoNet endpoints, but 
 
 The installer redirects the game's RaceNet hostnames to the replacement server and installs a local certificate authority that the game executable is patched to trust. After that, the game can make its normal HTTPS requests again.
 
-The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite.
+The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite. For GRID 2 it stores Global Challenge events, submitted scores, Rival session data, and recent multiplayer opponents used by Rivals.
 
 This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the games themselves when the restored or reactivated in-game flow is completed.
 
@@ -202,7 +228,7 @@ By default, request/response payload capture is disabled:
 
 Use those settings only for local reverse-engineering or diagnostics. Captured payloads and local certificates should not be committed.
 
-GRID 2 is currently discovery-only. The helper scripts in [`tools/grid-2`](tools/grid-2) can patch a local GRID 2 install and run the server with request capture enabled, but there is no public GRID 2 release or player installer yet.
+GRID 2 now has a player package, while `tools/grid-2` still contains the local discovery scripts used for request capture and diagnostics.
 
 ## Public Hosting
 
@@ -230,14 +256,15 @@ Do not commit those directories. The `data/certs` directory must stay stable on 
 
 - `games/games.json`: manifest of supported game packages.
 - `games/dirt-showdown`: DiRT Showdown package, GUI installer project, command-line fallback installer, and release notes.
+- `games/grid-2`: GRID 2 package, GUI installer project, command-line fallback installer, and release notes.
 - `.github/workflows/game-releases.yml`: packages per-game release assets from game-specific tags.
 - `scripts/package-game-release.ps1`: packages one supported game for CI/release artifacts.
-- `src/RaceNetShowdown.Server`: ASP.NET Core server currently used by DiRT Showdown.
+- `src/RaceNetShowdown.Server`: ASP.NET Core server used by DiRT Showdown and GRID 2.
 - `src/RaceNetShowdown.Patcher`: developer patching tool used by the local scripts.
 - `src/F12018EventActivator`: F1 2018 process-memory activator for the expired weekly Events.
 - `src/RaceNetShowdown.TlsProbe`: TLS diagnostics tool for early connection debugging.
 - `tools/dirt-showdown`: developer scripts for DiRT Showdown local patching, hosted-server patching, restore, status, certificate regeneration, and TLS diagnostics.
-- `tools/grid-2`: early GRID 2 local patching, discovery server, and TLS diagnostics scripts.
+- `tools/grid-2`: GRID 2 local patching, discovery server, and TLS diagnostics scripts.
 - `tools/f1-2018`: helper script for the F1 2018 Event Activator.
 
 The internal project names still include `Showdown` because DiRT Showdown is the first implemented game. The intended direction is to extract shared interfaces and per-game profiles as more games are added.

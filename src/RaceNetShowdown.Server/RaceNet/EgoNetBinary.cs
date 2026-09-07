@@ -268,6 +268,264 @@ internal static class EgoNetRequestParser
         return null;
     }
 
+    public static long? ReadTopLevelInteger(CapturedBody body, string fieldName)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return null;
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == fieldName && TryReadInteger(reader, tag, out var value))
+                {
+                    return value;
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    public static IReadOnlyList<long> ReadTopLevelIntegerVector(CapturedBody body, string fieldName)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return [];
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return [];
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == fieldName && tag == "vvtr")
+                {
+                    return ReadIntegerVector(reader);
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return [];
+        }
+
+        return [];
+    }
+
+    public static byte[]? ReadGrid2RivalSessionDataUpload(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return null;
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "UploadedData" && tag == "vdic")
+                {
+                    return ReadNestedBlobField(reader, "SessionData");
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+    public static Grid2MultiplayerEventSubmission? ReadGrid2MultiplayerEventSubmission(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return null;
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "Statistics" && tag == "vdic")
+                {
+                    return ReadGrid2Statistics(reader);
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+    public static Grid2GlobalScoreSubmission? ReadGrid2GlobalScoreSubmission(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return null;
+            }
+
+            long? score = null;
+            long? gameId = null;
+            long? raceNetEventId = null;
+            long? raceNetRaceId = null;
+            long? vehicleId = null;
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+
+                if (name == "Score")
+                {
+                    if (TryReadInteger(reader, tag, out var value))
+                    {
+                        score = value;
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    continue;
+                }
+
+                if (name == "GameId")
+                {
+                    if (TryReadInteger(reader, tag, out var value))
+                    {
+                        gameId = value;
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    continue;
+                }
+
+                if (name == "RaceNetEventId")
+                {
+                    if (TryReadInteger(reader, tag, out var value))
+                    {
+                        raceNetEventId = value;
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    continue;
+                }
+
+                if (name == "RaceNetRaceId")
+                {
+                    if (TryReadInteger(reader, tag, out var value))
+                    {
+                        raceNetRaceId = value;
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    continue;
+                }
+
+                if (name == "VehicleId")
+                {
+                    if (TryReadInteger(reader, tag, out var value))
+                    {
+                        vehicleId = value;
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    continue;
+                }
+
+                SkipValue(reader, tag);
+            }
+
+            if (score is null || gameId is null || raceNetEventId is null || raceNetRaceId is null || vehicleId is null)
+            {
+                return null;
+            }
+
+            return new Grid2GlobalScoreSubmission(
+                score.Value,
+                checked((short)gameId.Value),
+                raceNetEventId.Value,
+                raceNetRaceId.Value,
+                checked((int)vehicleId.Value));
+        }
+        catch
+        {
+            return null;
+        }
+    }
     public static EgoNetChallengeRequestContext ReadChallengeContext(CapturedBody body)
     {
         if (body.BodyBytes.Length == 0)
@@ -532,6 +790,290 @@ internal static class EgoNetRequestParser
         return new EgoNetSubmittedChallengeResult(challengeId, result, attempts);
     }
 
+
+    private static Grid2MultiplayerEventSubmission ReadGrid2Statistics(BinaryReader reader)
+    {
+        long? saveGameId = null;
+        long? raceNetId = null;
+        IReadOnlyList<Grid2RaceParticipant> participants = [];
+
+        var fields = reader.ReadInt32();
+        for (var i = 0; i < fields; i++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+
+            if (name == "Tracking" && tag == "vdic")
+            {
+                (saveGameId, raceNetId) = ReadGrid2Tracking(reader);
+                continue;
+            }
+
+            if (name == "Results" && tag == "vdic")
+            {
+                participants = ReadGrid2Results(reader);
+                continue;
+            }
+
+            SkipValue(reader, tag);
+        }
+
+        return new Grid2MultiplayerEventSubmission(saveGameId, raceNetId, participants);
+    }
+
+    private static (long? SaveGameId, long? RaceNetId) ReadGrid2Tracking(BinaryReader reader)
+    {
+        long? saveGameId = null;
+        long? raceNetId = null;
+
+        var fields = reader.ReadInt32();
+        for (var i = 0; i < fields; i++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+
+            if (name == "SaveGameId")
+            {
+                if (TryReadInteger(reader, tag, out var value))
+                {
+                    saveGameId = value;
+                }
+                else
+                {
+                    SkipValue(reader, tag);
+                }
+                continue;
+            }
+
+            if (name == "RaceNetId")
+            {
+                if (TryReadInteger(reader, tag, out var value))
+                {
+                    raceNetId = value;
+                }
+                else
+                {
+                    SkipValue(reader, tag);
+                }
+                continue;
+            }
+
+            SkipValue(reader, tag);
+        }
+
+        return (saveGameId, raceNetId);
+    }
+
+    private static IReadOnlyList<Grid2RaceParticipant> ReadGrid2Results(BinaryReader reader)
+    {
+        IReadOnlyList<Grid2RaceParticipant> participants = [];
+        var fields = reader.ReadInt32();
+        for (var i = 0; i < fields; i++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+
+            if (name == "Human" && tag == "vvtr")
+            {
+                participants = ReadGrid2HumanParticipants(reader);
+                continue;
+            }
+
+            SkipValue(reader, tag);
+        }
+
+        return participants;
+    }
+
+    private static IReadOnlyList<Grid2RaceParticipant> ReadGrid2HumanParticipants(BinaryReader reader)
+    {
+        var count = reader.ReadInt32();
+        var participants = new List<Grid2RaceParticipant>(Math.Min(count, 32));
+
+        for (var i = 0; i < count; i++)
+        {
+            var tag = ReadTag(reader);
+            if (tag != "vdic")
+            {
+                SkipValue(reader, tag);
+                continue;
+            }
+
+            var participant = ReadGrid2HumanParticipant(reader);
+            if (participant is not null)
+            {
+                participants.Add(participant);
+            }
+        }
+
+        return participants;
+    }
+
+    private static Grid2RaceParticipant? ReadGrid2HumanParticipant(BinaryReader reader)
+    {
+        var fields = reader.ReadInt32();
+        RaceNetPrincipal? presence = null;
+        int? playerId = null;
+        int? position = null;
+        int? status = null;
+        long? result = null;
+        bool? host = null;
+        int? vehicleId = null;
+
+        for (var i = 0; i < fields; i++)
+        {
+            var fieldName = ReadName(reader);
+            var tag = ReadTag(reader);
+
+            switch (fieldName)
+            {
+                case "Presence" when tag == "vdic":
+                    presence = ReadPrincipalFields(reader);
+                    break;
+                case "PlayerId":
+                    if (TryReadInteger(reader, tag, out var playerIdValue))
+                    {
+                        playerId = checked((int)playerIdValue);
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    break;
+                case "Position":
+                    if (TryReadInteger(reader, tag, out var positionValue))
+                    {
+                        position = checked((int)positionValue);
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    break;
+                case "Status":
+                    if (TryReadInteger(reader, tag, out var statusValue))
+                    {
+                        status = checked((int)statusValue);
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    break;
+                case "Result":
+                    if (TryReadInteger(reader, tag, out var resultValue))
+                    {
+                        result = resultValue;
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    break;
+                case "Host" when tag == "bool":
+                    host = reader.ReadBoolean();
+                    break;
+                case "VehicleId":
+                    if (TryReadInteger(reader, tag, out var vehicleIdValue))
+                    {
+                        vehicleId = checked((int)vehicleIdValue);
+                    }
+                    else
+                    {
+                        SkipValue(reader, tag);
+                    }
+                    break;
+                default:
+                    SkipValue(reader, tag);
+                    break;
+            }
+        }
+
+        if (presence is null)
+        {
+            return null;
+        }
+
+        return new Grid2RaceParticipant(
+            presence.SteamId,
+            presence.Name,
+            playerId,
+            position,
+            status,
+            result,
+            host,
+            vehicleId);
+    }
+    private static IReadOnlyList<long> ReadIntegerVector(BinaryReader reader)
+    {
+        var count = reader.ReadInt32();
+        var values = new List<long>(Math.Min(count, 128));
+        for (var i = 0; i < count; i++)
+        {
+            var tag = ReadTag(reader);
+            if (TryReadInteger(reader, tag, out var value))
+            {
+                values.Add(value);
+            }
+            else
+            {
+                SkipValue(reader, tag);
+            }
+        }
+
+        return values;
+    }
+
+    private static byte[]? ReadNestedBlobField(BinaryReader reader, string fieldName)
+    {
+        var fields = reader.ReadInt32();
+        for (var i = 0; i < fields; i++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+            if (name == fieldName && tag == "blob")
+            {
+                return ReadBlob(reader);
+            }
+
+            SkipValue(reader, tag);
+        }
+
+        return null;
+    }
+    private static bool TryReadInteger(BinaryReader reader, string tag, out long value)
+    {
+        switch (tag)
+        {
+            case "si64":
+                value = reader.ReadInt64();
+                return true;
+            case "ui64":
+                value = checked((long)reader.ReadUInt64());
+                return true;
+            case "si32":
+                value = reader.ReadInt32();
+                return true;
+            case "ui32":
+                value = reader.ReadUInt32();
+                return true;
+            case "si16":
+                value = reader.ReadInt16();
+                return true;
+            case "ui16":
+                value = reader.ReadUInt16();
+                return true;
+            case "si08":
+                value = reader.ReadSByte();
+                return true;
+            case "ui08":
+                value = reader.ReadByte();
+                return true;
+            default:
+                value = 0;
+                return false;
+        }
+    }
     private static string ReadName(BinaryReader reader)
     {
         var length = reader.ReadByte();

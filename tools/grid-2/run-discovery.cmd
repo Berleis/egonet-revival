@@ -12,6 +12,6 @@ echo   src\RaceNetShowdown.Server\logs\grid-2-discovery
 echo.
 
 set "ASPNETCORE_ENVIRONMENT=Grid2Discovery"
-dotnet run --project "%CD%\src\RaceNetShowdown.Server\RaceNetShowdown.Server.csproj"
+dotnet run --no-launch-profile --project "%CD%\src\RaceNetShowdown.Server\RaceNetShowdown.Server.csproj"
 
 endlocal

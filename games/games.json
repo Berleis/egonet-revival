@@ -12,6 +12,17 @@
       "installerExecutableAsset": "EgoNet Revival - DiRT Showdown Installer.exe"
     },
     {
+      "id": "grid-2",
+      "name": "GRID 2",
+      "platform": "Steam / PC",
+      "status": "early-public-testing",
+      "packagePath": "games/grid-2",
+      "releaseTagPrefix": "grid-2-v",
+      "installerAsset": "install-grid-2-mod.cmd",
+      "installerProject": "games/grid-2/installer/Grid2ModInstaller.csproj",
+      "installerExecutableAsset": "EgoNet Revival - GRID 2 Installer.exe"
+    },
+    {
       "id": "f1-2018",
       "name": "F1 2018",
       "platform": "Steam / PC",

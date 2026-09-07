@@ -13,10 +13,10 @@ public sealed class LocalRaceNetStore : IRaceNetStore
         0,
         "local-player",
         "Local Player");
-
     private static readonly ConcurrentDictionary<string, IReadOnlyList<RaceNetPrincipal>> PrincipalsBySession = new();
     private static readonly ConcurrentDictionary<string, List<RaceNetIssuedChallenge>> IssuedChallengesBySession = new();
     private static readonly ConcurrentDictionary<long, byte[]> GhostDataBySlot = new();
+    private static readonly ConcurrentDictionary<long, byte[]> Grid2RivalSessionDataByProfile = new();
     private static byte[]? _lastUploadedGhostData;
     private static long _nextIssuedChallengeId = 10_000;
 
@@ -190,6 +190,63 @@ public sealed class LocalRaceNetStore : IRaceNetStore
         return Task.CompletedTask;
     }
 
+
+    public Task SaveGrid2GlobalScoreAsync(
+        RaceNetSessionInfo session,
+        Grid2GlobalScoreSubmission submission,
+        CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<Grid2GlobalEventSnapshot?> GetGrid2CurrentGlobalEventAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
+    }
+
+    public Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
+    }
+
+    public Task SaveGrid2MultiplayerEventAsync(
+        RaceNetSessionInfo session,
+        Grid2MultiplayerEventSubmission submission,
+        CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Grid2RivalSnapshot>> GetGrid2RivalsAsync(
+        RaceNetSessionInfo session,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyList<Grid2RivalSnapshot>>([]);
+    }
+
+
+    public Task SaveGrid2RivalSessionDataAsync(
+        RaceNetSessionInfo session,
+        byte[] sessionData,
+        CancellationToken cancellationToken)
+    {
+        Grid2RivalSessionDataByProfile[session.PlayerProfileId] = sessionData.ToArray();
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Grid2RivalSessionDataSnapshot>> GetGrid2RivalSessionDataAsync(
+        RaceNetSessionInfo session,
+        IReadOnlyCollection<long> egonetIds,
+        CancellationToken cancellationToken)
+    {
+        var results = egonetIds
+            .Distinct()
+            .Where(Grid2RivalSessionDataByProfile.ContainsKey)
+            .Select(value => new Grid2RivalSessionDataSnapshot(value, Grid2RivalSessionDataByProfile[value].ToArray()))
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyList<Grid2RivalSessionDataSnapshot>>(results);
+    }
     private static long ResolveEgonetId(string sessionId, RaceNetPrincipal target)
     {
         if (PrincipalsBySession.TryGetValue(sessionId, out var principals))
