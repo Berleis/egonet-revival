@@ -864,10 +864,14 @@ public sealed class EntityFrameworkRaceNetStore(
         IReadOnlyCollection<Grid2RivalCandidate> candidates,
         IReadOnlySet<long> selectedProfileIds)
     {
-        return OrderGrid2RivalCandidates(candidates.Where(value =>
-                (value.IsKnownFriend || value.IsRecentOpponent) &&
-                !selectedProfileIds.Contains(value.Profile.Id)))
-            .FirstOrDefault();
+        var eligibleCandidates = candidates
+            .Where(value => !selectedProfileIds.Contains(value.Profile.Id))
+            .ToArray();
+
+        return OrderGrid2RivalCandidates(eligibleCandidates.Where(value => value.IsKnownFriend))
+            .FirstOrDefault()
+            ?? OrderGrid2RivalCandidates(eligibleCandidates.Where(value => value.IsRecentOpponent))
+                .FirstOrDefault();
     }
 
     private static Grid2RivalCandidate? SelectGrid2AutomaticRival(
