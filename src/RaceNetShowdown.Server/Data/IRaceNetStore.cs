@@ -58,6 +58,34 @@ public interface IRaceNetStore
         RaceNetSessionInfo session,
         EgoNetSubmittedChallengeResult result,
         CancellationToken cancellationToken);
+
+    Task SaveGrid2GlobalScoreAsync(
+        RaceNetSessionInfo session,
+        Grid2GlobalScoreSubmission submission,
+        CancellationToken cancellationToken);
+
+    Task<Grid2GlobalEventSnapshot?> GetGrid2CurrentGlobalEventAsync(CancellationToken cancellationToken);
+
+    Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(CancellationToken cancellationToken);
+
+    Task SaveGrid2MultiplayerEventAsync(
+        RaceNetSessionInfo session,
+        Grid2MultiplayerEventSubmission submission,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Grid2RivalSnapshot>> GetGrid2RivalsAsync(
+        RaceNetSessionInfo session,
+        CancellationToken cancellationToken);
+
+    Task SaveGrid2RivalSessionDataAsync(
+        RaceNetSessionInfo session,
+        byte[] sessionData,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Grid2RivalSessionDataSnapshot>> GetGrid2RivalSessionDataAsync(
+        RaceNetSessionInfo session,
+        IReadOnlyCollection<long> egonetIds,
+        CancellationToken cancellationToken);
 }
 
 public sealed record RaceNetSessionInfo(

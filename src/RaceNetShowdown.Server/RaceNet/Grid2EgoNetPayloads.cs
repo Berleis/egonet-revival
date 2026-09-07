@@ -10,34 +10,88 @@ internal static class Grid2EgoNetPayloads
     private const string HtmlContentType = "text/html";
     private const string EgoNetContentType = "application/egonet-stream";
 
-    private static readonly Grid2Presence[] RivalPresences =
-    [
-        new(76_561_198_081_105_540, "Heatray", 2_536_759, 2),
-        new(76_561_197_998_609_659, "MMMMMMMMM", 551_744, 0),
-        new(76_561_198_195_857_139, "sami_1_3_5", 2_473_109, 1)
-    ];
-
-    private static readonly Grid2GlobalRace[] CurrentGlobalRaces =
-    [
-        new(6_282, false, 31, 355, 0, 554, 24, 7, 3, -1, -1, 0, true, 1, 77_215_000, 65_763),
-        new(6_283, true, 33, 408, 0, 361, 7, 79_102, 3, -1, -1, 0, false, 2, 662_890_000, 367),
-        new(6_284, true, 27, 333, 0, 367, 17, 6, 5, -1, -1, 0, false, 3, 88_100_000, 131_331),
-        new(6_285, true, 26, 326, 0, 517, 22, 7, 5, -1, -1, 0, false, 4, 12_498_828, 390),
-        new(6_286, false, 32, 362, 0, 409, 24, 4, 3, -1, -1, 0, false, 5, 77_739_000, 65_763),
-        new(6_287, true, 32, 359, 0, 509, 22, 7, 2, -1, -1, 0, false, 6, 14_250_000, 294),
-        new(6_288, true, 31, 357, 0, 327, 17, 6, 2, -1, -1, 0, false, 7, 91_400_000, 131_331),
-        new(6_289, false, 31, 357, 0, 327, 24, 5, 4, -1, -1, 0, false, 8, 82_020_000, 367),
-        new(6_290, true, 33, 408, 0, 361, 7, 83_000, 4, -1, -1, 0, false, 9, 280_000_000, 390)
-    ];
-
-    private static readonly Grid2GlobalRace[] PreviousGlobalRaces =
-    [
-        new(6_264, true, 25, 322, 0, 319, 22, 6, 4, -1, -1, 0, false, -1, 10_000_000, 390),
-        new(6_265, false, 31, 355, 0, 554, 24, 7, 3, -1, -1, 0, false, -1, 78_000_000, 65_763),
-        new(6_266, true, 32, 359, 0, 509, 22, 7, 2, -1, -1, 0, false, -1, 12_000_000, 294)
-    ];
-
     public static RaceNetResponse? TryBuild(
+        string functionName,
+        CapturedBody body,
+        RaceNetSessionInfo? session,
+        IReadOnlyDictionary<string, string> headers)
+    {
+        return TryBuildCommon(functionName, body, session, headers);
+    }
+    public static async Task<RaceNetResponse?> TryBuildAsync(
+        string functionName,
+        CapturedBody body,
+        RaceNetSessionInfo? session,
+        IReadOnlyDictionary<string, string> headers,
+        IRaceNetStore store,
+        CancellationToken cancellationToken)
+    {
+        if (functionName == "DataMining.EndEvent")
+        {
+            var multiplayerEvent = EgoNetRequestParser.ReadGrid2MultiplayerEventSubmission(body);
+            if (multiplayerEvent is not null && session is not null)
+            {
+                await store.SaveGrid2MultiplayerEventAsync(session, multiplayerEvent, cancellationToken);
+            }
+
+            return Empty(headers);
+        }
+
+        if (functionName == "RaceNetGlobalDomination.PostScore")
+        {
+            var submission = EgoNetRequestParser.ReadGrid2GlobalScoreSubmission(body);
+            if (submission is not null && session is not null)
+            {
+                await store.SaveGrid2GlobalScoreAsync(session, submission, cancellationToken);
+            }
+
+            return Empty(headers);
+        }
+
+        if (functionName == "RaceNetGlobalDomination.GetEvent")
+        {
+            var activeEvent = await store.GetGrid2CurrentGlobalEventAsync(cancellationToken);
+            return Html(BuildCurrentGlobalDomination(activeEvent), headers);
+        }
+
+        if (functionName == "RaceNetGlobalDomination.GetPreviousEvent")
+        {
+            var previousEvent = await store.GetGrid2PreviousGlobalEventAsync(cancellationToken);
+            return Html(BuildPreviousGlobalDomination(previousEvent), headers);
+        }
+
+        if (functionName == "RaceNetRivals.GetRivals")
+        {
+            var rivals = session is null
+                ? Array.Empty<Grid2RivalSnapshot>()
+                : await store.GetGrid2RivalsAsync(session, cancellationToken);
+            return Html(BuildRivals(rivals), headers);
+        }
+
+        if (functionName == "Rivals.GetRivalsSessionData")
+        {
+            var rivalIds = EgoNetRequestParser.ReadTopLevelIntegerVector(body, "RivalsEgonetIds");
+            var sessionData = session is null
+                ? Array.Empty<Grid2RivalSessionDataSnapshot>()
+                : await store.GetGrid2RivalSessionDataAsync(session, rivalIds, cancellationToken);
+            return Html(BuildRivalsSessionData(sessionData), headers);
+        }
+
+        if (functionName == "Rivals.UpdateRivalsSessionData")
+        {
+            var sessionData = EgoNetRequestParser.ReadGrid2RivalSessionDataUpload(body);
+            if (session is not null && sessionData is not null)
+            {
+                await store.SaveGrid2RivalSessionDataAsync(session, sessionData, cancellationToken);
+            }
+
+            return Empty(headers);
+        }
+
+        return TryBuildCommon(functionName, body, session, headers);
+    }
+
+    private static RaceNetResponse? TryBuildCommon(
         string functionName,
         CapturedBody body,
         RaceNetSessionInfo? session,
@@ -64,13 +118,13 @@ internal static class Grid2EgoNetPayloads
             "RaceNet.ValidatePassword" => Html(BuildValidation(), headers),
             "RaceNet.ValidateSocialLinks" => Html(BuildValidation(), headers),
             "RaceNet.ValidateUsername" => Html(BuildValidation(), headers),
-            "RaceNetGlobalDomination.GetEvent" => Html(BuildCurrentGlobalDomination(), headers),
-            "RaceNetGlobalDomination.GetPreviousEvent" => Html(BuildPreviousGlobalDomination(), headers),
+            "RaceNetGlobalDomination.GetEvent" => Html(BuildCurrentGlobalDomination(null), headers),
+            "RaceNetGlobalDomination.GetPreviousEvent" => Html(BuildPreviousGlobalDomination(null), headers),
             "RaceNetGlobalDomination.PostScore" => Empty(headers),
             "RaceNetRivals.BlockRival" => Empty(headers),
-            "RaceNetRivals.GetRivals" => Html(BuildRivals(), headers),
+            "RaceNetRivals.GetRivals" => Html(BuildRivals(Array.Empty<Grid2RivalSnapshot>()), headers),
             "RaceNetRivals.PostRivalResults" => Empty(headers),
-            "Rivals.GetRivalsSessionData" => Html(BuildRivalsSessionData(), headers),
+            "Rivals.GetRivalsSessionData" => Html(BuildRivalsSessionData(Array.Empty<Grid2RivalSessionDataSnapshot>()), headers),
             "Rivals.UpdateRivalsSessionData" => Empty(headers),
             "DataMiningHelper.GetRaceId" => Html(BuildRaceId(), headers),
             "DataMining.EndEvent" => Empty(headers),
@@ -203,28 +257,34 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Dstr("Message", string.Empty));
     }
 
-    private static byte[] BuildCurrentGlobalDomination()
+    private static byte[] BuildCurrentGlobalDomination(Grid2GlobalEventSnapshot? globalEvent)
     {
         return EgoNetBinary.Dictionary(
-            EgoNetBinary.Si64("RaceNetId", 698),
-            EgoNetBinary.Tutc("Expires", DateTimeOffset.UtcNow.AddDays(7)),
+            EgoNetBinary.Si64("RaceNetId", globalEvent?.RaceNetEventId ?? 0),
+            EgoNetBinary.Tutc("Expires", globalEvent?.ExpiresAt ?? DateTimeOffset.UtcNow),
             EgoNetBinary.Vector(
                 "Races",
-                CurrentGlobalRaces.Select(BuildGlobalRace).ToArray()));
+                globalEvent?.Races
+                    .Select(race => BuildGlobalRace(race, globalEvent.LeaderboardEntries))
+                    .ToArray() ?? []));
     }
 
-    private static byte[] BuildPreviousGlobalDomination()
+    private static byte[] BuildPreviousGlobalDomination(Grid2GlobalEventSnapshot? globalEvent)
     {
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Vector(
                 "Races",
-                PreviousGlobalRaces.Select(BuildGlobalRace).ToArray()));
+                globalEvent?.Races
+                    .Select(race => BuildGlobalRace(race, globalEvent.LeaderboardEntries))
+                    .ToArray() ?? []));
     }
 
-    private static Action<BinaryWriter> BuildGlobalRace(Grid2GlobalRace race)
+    private static Action<BinaryWriter> BuildGlobalRace(
+        Grid2GlobalRaceSnapshot race,
+        IReadOnlyList<Grid2GlobalLeaderboardEntry> leaderboardEntries)
     {
         return EgoNetBinary.DictValue(
-            EgoNetBinary.Si64("RaceNetId", race.RaceNetId),
+            EgoNetBinary.Si64("RaceNetId", race.RaceNetRaceId),
             EgoNetBinary.Bool("HigherIsBetter", race.HigherIsBetter),
             EgoNetBinary.Si32("LocationId", race.LocationId),
             EgoNetBinary.Si32("TrackModelId", race.TrackModelId),
@@ -240,38 +300,74 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Si64("GhostSlotId", race.GhostSlotId),
             EgoNetBinary.Vector(
                 "Leaderboard",
-                BuildGlobalLeaderboard(race)));
+                BuildGlobalLeaderboard(race, leaderboardEntries)));
     }
 
-    private static Action<BinaryWriter>[] BuildGlobalLeaderboard(Grid2GlobalRace race)
+    private static Action<BinaryWriter>[] BuildGlobalLeaderboard(
+        Grid2GlobalRaceSnapshot race,
+        IReadOnlyList<Grid2GlobalLeaderboardEntry> leaderboardEntries)
     {
-        if (race.PersonalBest <= 0)
-        {
-            return [];
-        }
+        var rows = leaderboardEntries
+            .Where(value => value.RaceNetRaceId == race.RaceNetRaceId && value.PersonalBest >= 0)
+            .GroupBy(BuildGlobalPlayerKey)
+            .Select(group => SelectBestGlobalEntry(race, group))
+            .Select(value => new Grid2LeaderboardRow(
+                ResolveSteamId(value.Presence),
+                value.Presence.Name,
+                value.EgonetId,
+                value.PersonalBest,
+                value.VehicleId,
+                value.SubmittedAt))
+            .ToList();
 
-        return
-        [
-            EgoNetBinary.DictValue(
-                BuildPresence("Presence", RivalPresences[0]),
-                EgoNetBinary.Si64("PersonalBest", race.PersonalBest),
-                EgoNetBinary.Si32("VehicleId", race.BestVehicleId))
-        ];
+
+        var orderedRows = race.HigherIsBetter
+            ? rows.OrderByDescending(value => value.PersonalBest).ThenBy(value => value.SubmittedAt)
+            : rows.OrderBy(value => value.PersonalBest).ThenBy(value => value.SubmittedAt);
+
+        return orderedRows
+            .Take(10)
+            .Select(BuildGlobalLeaderboardRow)
+            .ToArray();
     }
 
-    private static byte[] BuildRivals()
+    private static Grid2GlobalLeaderboardEntry SelectBestGlobalEntry(
+        Grid2GlobalRaceSnapshot race,
+        IEnumerable<Grid2GlobalLeaderboardEntry> entries)
+    {
+        return race.HigherIsBetter
+            ? entries.OrderByDescending(value => value.PersonalBest).ThenBy(value => value.SubmittedAt).First()
+            : entries.OrderBy(value => value.PersonalBest).ThenBy(value => value.SubmittedAt).First();
+    }
+
+    private static string BuildGlobalPlayerKey(Grid2GlobalLeaderboardEntry entry)
+    {
+        return entry.Presence.SteamId > 0
+            ? $"steam:{entry.Presence.SteamId}"
+            : $"name:{entry.Presence.Name.Trim().ToLowerInvariant()}";
+    }
+
+    private static Action<BinaryWriter> BuildGlobalLeaderboardRow(Grid2LeaderboardRow row)
+    {
+        return EgoNetBinary.DictValue(
+            BuildPresence("Presence", row.SteamId, row.Name, row.EgonetId),
+            EgoNetBinary.Si64("PersonalBest", row.PersonalBest),
+            EgoNetBinary.Si32("VehicleId", row.VehicleId));
+    }
+
+    private static byte[] BuildRivals(IReadOnlyList<Grid2RivalSnapshot> rivals)
     {
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Vector(
                 "RivalsList",
-                RivalPresences.Select(BuildRival).ToArray()),
+                rivals.Select(BuildRival).ToArray()),
             EgoNetBinary.Tutc("NextRivalAlloc", DateTimeOffset.UtcNow.AddDays(7)));
     }
 
-    private static Action<BinaryWriter> BuildRival(Grid2Presence rival)
+    private static Action<BinaryWriter> BuildRival(Grid2RivalSnapshot rival)
     {
         return EgoNetBinary.DictValue(
-            BuildPresence("Presence", rival),
+            BuildPresence("Presence", rival.SteamId, rival.Name, rival.EgonetId),
             EgoNetBinary.Si64("PlatformId", checked((long)rival.SteamId)),
             EgoNetBinary.Si32("Type", rival.Type),
             EgoNetBinary.Bool("CanSeePresence", true),
@@ -279,19 +375,29 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Ui32("RivalXPWon", 0));
     }
 
-    private static EgoNetField BuildPresence(string name, Grid2Presence presence)
+
+    private static EgoNetField BuildPresence(string name, ulong steamId, string displayName, long egonetId)
     {
         return EgoNetBinary.Dict(
             name,
-            EgoNetBinary.Ui64("SteamId", presence.SteamId),
-            EgoNetBinary.Dstr("Name", presence.Name),
-            EgoNetBinary.Si64("EgonetId", presence.EgonetId));
+            EgoNetBinary.Ui64("SteamId", steamId),
+            EgoNetBinary.Dstr("Name", displayName),
+            EgoNetBinary.Si64("EgonetId", egonetId));
     }
 
-    private static byte[] BuildRivalsSessionData()
+    private static byte[] BuildRivalsSessionData(IReadOnlyList<Grid2RivalSessionDataSnapshot> sessionData)
     {
         return EgoNetBinary.Dictionary(
-            EgoNetBinary.Vector("Results"));
+            EgoNetBinary.Vector(
+                "Results",
+                sessionData.Select(BuildRivalsSessionDataResult).ToArray()));
+    }
+
+    private static Action<BinaryWriter> BuildRivalsSessionDataResult(Grid2RivalSessionDataSnapshot sessionData)
+    {
+        return EgoNetBinary.DictValue(
+            EgoNetBinary.Si64("EgonetId", sessionData.EgonetId),
+            EgoNetBinary.Blob("SessionData", sessionData.SessionData));
     }
 
     private static byte[] BuildRaceId()
@@ -306,6 +412,11 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Blob("GhostData", []));
     }
 
+    private static ulong ResolveSteamId(RaceNetPrincipal presence)
+    {
+        return presence.SteamId > 0 ? presence.SteamId : BuildStableSteamId(presence.Name);
+    }
+
     private static ulong BuildStableSteamId(string name)
     {
         var normalized = name.Trim().ToLowerInvariant();
@@ -314,27 +425,11 @@ internal static class Grid2EgoNetPayloads
         return 76_561_198_000_000_000UL + hash % 10_000_000_000UL;
     }
 
-    private sealed record Grid2Presence(
+    private sealed record Grid2LeaderboardRow(
         ulong SteamId,
         string Name,
         long EgonetId,
-        int Type);
-
-    private sealed record Grid2GlobalRace(
-        long RaceNetId,
-        bool HigherIsBetter,
-        int LocationId,
-        int TrackModelId,
-        int TrackModelDlcId,
-        int ConditionsId,
-        int RaceTypeId,
-        long RaceDuration,
-        int VehicleTierId,
-        int VehicleClassId,
-        int VehicleId,
-        int VehicleDlcId,
-        bool SpecialRace,
-        long GhostSlotId,
         long PersonalBest,
-        int BestVehicleId);
+        int VehicleId,
+        DateTimeOffset SubmittedAt);
 }

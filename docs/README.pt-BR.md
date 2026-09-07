@@ -2,7 +2,7 @@
 
 Servidor ASP.NET Core open-source para substituir serviços EgoNet/RaceNet descontinuados da Codemasters.
 
-O EgoNet Revival atualmente foca em restaurar o fluxo de Challenges do RaceNet no DiRT Showdown para Steam/PC. A ideia de longo prazo é manter uma base comum para suportar outros jogos da Codemasters afetados por serviços EgoNet/RaceNet descontinuados.
+O EgoNet Revival atualmente restaura o fluxo de Challenges do RaceNet no DiRT Showdown e está expandindo o suporte do RaceNet para GRID 2 no Steam/PC. A ideia de longo prazo é manter uma base comum para suportar outros jogos da Codemasters afetados por serviços EgoNet/RaceNet descontinuados.
 
 Idioma principal: [English](../README.md) | Tradução: [Espanhol](README.es.md)
 
@@ -12,7 +12,7 @@ Idioma principal: [English](../README.md) | Tradução: [Espanhol](README.es.md)
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Em teste público, fluxo de Challenges funcional |
 | F1 2018 | Steam / PC | Ativador local de memória para eventos expirados |
-| GRID 2 | Steam / PC | Apenas discovery/protótipo local, ainda não pronto para jogadores |
+| GRID 2 | Steam / PC | Em teste público inicial, Desafio Mundial e Rivais funcionais em validação |
 
 ## Pacotes e Releases por Jogo
 
@@ -22,7 +22,7 @@ Este repositório é uma base compartilhada para vários projetos de restauraç�
 | --- | --- | --- | --- |
 | DiRT Showdown | [`games/dirt-showdown`](../games/dirt-showdown) | `dirt-showdown-v` | `EgoNet Revival - DiRT Showdown Installer.exe` |
 | F1 2018 | [`games/f1-2018`](../games/f1-2018) | `f1-2018-v` | `EgoNet Revival - F1 2018 Event Activator.exe` |
-| GRID 2 | Ainda sem pacote | Ainda indisponível | Ainda indisponível |
+| GRID 2 | [`games/grid-2`](../games/grid-2) | `grid-2-v` | `EgoNet Revival - GRID 2 Installer.exe` |
 
 As releases são separadas por jogo. Exemplo:
 
@@ -31,7 +31,7 @@ git tag dirt-showdown-v0.1.0
 git push origin dirt-showdown-v0.1.0
 ```
 
-Isso publica o instalador visual do DiRT Showdown, o instalador `.cmd` alternativo, checksums, README e notas de release sem misturar com pacotes de outros jogos no futuro.
+Isso publica os assets do jogo correspondente sem misturar pacotes. Por exemplo, tags `dirt-showdown-v...` publicam o DiRT Showdown, tags `grid-2-v...` publicam o GRID 2 e tags `f1-2018-v...` publicam o F1 2018.
 
 Scripts auxiliares de desenvolvimento ficam agrupados por jogo em [`tools`](../tools). Assets públicos para jogadores ficam em [`games`](../games) e nas GitHub Releases.
 
@@ -55,8 +55,7 @@ Ainda em melhoria:
 - Teste público mais amplo com várias contas Steam reais.
 - Painel/admin.
 - Perfis compartilhados mais limpos para jogos futuros.
-- Discovery local e captura de requests do GRID 2.
-- Empacotamento e fluxo de release do ativador de eventos do F1 2018.
+- Validação pública do fluxo de Rivais do GRID 2 com mais corridas multiplayer reais.
 
 ## Instalar o Mod do DiRT Showdown
 
@@ -99,6 +98,33 @@ O instalador é autocontido. Ele:
 - testa o endpoint HTTPS de saúde.
 
 Para desfazer o patch dos executáveis, use a opção `Verificar integridade dos arquivos do jogo` na Steam para o DiRT Showdown. Se também quiser remover completamente o redirecionamento, apague o bloco `EgoNet Revival DiRT Showdown` do arquivo `hosts` do Windows.
+
+## Instalar o Mod do GRID 2
+
+Este é o fluxo recomendado para jogadores que querem testar o servidor público hospedado no GRID 2.
+
+Requisitos:
+
+- Windows.
+- Versão Steam do GRID 2 instalada.
+- Acesso de Administrador no PC.
+- O jogo precisa estar fechado antes da instalação.
+
+Passos:
+
+1. Abra a [página de releases do GRID 2](https://github.com/Berleis/egonet-revival/releases?q=grid-2-v&expanded=true).
+2. Baixe `EgoNet Revival - GRID 2 Installer.exe` da release `grid-2-v...` mais recente.
+3. Clique com o botão direito no instalador.
+4. Clique em `Executar como administrador`.
+5. Escolha a pasta de instalação do GRID 2 se ela não for detectada automaticamente.
+6. Aceite a permissão do Windows.
+7. Clique em `Install Mod`.
+8. Abra o GRID 2 normalmente pela Steam.
+9. Entre em RaceNet / Rivais / Desafio Mundial dentro do jogo.
+
+A release também inclui `install-grid-2-mod.cmd` como alternativa por linha de comando. Builds de desenvolvimento desse script ficam em [`games/grid-2/install-grid-2-mod.cmd`](../games/grid-2/install-grid-2-mod.cmd). Scripts auxiliares para desenvolvedores ficam em [`tools/grid-2`](../tools/grid-2).
+
+O suporte do GRID 2 ainda está em teste público inicial. Login, Desafio Mundial e Rivais já funcionam, mas a progressão de Rivais ainda está sendo validada com mais corridas multiplayer reais.
 
 ## Usar o Ativador de Eventos do F1 2018
 
@@ -154,7 +180,7 @@ O DiRT Showdown ainda tenta conversar com os endpoints RaceNet/EgoNet originais,
 
 O instalador redireciona os hostnames RaceNet do jogo para o servidor substituto e instala uma autoridade certificadora local que o executável do jogo passa a confiar depois do patch. Depois disso, o jogo consegue fazer suas requisições HTTPS normais novamente.
 
-O servidor recebe os payloads binários EgoNet originais do jogo, lê a função de serviço solicitada e retorna respostas compatíveis. Para o DiRT Showdown, ele armazena perfis de jogadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost e resultados de challenges em SQLite.
+O servidor recebe os payloads binários EgoNet originais do jogo, lê a função de serviço solicitada e retorna respostas compatíveis. Para o DiRT Showdown, ele armazena perfis de jogadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost e resultados de challenges em SQLite. Para GRID 2, ele armazena eventos do Desafio Mundial, pontuações enviadas, dados de sessão de Rivais e adversários recentes encontrados em corridas multiplayer.
 
 Isto não é um desbloqueador de conquistas, editor de save ou editor de estatísticas da Steam. As conquistas continuam sendo acionadas pelos próprios jogos quando o fluxo restaurado ou reativado dentro do jogo é concluído.
 
@@ -202,7 +228,7 @@ Por padrão, a captura de payloads de requests/responses fica desativada:
 
 Use essas opções apenas para engenharia reversa local ou diagnóstico. Payloads capturados e certificados locais não devem ser enviados para o Git.
 
-O GRID 2 está apenas em fase de discovery. Os scripts em [`tools/grid-2`](../tools/grid-2) conseguem preparar uma instalação local do GRID 2 e rodar o servidor com captura de requests, mas ainda não existe release pública nem instalador para jogadores.
+O GRID 2 já tem pacote para jogadores em teste público inicial. Os scripts em [`tools/grid-2`](../tools/grid-2) continuam disponíveis para discovery local, captura de requests e diagnóstico durante o desenvolvimento.
 
 ## Hospedagem Pública
 
@@ -230,14 +256,15 @@ Não envie essas pastas para o Git. A pasta `data/certs` precisa continuar está
 
 - `games/games.json`: manifesto dos pacotes de jogos suportados.
 - `games/dirt-showdown`: pacote, projeto do instalador visual, instalador `.cmd` alternativo e notas de release do DiRT Showdown.
+- `games/grid-2`: pacote, projeto do instalador visual, instalador `.cmd` alternativo e notas de release do GRID 2.
 - `.github/workflows/game-releases.yml`: empacota assets de release por jogo a partir de tags específicas.
 - `scripts/package-game-release.ps1`: empacota um jogo suportado para artifacts de CI/release.
-- `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado atualmente pelo DiRT Showdown.
+- `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado pelo DiRT Showdown e pelo GRID 2.
 - `src/RaceNetShowdown.Patcher`: ferramenta de patch usada pelos scripts locais de desenvolvimento.
 - `src/F12018EventActivator`: ativador de memória do processo do F1 2018 para os eventos semanais expirados.
 - `src/RaceNetShowdown.TlsProbe`: ferramenta de diagnóstico TLS para investigar conexões iniciais.
 - `tools/dirt-showdown`: scripts de desenvolvimento para patch local, patch contra servidor hospedado, restauração, status, regeneração de certificados e diagnóstico TLS do DiRT Showdown.
-- `tools/grid-2`: scripts iniciais para patch local, servidor de discovery e diagnóstico TLS do GRID 2.
+- `tools/grid-2`: scripts de desenvolvimento para patch local, servidor de discovery e diagnóstico TLS do GRID 2.
 - `tools/f1-2018`: script auxiliar para o F1 2018 Event Activator.
 
 Os nomes internos ainda carregam `Showdown` porque DiRT Showdown é o primeiro jogo implementado. A intenção é extrair interfaces compartilhadas e perfis por jogo conforme novos jogos forem adicionados.

@@ -140,6 +140,7 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
     var store = context.RequestServices.GetRequiredService<IRaceNetStore>();
     var egoNetFunction = context.Request.Headers["X-EgoNet-Function"].ToString();
     var userAgent = context.Request.Headers.UserAgent.ToString();
+    var requestGameId = responder.ResolveRequestGameId(context.Request, body);
     var session = string.IsNullOrWhiteSpace(egoNetFunction)
         ? null
         : await store.EnsureSessionAsync(context, body, context.RequestAborted);
@@ -148,19 +149,17 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
             session ?? throw new InvalidOperationException("RaceNet session was not created."),
             context.RequestAborted)
         : null;
-    var response = store is LocalRaceNetStore
-        ? responder.BuildLocalResponse(context.Request, body, session, challengeSnapshot)
-        : await responder.BuildResponseAsync(
-            context.Request,
-            body,
-            session,
-            challengeSnapshot,
-            store,
-            context.RequestAborted);
+    var response = await responder.BuildResponseAsync(
+        context.Request,
+        body,
+        session,
+        challengeSnapshot,
+        store,
+        context.RequestAborted);
 
     app.Logger.LogInformation(
         "RaceNet call {GameId} {Method} {Path} {Function} UA {UserAgent} -> {StatusCode} (request {RequestBytes} bytes, response {ResponseBytes} bytes)",
-        raceNetOptions.GameId,
+        requestGameId,
         context.Request.Method,
         $"{context.Request.Path}{context.Request.QueryString}",
         string.IsNullOrWhiteSpace(egoNetFunction) ? "<none>" : egoNetFunction,
@@ -208,7 +207,8 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
 });
 
 app.Logger.LogInformation("EgoNet Revival server starting");
-app.Logger.LogInformation("Active game profile: {GameName} ({GameId})", raceNetOptions.GameName, raceNetOptions.GameId);
+app.Logger.LogInformation("Supported game profiles: DiRT Showdown, GRID 2");
+app.Logger.LogInformation("Configured fallback game profile: {GameName} ({GameId})", raceNetOptions.GameName, raceNetOptions.GameId);
 app.Logger.LogInformation("HTTP  endpoint: http://127.0.0.1:{Port}", raceNetOptions.HttpPort);
 app.Logger.LogInformation("HTTPS endpoint: https://127.0.0.1:{Port}", raceNetOptions.HttpsPort);
 app.Logger.LogInformation("Listen any IP: {ListenAnyIp}", raceNetOptions.ListenAnyIp);
