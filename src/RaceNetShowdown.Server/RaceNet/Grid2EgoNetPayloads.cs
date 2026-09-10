@@ -50,13 +50,13 @@ internal static class Grid2EgoNetPayloads
 
         if (functionName == "RaceNetGlobalDomination.GetEvent")
         {
-            var activeEvent = await store.GetGrid2CurrentGlobalEventAsync(cancellationToken);
+            var activeEvent = await store.GetGrid2CurrentGlobalEventAsync(session, cancellationToken);
             return Html(BuildCurrentGlobalDomination(activeEvent), headers);
         }
 
         if (functionName == "RaceNetGlobalDomination.GetPreviousEvent")
         {
-            var previousEvent = await store.GetGrid2PreviousGlobalEventAsync(cancellationToken);
+            var previousEvent = await store.GetGrid2PreviousGlobalEventAsync(session, cancellationToken);
             return Html(BuildPreviousGlobalDomination(previousEvent), headers);
         }
 

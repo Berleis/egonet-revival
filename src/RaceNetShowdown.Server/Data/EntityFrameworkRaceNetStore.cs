@@ -591,22 +591,26 @@ public sealed class EntityFrameworkRaceNetStore(
             submission.VehicleId);
     }
 
-    public async Task<Grid2GlobalEventSnapshot?> GetGrid2CurrentGlobalEventAsync(CancellationToken cancellationToken)
+    public async Task<Grid2GlobalEventSnapshot?> GetGrid2CurrentGlobalEventAsync(
+        RaceNetSessionInfo? session,
+        CancellationToken cancellationToken)
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
         var activeEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusActive, cancellationToken);
         return activeEvent is null
             ? null
-            : await ToGrid2GlobalEventSnapshotAsync(activeEvent, cancellationToken);
+            : await ToGrid2GlobalEventSnapshotAsync(activeEvent, session, cancellationToken);
     }
 
-    public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(CancellationToken cancellationToken)
+    public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
+        RaceNetSessionInfo? session,
+        CancellationToken cancellationToken)
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
         var previousEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
         return previousEvent is null
             ? null
-            : await ToGrid2GlobalEventSnapshotAsync(previousEvent, cancellationToken);
+            : await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
     }
 
     public async Task SaveGrid2MultiplayerEventAsync(
@@ -667,6 +671,117 @@ public sealed class EntityFrameworkRaceNetStore(
     }
 
     public async Task<IReadOnlyList<Grid2RivalSnapshot>> GetGrid2RivalsAsync(
+        RaceNetSessionInfo session,
+        CancellationToken cancellationToken)
+    {
+        await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
+        var startsAt = GetGrid2CurrentGlobalEventStartsAt(DateTimeOffset.UtcNow);
+        var rivals = await LoadGrid2RivalAssignmentsAsync(
+            session,
+            startsAt,
+            startsAt.Add(Grid2GlobalEventLifetime),
+            createIfMissing: true,
+            cancellationToken);
+
+        logger.LogInformation(
+            "GRID 2 rivals selected for {Player}: {Rivals}",
+            session.DisplayName,
+            rivals.Count == 0
+                ? "<none>"
+                : string.Join(", ", rivals.Select(value => $"{GetGrid2RivalTypeName(value.Type)}={value.Name}/{value.SteamId}")));
+
+        return rivals;
+    }
+
+    private async Task<IReadOnlyList<Grid2RivalSnapshot>> LoadGrid2RivalAssignmentsAsync(
+        RaceNetSessionInfo session,
+        DateTimeOffset startsAt,
+        DateTimeOffset expiresAt,
+        bool createIfMissing,
+        CancellationToken cancellationToken)
+    {
+        if (session.PlayerProfileId <= 0)
+        {
+            return [];
+        }
+
+        var assignedRivals = await LoadGrid2RivalAssignmentsOnlyAsync(
+            session.PlayerProfileId,
+            startsAt,
+            expiresAt,
+            cancellationToken);
+        if (assignedRivals.Count > 0 || !createIfMissing)
+        {
+            return assignedRivals;
+        }
+
+        var selectedRivals = await SelectGrid2RivalsAsync(session, cancellationToken);
+        if (selectedRivals.Count == 0)
+        {
+            return [];
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var rival in selectedRivals)
+        {
+            dbContext.Grid2RivalAssignments.Add(new Grid2RivalAssignmentRecord
+            {
+                PlayerProfileId = session.PlayerProfileId,
+                RivalPlayerProfileId = rival.EgonetId,
+                Type = rival.Type,
+                StartsAt = startsAt,
+                ExpiresAt = expiresAt,
+                CreatedAt = now
+            });
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            foreach (var entry in dbContext.ChangeTracker.Entries<Grid2RivalAssignmentRecord>())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.State = EntityState.Detached;
+                }
+            }
+        }
+
+        return await LoadGrid2RivalAssignmentsOnlyAsync(
+            session.PlayerProfileId,
+            startsAt,
+            expiresAt,
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<Grid2RivalSnapshot>> LoadGrid2RivalAssignmentsOnlyAsync(
+        long playerProfileId,
+        DateTimeOffset startsAt,
+        DateTimeOffset expiresAt,
+        CancellationToken cancellationToken)
+    {
+        var assignments = await dbContext.Grid2RivalAssignments
+            .AsNoTracking()
+            .Include(value => value.RivalPlayerProfile)
+            .Where(value =>
+                value.PlayerProfileId == playerProfileId &&
+                value.StartsAt == startsAt &&
+                value.ExpiresAt == expiresAt)
+            .ToListAsync(cancellationToken);
+
+        return assignments
+            .Where(value => value.RivalPlayerProfile is not null)
+            .OrderBy(value => GetGrid2RivalSlotOrder(value.Type))
+            .ThenBy(value => value.Type)
+            .ThenBy(value => value.RivalPlayerProfile!.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(ToGrid2RivalSnapshot)
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyList<Grid2RivalSnapshot>> SelectGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
     {
@@ -742,14 +857,18 @@ public sealed class EntityFrameworkRaceNetStore(
         AddGrid2Rival(rivals, selectedProfileIds, SelectGrid2AutomaticRival(candidates, selectedProfileIds), type: 0);
         AddGrid2Rival(rivals, selectedProfileIds, SelectGrid2AutomaticRival(candidates, selectedProfileIds), type: 1);
 
-        logger.LogInformation(
-            "GRID 2 rivals selected for {Player}: {Rivals}",
-            session.DisplayName,
-            rivals.Count == 0
-                ? "<none>"
-                : string.Join(", ", rivals.Select(value => $"{GetGrid2RivalTypeName(value.Type)}={value.Name}/{value.SteamId}")));
-
         return rivals;
+    }
+
+    private static Grid2RivalSnapshot ToGrid2RivalSnapshot(Grid2RivalAssignmentRecord assignment)
+    {
+        var profile = assignment.RivalPlayerProfile
+            ?? throw new InvalidOperationException("GRID 2 rival assignment profile is missing.");
+        return new Grid2RivalSnapshot(
+            ResolveGrid2SteamId(profile),
+            profile.DisplayName.Trim(),
+            profile.Id,
+            assignment.Type);
     }
 
     public async Task SaveGrid2RivalSessionDataAsync(
@@ -939,6 +1058,17 @@ public sealed class EntityFrameworkRaceNetStore(
         };
     }
 
+    private static int GetGrid2RivalSlotOrder(int type)
+    {
+        return type switch
+        {
+            2 => 0,
+            0 => 1,
+            1 => 2,
+            _ => 3
+        };
+    }
+
     private sealed record Grid2RivalCandidate(
         PlayerProfile Profile,
         DateTimeOffset? SessionDataUpdatedAt,
@@ -968,15 +1098,21 @@ public sealed class EntityFrameworkRaceNetStore(
 
     private async Task<Grid2GlobalEventSnapshot> ToGrid2GlobalEventSnapshotAsync(
         Grid2GlobalEventRecord eventRecord,
+        RaceNetSessionInfo? session,
         CancellationToken cancellationToken)
     {
         var races = eventRecord.Races
             .OrderBy(value => value.SortOrder)
             .Select(ToGrid2GlobalRaceSnapshot)
             .ToArray();
+        var leaderboardProfileIds = await LoadGrid2GlobalLeaderboardProfileIdsAsync(
+            eventRecord,
+            session,
+            cancellationToken);
         var leaderboardEntries = await LoadGrid2GlobalLeaderboardEntriesAsync(
             eventRecord.RaceNetEventId,
             races.Select(value => value.RaceNetRaceId).ToArray(),
+            leaderboardProfileIds,
             cancellationToken);
 
         return new Grid2GlobalEventSnapshot(
@@ -987,13 +1123,46 @@ public sealed class EntityFrameworkRaceNetStore(
             leaderboardEntries);
     }
 
+    private async Task<IReadOnlyCollection<long>> LoadGrid2GlobalLeaderboardProfileIdsAsync(
+        Grid2GlobalEventRecord eventRecord,
+        RaceNetSessionInfo? session,
+        CancellationToken cancellationToken)
+    {
+        if (session is null || session.PlayerProfileId <= 0)
+        {
+            return [];
+        }
+
+        var profileIds = new HashSet<long> { session.PlayerProfileId };
+        var rivals = await LoadGrid2RivalAssignmentsAsync(
+            session,
+            eventRecord.StartsAt,
+            eventRecord.ExpiresAt,
+            createIfMissing: eventRecord.Status is Grid2GlobalEventStatusActive or Grid2GlobalEventStatusPrevious,
+            cancellationToken);
+        foreach (var rival in rivals)
+        {
+            if (rival.EgonetId > 0)
+            {
+                profileIds.Add(rival.EgonetId);
+            }
+        }
+
+        return profileIds;
+    }
+
     private async Task<IReadOnlyList<Grid2GlobalLeaderboardEntry>> LoadGrid2GlobalLeaderboardEntriesAsync(
         long raceNetEventId,
         IReadOnlyCollection<long> raceNetRaceIds,
+        IReadOnlyCollection<long> playerProfileIds,
         CancellationToken cancellationToken)
     {
         var raceIds = raceNetRaceIds.Distinct().ToArray();
-        if (raceIds.Length == 0)
+        var profileIds = playerProfileIds
+            .Where(value => value > 0)
+            .Distinct()
+            .ToArray();
+        if (raceIds.Length == 0 || profileIds.Length == 0)
         {
             return [];
         }
@@ -1003,7 +1172,8 @@ public sealed class EntityFrameworkRaceNetStore(
             .Include(value => value.PlayerProfile)
             .Where(value =>
                 value.RaceNetEventId == raceNetEventId &&
-                raceIds.Contains(value.RaceNetRaceId))
+                raceIds.Contains(value.RaceNetRaceId) &&
+                profileIds.Contains(value.PlayerProfileId))
             .ToListAsync(cancellationToken);
 
         return scores
@@ -1359,6 +1529,33 @@ public sealed class EntityFrameworkRaceNetStore(
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
                 """
+                CREATE TABLE IF NOT EXISTS "Grid2RivalAssignments" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2RivalAssignments" PRIMARY KEY AUTOINCREMENT,
+                    "PlayerProfileId" INTEGER NOT NULL,
+                    "RivalPlayerProfileId" INTEGER NOT NULL,
+                    "Type" INTEGER NOT NULL,
+                    "StartsAt" TEXT NOT NULL,
+                    "ExpiresAt" TEXT NOT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_Grid2RivalAssignments_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT,
+                    CONSTRAINT "FK_Grid2RivalAssignments_PlayerProfiles_RivalPlayerProfileId" FOREIGN KEY ("RivalPlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
+                );
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_Grid2RivalAssignments_PlayerProfileId_StartsAt_Type"
+                ON "Grid2RivalAssignments" ("PlayerProfileId", "StartsAt", "Type");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Grid2RivalAssignments_ExpiresAt"
+                ON "Grid2RivalAssignments" ("ExpiresAt");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
                 CREATE TABLE IF NOT EXISTS "Grid2RivalOpponents" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2RivalOpponents" PRIMARY KEY AUTOINCREMENT,
                     "PlayerProfileId" INTEGER NOT NULL,
@@ -1510,6 +1707,37 @@ public sealed class EntityFrameworkRaceNetStore(
                 """
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2RivalSessionData_PlayerProfileId' AND object_id = OBJECT_ID(N'[Grid2RivalSessionData]'))
                     CREATE UNIQUE INDEX [IX_Grid2RivalSessionData_PlayerProfileId] ON [Grid2RivalSessionData] ([PlayerProfileId]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF OBJECT_ID(N'[Grid2RivalAssignments]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [Grid2RivalAssignments] (
+                        [Id] bigint NOT NULL IDENTITY,
+                        [PlayerProfileId] bigint NOT NULL,
+                        [RivalPlayerProfileId] bigint NOT NULL,
+                        [Type] int NOT NULL,
+                        [StartsAt] datetimeoffset NOT NULL,
+                        [ExpiresAt] datetimeoffset NOT NULL,
+                        [CreatedAt] datetimeoffset NOT NULL,
+                        CONSTRAINT [PK_Grid2RivalAssignments] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_Grid2RivalAssignments_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION,
+                        CONSTRAINT [FK_Grid2RivalAssignments_PlayerProfiles_RivalPlayerProfileId] FOREIGN KEY ([RivalPlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
+                    );
+                END
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2RivalAssignments_PlayerProfileId_StartsAt_Type' AND object_id = OBJECT_ID(N'[Grid2RivalAssignments]'))
+                    CREATE UNIQUE INDEX [IX_Grid2RivalAssignments_PlayerProfileId_StartsAt_Type] ON [Grid2RivalAssignments] ([PlayerProfileId], [StartsAt], [Type]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2RivalAssignments_ExpiresAt' AND object_id = OBJECT_ID(N'[Grid2RivalAssignments]'))
+                    CREATE INDEX [IX_Grid2RivalAssignments_ExpiresAt] ON [Grid2RivalAssignments] ([ExpiresAt]);
                 """,
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
