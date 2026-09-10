@@ -24,9 +24,9 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     public DbSet<Grid2RivalSessionDataRecord> Grid2RivalSessionData => Set<Grid2RivalSessionDataRecord>();
 
-    public DbSet<Grid2RivalOpponentRecord> Grid2RivalOpponents => Set<Grid2RivalOpponentRecord>();
-
     public DbSet<Grid2RivalAssignmentRecord> Grid2RivalAssignments => Set<Grid2RivalAssignmentRecord>();
+
+    public DbSet<Grid2RivalOpponentRecord> Grid2RivalOpponents => Set<Grid2RivalOpponentRecord>();
 
     public DbSet<RaceNetCallRecord> RaceNetCalls => Set<RaceNetCallRecord>();
 
@@ -151,25 +151,6 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<Grid2RivalOpponentRecord>(entity =>
-        {
-            entity.ToTable("Grid2RivalOpponents");
-            entity.HasIndex(value => new { value.PlayerProfileId, value.OpponentPlayerProfileId }).IsUnique();
-            entity.HasIndex(value => value.LastSeenAt);
-
-            entity
-                .HasOne(value => value.PlayerProfile)
-                .WithMany()
-                .HasForeignKey(value => value.PlayerProfileId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity
-                .HasOne(value => value.OpponentPlayerProfile)
-                .WithMany()
-                .HasForeignKey(value => value.OpponentPlayerProfileId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
         modelBuilder.Entity<Grid2RivalAssignmentRecord>(entity =>
         {
             entity.ToTable("Grid2RivalAssignments");
@@ -186,6 +167,25 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
                 .HasOne(value => value.RivalPlayerProfile)
                 .WithMany()
                 .HasForeignKey(value => value.RivalPlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Grid2RivalOpponentRecord>(entity =>
+        {
+            entity.ToTable("Grid2RivalOpponents");
+            entity.HasIndex(value => new { value.PlayerProfileId, value.OpponentPlayerProfileId }).IsUnique();
+            entity.HasIndex(value => value.LastSeenAt);
+
+            entity
+                .HasOne(value => value.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.PlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(value => value.OpponentPlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.OpponentPlayerProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

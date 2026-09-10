@@ -199,12 +199,16 @@ public sealed class LocalRaceNetStore : IRaceNetStore
         return Task.CompletedTask;
     }
 
-    public Task<Grid2GlobalEventSnapshot?> GetGrid2CurrentGlobalEventAsync(CancellationToken cancellationToken)
+    public Task<Grid2GlobalEventSnapshot?> GetGrid2CurrentGlobalEventAsync(
+        RaceNetSessionInfo? session,
+        CancellationToken cancellationToken)
     {
         return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
     }
 
-    public Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(CancellationToken cancellationToken)
+    public Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
+        RaceNetSessionInfo? session,
+        CancellationToken cancellationToken)
     {
         return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
     }
