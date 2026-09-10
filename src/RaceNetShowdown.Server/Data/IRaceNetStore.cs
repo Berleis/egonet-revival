@@ -77,7 +77,7 @@ public interface IRaceNetStore
         Grid2MultiplayerEventSubmission submission,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<Grid2RivalSnapshot>> GetGrid2RivalsAsync(
+    Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken);
 

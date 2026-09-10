@@ -17,6 +17,7 @@ Current GRID 2 support:
 - Weekly Global Challenge rotation on Friday at 10:00 UTC.
 - Global Challenge score submission and leaderboard display.
 - Rivals list with weekly, custom, and social Rival slots.
+- Weekly Rival assignments cached until the next Friday 10:00 UTC RaceNet reset.
 - Multiplayer opponent learning from `DataMining.EndEvent`.
 - Rival session data storage for follow-up testing.
 
