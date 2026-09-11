@@ -899,7 +899,7 @@ public sealed class EntityFrameworkRaceNetStore(
             })
             .ToListAsync(cancellationToken);
         var sessionDataUpdatedByProfileId = sessionDataRecords
-            .Where(value => value.SessionData.Length > 0)
+            .Where(value => IsGrid2RivalSessionDataMeaningful(value.SessionData))
             .GroupBy(value => value.PlayerProfileId)
             .ToDictionary(
                 value => value.Key,
@@ -983,6 +983,17 @@ public sealed class EntityFrameworkRaceNetStore(
         var now = DateTimeOffset.UtcNow;
         var record = await dbContext.Grid2RivalSessionData
             .FirstOrDefaultAsync(value => value.PlayerProfileId == session.PlayerProfileId, cancellationToken);
+        var isMeaningful = IsGrid2RivalSessionDataMeaningful(sessionData);
+        if (!isMeaningful)
+        {
+            logger.LogInformation(
+                "GRID 2 blank rival session data ignored for {Player}: {Length} bytes nonZero={NonZeroBytes} preview={Preview}",
+                session.DisplayName,
+                sessionData.Length,
+                CountNonZeroBytes(sessionData),
+                FormatGrid2HexPreview(sessionData));
+            return;
+        }
 
         if (record is null)
         {
@@ -1028,7 +1039,7 @@ public sealed class EntityFrameworkRaceNetStore(
             .Where(value => ids.Contains(value.PlayerProfileId))
             .ToListAsync(cancellationToken);
         var dataByProfileId = records
-            .Where(value => value.SessionData.Length > 0)
+            .Where(value => IsGrid2RivalSessionDataMeaningful(value.SessionData))
             .ToDictionary(value => value.PlayerProfileId, value => value.SessionData.ToArray());
 
         return ids
@@ -1191,6 +1202,11 @@ public sealed class EntityFrameworkRaceNetStore(
     private static int CountNonZeroBytes(byte[] bytes)
     {
         return bytes.Count(value => value != 0);
+    }
+
+    private static bool IsGrid2RivalSessionDataMeaningful(byte[] sessionData)
+    {
+        return CountNonZeroBytes(sessionData) > 1;
     }
 
     private static string FormatGrid2HexPreview(byte[] bytes)
