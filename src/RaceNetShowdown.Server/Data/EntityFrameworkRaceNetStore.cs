@@ -1002,9 +1002,11 @@ public sealed class EntityFrameworkRaceNetStore(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "GRID 2 rival session data saved by {Player}: {Length} bytes",
+            "GRID 2 rival session data saved by {Player}: {Length} bytes nonZero={NonZeroBytes} preview={Preview}",
             session.DisplayName,
-            sessionData.Length);
+            sessionData.Length,
+            CountNonZeroBytes(sessionData),
+            FormatGrid2HexPreview(sessionData));
     }
 
     public async Task<IReadOnlyList<Grid2RivalSessionDataSnapshot>> GetGrid2RivalSessionDataAsync(
@@ -1162,7 +1164,7 @@ public sealed class EntityFrameworkRaceNetStore(
     private static string FormatGrid2Rivals(IEnumerable<Grid2RivalSnapshot> rivals)
     {
         var descriptions = rivals
-            .Select(value => $"{GetGrid2RivalTypeName(value.Type)}={value.Name}/{value.SteamId}")
+            .Select(value => $"{GetGrid2RivalTypeName(value.Type)}={value.Name}/{value.SteamId} egonet={value.EgonetId} totalXp={value.TotalXpWon} rivalXp={value.RivalXpWon}")
             .ToArray();
 
         return descriptions.Length == 0
@@ -1184,6 +1186,18 @@ public sealed class EntityFrameworkRaceNetStore(
     private static string FormatGrid2Participant(Grid2RaceParticipant participant)
     {
         return $"{participant.Name}/{participant.SteamId} pos={FormatGrid2Nullable(participant.Position)} status={FormatGrid2Nullable(participant.Status)} result={FormatGrid2Nullable(participant.Result)} vehicle={FormatGrid2Nullable(participant.VehicleId)}";
+    }
+
+    private static int CountNonZeroBytes(byte[] bytes)
+    {
+        return bytes.Count(value => value != 0);
+    }
+
+    private static string FormatGrid2HexPreview(byte[] bytes)
+    {
+        return bytes.Length == 0
+            ? "<empty>"
+            : Convert.ToHexString(bytes.AsSpan(0, Math.Min(bytes.Length, 16)));
     }
 
     private static string FormatGrid2Nullable<T>(T? value)
