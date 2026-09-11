@@ -686,12 +686,19 @@ public sealed class EntityFrameworkRaceNetStore(
             expiresAt,
             createIfMissing: true,
             cancellationToken);
-        rivals = await LoadGrid2RivalXpAsync(
-            session.PlayerProfileId,
-            rivals,
-            startsAt,
-            expiresAt,
-            cancellationToken);
+        try
+        {
+            rivals = await LoadGrid2RivalXpAsync(
+                session.PlayerProfileId,
+                rivals,
+                startsAt,
+                expiresAt,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to load GRID 2 rival XP for {Player}", session.DisplayName);
+        }
 
         logger.LogInformation(
             "GRID 2 rivals selected for {Player}: startsAt={StartsAt:o} expiresAt={ExpiresAt:o} rivals={Rivals}",
@@ -831,14 +838,22 @@ public sealed class EntityFrameworkRaceNetStore(
             return rivals;
         }
 
-        var opponentRecords = await dbContext.Grid2RivalOpponents
+        var playerRecords = await dbContext.Grid2RivalOpponents
             .AsNoTracking()
             .Where(value =>
-                value.LastSeenAt >= startsAt &&
-                value.LastSeenAt < expiresAt &&
-                ((value.PlayerProfileId == playerProfileId && rivalIds.Contains(value.OpponentPlayerProfileId)) ||
-                 (rivalIds.Contains(value.PlayerProfileId) && value.OpponentPlayerProfileId == playerProfileId)))
+                value.PlayerProfileId == playerProfileId &&
+                rivalIds.Contains(value.OpponentPlayerProfileId))
             .ToListAsync(cancellationToken);
+        var rivalRecords = await dbContext.Grid2RivalOpponents
+            .AsNoTracking()
+            .Where(value =>
+                value.OpponentPlayerProfileId == playerProfileId &&
+                rivalIds.Contains(value.PlayerProfileId))
+            .ToListAsync(cancellationToken);
+        var opponentRecords = playerRecords
+            .Concat(rivalRecords)
+            .Where(value => IsGrid2RivalOpponentInWindow(value, startsAt, expiresAt))
+            .ToArray();
 
         var recordsByPair = opponentRecords
             .GroupBy(value => (value.PlayerProfileId, value.OpponentPlayerProfileId))
@@ -1071,6 +1086,14 @@ public sealed class EntityFrameworkRaceNetStore(
         return xp > uint.MaxValue
             ? uint.MaxValue
             : (uint)xp;
+    }
+
+    private static bool IsGrid2RivalOpponentInWindow(
+        Grid2RivalOpponentRecord record,
+        DateTimeOffset startsAt,
+        DateTimeOffset expiresAt)
+    {
+        return record.LastSeenAt >= startsAt && record.LastSeenAt < expiresAt;
     }
 
     private static bool IsGrid2RivalNameAllowed(string displayName)
