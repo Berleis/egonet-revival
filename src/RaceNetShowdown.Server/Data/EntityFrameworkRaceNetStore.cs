@@ -868,11 +868,13 @@ public sealed class EntityFrameworkRaceNetStore(
             {
                 recordsByPair.TryGetValue((playerProfileId, rival.EgonetId), out var playerRecord);
                 recordsByPair.TryGetValue((rival.EgonetId, playerProfileId), out var rivalRecord);
+                var playerXp = CalculateGrid2RivalXp(playerRecord);
+                var rivalXp = CalculateGrid2RivalXp(rivalRecord);
 
                 return rival with
                 {
-                    TotalXpWon = CalculateGrid2RivalXp(playerRecord),
-                    RivalXpWon = CalculateGrid2RivalXp(rivalRecord)
+                    TotalXpWon = rivalXp,
+                    RivalXpWon = playerXp
                 };
             })
             .ToArray();
