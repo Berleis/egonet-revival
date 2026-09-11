@@ -873,8 +873,8 @@ public sealed class EntityFrameworkRaceNetStore(
 
                 return rival with
                 {
-                    TotalXpWon = rivalXp,
-                    RivalXpWon = playerXp
+                    TotalXpWon = AddGrid2RivalXp(playerXp, rivalXp),
+                    RivalXpWon = rivalXp
                 };
             })
             .ToArray();
@@ -1101,6 +1101,14 @@ public sealed class EntityFrameworkRaceNetStore(
         return xp > uint.MaxValue
             ? uint.MaxValue
             : (uint)xp;
+    }
+
+    private static uint AddGrid2RivalXp(uint playerXp, uint rivalXp)
+    {
+        var totalXp = (ulong)playerXp + rivalXp;
+        return totalXp > uint.MaxValue
+            ? uint.MaxValue
+            : (uint)totalXp;
     }
 
     private static bool IsGrid2RivalOpponentInWindow(
