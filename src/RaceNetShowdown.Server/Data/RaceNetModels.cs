@@ -229,6 +229,19 @@ public sealed class Grid2GlobalScoreRecord
     public DateTimeOffset SubmittedAt { get; set; }
 }
 
+public sealed class Grid2GlobalRewardClaimRecord
+{
+    public long Id { get; set; }
+
+    public long PlayerProfileId { get; set; }
+
+    public PlayerProfile? PlayerProfile { get; set; }
+
+    public long RaceNetEventId { get; set; }
+
+    public DateTimeOffset ClaimedAt { get; set; }
+}
+
 public sealed class Grid2ProfileXpSnapshotRecord
 {
     public long Id { get; set; }
