@@ -22,6 +22,8 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     public DbSet<Grid2GlobalScoreRecord> Grid2GlobalScores => Set<Grid2GlobalScoreRecord>();
 
+    public DbSet<Grid2GlobalRewardClaimRecord> Grid2GlobalRewardClaims => Set<Grid2GlobalRewardClaimRecord>();
+
     public DbSet<Grid2ProfileXpSnapshotRecord> Grid2ProfileXpSnapshots => Set<Grid2ProfileXpSnapshotRecord>();
 
     public DbSet<Grid2RivalSessionDataRecord> Grid2RivalSessionData => Set<Grid2RivalSessionDataRecord>();
@@ -133,6 +135,19 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
         {
             entity.HasIndex(value => new { value.RaceNetEventId, value.RaceNetRaceId });
             entity.HasIndex(value => new { value.PlayerProfileId, value.RaceNetEventId, value.RaceNetRaceId });
+
+            entity
+                .HasOne(value => value.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.PlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Grid2GlobalRewardClaimRecord>(entity =>
+        {
+            entity.ToTable("Grid2GlobalRewardClaims");
+            entity.HasIndex(value => new { value.PlayerProfileId, value.RaceNetEventId }).IsUnique();
+            entity.HasIndex(value => value.RaceNetEventId);
 
             entity
                 .HasOne(value => value.PlayerProfile)

@@ -16,6 +16,7 @@ public sealed class EntityFrameworkRaceNetStore(
     private const string Grid2GlobalEventStatusActive = "active";
     private const string Grid2GlobalEventStatusPrevious = "previous";
     private const string Grid2GlobalEventStatusArchived = "archived";
+    private const string Grid2GlobalPreviousEventFunction = "RaceNetGlobalDomination.GetPreviousEvent";
     private const int Grid2GlobalEventResetHourUtc = 10;
     private const DayOfWeek Grid2GlobalEventResetDay = DayOfWeek.Friday;
     private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
@@ -608,10 +609,32 @@ public sealed class EntityFrameworkRaceNetStore(
         CancellationToken cancellationToken)
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
+        if (session is null || session.PlayerProfileId <= 0)
+        {
+            return null;
+        }
+
         var previousEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
-        return previousEvent is null
-            ? null
-            : await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
+        if (previousEvent is null)
+        {
+            return null;
+        }
+
+        if (await HasGrid2GlobalRewardClaimAsync(session.PlayerProfileId, previousEvent.RaceNetEventId, cancellationToken))
+        {
+            return null;
+        }
+
+        if (await WasGrid2PreviousEventAlreadyReturnedAsync(session, previousEvent, cancellationToken))
+        {
+            await TryClaimGrid2GlobalRewardAsync(session, previousEvent, "backfilled", cancellationToken);
+            return null;
+        }
+
+        var snapshot = await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
+        return await TryClaimGrid2GlobalRewardAsync(session, previousEvent, "delivered", cancellationToken)
+            ? snapshot
+            : null;
     }
 
     public async Task SaveGrid2MultiplayerEventAsync(
@@ -1329,6 +1352,88 @@ public sealed class EntityFrameworkRaceNetStore(
             .FirstOrDefault();
     }
 
+    private async Task<bool> HasGrid2GlobalRewardClaimAsync(
+        long playerProfileId,
+        long raceNetEventId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Grid2GlobalRewardClaims
+            .AsNoTracking()
+            .AnyAsync(value =>
+                value.PlayerProfileId == playerProfileId &&
+                value.RaceNetEventId == raceNetEventId,
+                cancellationToken);
+    }
+
+    private async Task<bool> WasGrid2PreviousEventAlreadyReturnedAsync(
+        RaceNetSessionInfo session,
+        Grid2GlobalEventRecord previousEvent,
+        CancellationToken cancellationToken)
+    {
+        var sessionIds = await dbContext.RaceNetSessions
+            .AsNoTracking()
+            .Where(value => value.PlayerProfileId == session.PlayerProfileId)
+            .Select(value => value.SessionId)
+            .ToListAsync(cancellationToken);
+        if (sessionIds.Count == 0)
+        {
+            return false;
+        }
+
+        return await dbContext.RaceNetCalls
+            .AsNoTracking()
+            .AnyAsync(value =>
+                value.EgoNetFunction == Grid2GlobalPreviousEventFunction &&
+                sessionIds.Contains(value.EgoNetSessionId) &&
+                value.ResponseStatus >= 200 &&
+                value.ResponseStatus < 300 &&
+                value.Time >= previousEvent.ExpiresAt,
+                cancellationToken);
+    }
+
+    private async Task<bool> TryClaimGrid2GlobalRewardAsync(
+        RaceNetSessionInfo session,
+        Grid2GlobalEventRecord previousEvent,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        dbContext.Grid2GlobalRewardClaims.Add(new Grid2GlobalRewardClaimRecord
+        {
+            PlayerProfileId = session.PlayerProfileId,
+            RaceNetEventId = previousEvent.RaceNetEventId,
+            ClaimedAt = DateTimeOffset.UtcNow
+        });
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            foreach (var entry in dbContext.ChangeTracker.Entries<Grid2GlobalRewardClaimRecord>())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.State = EntityState.Detached;
+                }
+            }
+
+            logger.LogDebug(
+                ex,
+                "GRID 2 global reward claim skipped for {Player}: event={EventId}",
+                session.DisplayName,
+                previousEvent.RaceNetEventId);
+            return false;
+        }
+
+        logger.LogInformation(
+            "GRID 2 global reward claimed for {Player}: event={EventId} reason={Reason}",
+            session.DisplayName,
+            previousEvent.RaceNetEventId,
+            reason);
+        return true;
+    }
+
     private async Task<Grid2GlobalEventSnapshot> ToGrid2GlobalEventSnapshotAsync(
         Grid2GlobalEventRecord eventRecord,
         RaceNetSessionInfo? session,
@@ -1745,6 +1850,29 @@ public sealed class EntityFrameworkRaceNetStore(
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
                 """
+                CREATE TABLE IF NOT EXISTS "Grid2GlobalRewardClaims" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2GlobalRewardClaims" PRIMARY KEY AUTOINCREMENT,
+                    "PlayerProfileId" INTEGER NOT NULL,
+                    "RaceNetEventId" INTEGER NOT NULL,
+                    "ClaimedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_Grid2GlobalRewardClaims_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
+                );
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_Grid2GlobalRewardClaims_PlayerProfileId_RaceNetEventId"
+                ON "Grid2GlobalRewardClaims" ("PlayerProfileId", "RaceNetEventId");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Grid2GlobalRewardClaims_RaceNetEventId"
+                ON "Grid2GlobalRewardClaims" ("RaceNetEventId");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
                 CREATE TABLE IF NOT EXISTS "Grid2ProfileXpSnapshots" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2ProfileXpSnapshots" PRIMARY KEY AUTOINCREMENT,
                     "PlayerProfileId" INTEGER NOT NULL,
@@ -1965,6 +2093,33 @@ public sealed class EntityFrameworkRaceNetStore(
                 """
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalScores_PlayerProfileId_RaceNetEventId_RaceNetRaceId' AND object_id = OBJECT_ID(N'[Grid2GlobalScores]'))
                     CREATE INDEX [IX_Grid2GlobalScores_PlayerProfileId_RaceNetEventId_RaceNetRaceId] ON [Grid2GlobalScores] ([PlayerProfileId], [RaceNetEventId], [RaceNetRaceId]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF OBJECT_ID(N'[Grid2GlobalRewardClaims]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [Grid2GlobalRewardClaims] (
+                        [Id] bigint NOT NULL IDENTITY,
+                        [PlayerProfileId] bigint NOT NULL,
+                        [RaceNetEventId] bigint NOT NULL,
+                        [ClaimedAt] datetimeoffset NOT NULL,
+                        CONSTRAINT [PK_Grid2GlobalRewardClaims] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_Grid2GlobalRewardClaims_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
+                    );
+                END
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalRewardClaims_PlayerProfileId_RaceNetEventId' AND object_id = OBJECT_ID(N'[Grid2GlobalRewardClaims]'))
+                    CREATE UNIQUE INDEX [IX_Grid2GlobalRewardClaims_PlayerProfileId_RaceNetEventId] ON [Grid2GlobalRewardClaims] ([PlayerProfileId], [RaceNetEventId]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalRewardClaims_RaceNetEventId' AND object_id = OBJECT_ID(N'[Grid2GlobalRewardClaims]'))
+                    CREATE INDEX [IX_Grid2GlobalRewardClaims_RaceNetEventId] ON [Grid2GlobalRewardClaims] ([RaceNetEventId]);
                 """,
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
