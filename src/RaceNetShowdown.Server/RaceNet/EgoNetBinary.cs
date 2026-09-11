@@ -378,6 +378,44 @@ internal static class EgoNetRequestParser
 
         return null;
     }
+
+    public static Grid2ProfileSnapshotSubmission? ReadGrid2ProfileSnapshot(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return null;
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "Statistics" && tag == "vdic")
+                {
+                    return ReadGrid2ProfileStatistics(reader);
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
     public static Grid2MultiplayerEventSubmission? ReadGrid2MultiplayerEventSubmission(CapturedBody body)
     {
         if (body.BodyBytes.Length == 0)
@@ -790,6 +828,82 @@ internal static class EgoNetRequestParser
         return new EgoNetSubmittedChallengeResult(challengeId, result, attempts);
     }
 
+    private static Grid2ProfileSnapshotSubmission? ReadGrid2ProfileStatistics(BinaryReader reader)
+    {
+        long? saveGameId = null;
+        int? xpTotal = null;
+        int? xpLevel = null;
+
+        var fields = reader.ReadInt32();
+        for (var i = 0; i < fields; i++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+
+            if (name == "Tracking" && tag == "vdic")
+            {
+                (saveGameId, _) = ReadGrid2Tracking(reader);
+                continue;
+            }
+
+            if (name == "Multiplayer" && tag == "vdic")
+            {
+                (xpTotal, xpLevel) = ReadGrid2ProfileMultiplayer(reader);
+                continue;
+            }
+
+            SkipValue(reader, tag);
+        }
+
+        return xpTotal.HasValue
+            ? new Grid2ProfileSnapshotSubmission(saveGameId, xpTotal.Value, xpLevel ?? 0)
+            : null;
+    }
+
+    private static (int? XpTotal, int? XpLevel) ReadGrid2ProfileMultiplayer(BinaryReader reader)
+    {
+        int? xpTotal = null;
+        int? xpLevel = null;
+
+        var fields = reader.ReadInt32();
+        for (var i = 0; i < fields; i++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+
+            if (name == "XpTotal")
+            {
+                if (TryReadInteger(reader, tag, out var value))
+                {
+                    xpTotal = checked((int)value);
+                }
+                else
+                {
+                    SkipValue(reader, tag);
+                }
+
+                continue;
+            }
+
+            if (name == "XpLevel")
+            {
+                if (TryReadInteger(reader, tag, out var value))
+                {
+                    xpLevel = checked((int)value);
+                }
+                else
+                {
+                    SkipValue(reader, tag);
+                }
+
+                continue;
+            }
+
+            SkipValue(reader, tag);
+        }
+
+        return (xpTotal, xpLevel);
+    }
 
     private static Grid2MultiplayerEventSubmission ReadGrid2Statistics(BinaryReader reader)
     {

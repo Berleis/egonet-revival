@@ -17,7 +17,6 @@ public sealed class EntityFrameworkRaceNetStore(
     private const string Grid2GlobalEventStatusPrevious = "previous";
     private const string Grid2GlobalEventStatusArchived = "archived";
     private const int Grid2GlobalEventResetHourUtc = 10;
-    private const int Grid2RivalRaceXp = 85;
     private const DayOfWeek Grid2GlobalEventResetDay = DayOfWeek.Friday;
     private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
     private static readonly TimeSpan Grid2GlobalEventLifetime = TimeSpan.FromDays(7);
@@ -672,6 +671,52 @@ public sealed class EntityFrameworkRaceNetStore(
             string.Join(", ", participants.Select(FormatGrid2Participant)));
     }
 
+    public async Task SaveGrid2ProfileSnapshotAsync(
+        RaceNetSessionInfo session,
+        Grid2ProfileSnapshotSubmission submission,
+        CancellationToken cancellationToken)
+    {
+        if (session.PlayerProfileId <= 0 || submission.XpTotal < 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var currentWeekStartsAt = GetGrid2CurrentGlobalEventStartsAt(now);
+        var latest = await dbContext.Grid2ProfileXpSnapshots
+            .AsNoTracking()
+            .Where(value => value.PlayerProfileId == session.PlayerProfileId)
+            .OrderByDescending(value => value.CapturedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (latest is not null &&
+            latest.CapturedAt >= currentWeekStartsAt &&
+            latest.SaveGameId == submission.SaveGameId &&
+            latest.XpTotal == submission.XpTotal &&
+            latest.XpLevel == submission.XpLevel)
+        {
+            return;
+        }
+
+        dbContext.Grid2ProfileXpSnapshots.Add(new Grid2ProfileXpSnapshotRecord
+        {
+            PlayerProfileId = session.PlayerProfileId,
+            SaveGameId = submission.SaveGameId,
+            XpTotal = submission.XpTotal,
+            XpLevel = submission.XpLevel,
+            CapturedAt = now
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "GRID 2 profile XP saved for {Player}: saveGameId={SaveGameId} xpTotal={XpTotal} xpLevel={XpLevel}",
+            session.DisplayName,
+            submission.SaveGameId?.ToString(CultureInfo.InvariantCulture) ?? "<none>",
+            submission.XpTotal,
+            submission.XpLevel);
+    }
+
     public async Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
@@ -838,38 +883,27 @@ public sealed class EntityFrameworkRaceNetStore(
             return rivals;
         }
 
-        var playerRecords = await dbContext.Grid2RivalOpponents
-            .AsNoTracking()
-            .Where(value =>
-                value.PlayerProfileId == playerProfileId &&
-                rivalIds.Contains(value.OpponentPlayerProfileId))
-            .ToListAsync(cancellationToken);
-        var rivalRecords = await dbContext.Grid2RivalOpponents
-            .AsNoTracking()
-            .Where(value =>
-                value.OpponentPlayerProfileId == playerProfileId &&
-                rivalIds.Contains(value.PlayerProfileId))
-            .ToListAsync(cancellationToken);
-        var opponentRecords = playerRecords
-            .Concat(rivalRecords)
-            .Where(value => IsGrid2RivalOpponentInWindow(value, startsAt, expiresAt))
+        var profileIds = rivalIds
+            .Append(playerProfileId)
+            .Distinct()
             .ToArray();
-
-        var recordsByPair = opponentRecords
-            .GroupBy(value => (value.PlayerProfileId, value.OpponentPlayerProfileId))
+        var xpSnapshots = await dbContext.Grid2ProfileXpSnapshots
+            .AsNoTracking()
+            .Where(value =>
+                profileIds.Contains(value.PlayerProfileId) &&
+                value.CapturedAt < expiresAt)
+            .ToListAsync(cancellationToken);
+        var weeklyXpByProfileId = xpSnapshots
+            .GroupBy(value => value.PlayerProfileId)
             .ToDictionary(
                 value => value.Key,
-                value => value
-                    .OrderByDescending(record => record.LastSeenAt)
-                    .First());
+                value => CalculateGrid2WeeklyProfileXp(value, startsAt, expiresAt));
 
         return rivals
             .Select(rival =>
             {
-                recordsByPair.TryGetValue((playerProfileId, rival.EgonetId), out var playerRecord);
-                recordsByPair.TryGetValue((rival.EgonetId, playerProfileId), out var rivalRecord);
-                var playerXp = CalculateGrid2RivalXp(playerRecord);
-                var rivalXp = CalculateGrid2RivalXp(rivalRecord);
+                var playerXp = weeklyXpByProfileId.GetValueOrDefault(playerProfileId);
+                var rivalXp = weeklyXpByProfileId.GetValueOrDefault(rival.EgonetId);
 
                 return rival with
                 {
@@ -1090,14 +1124,36 @@ public sealed class EntityFrameworkRaceNetStore(
         record.LastSeenAt = now;
     }
 
-    private static uint CalculateGrid2RivalXp(Grid2RivalOpponentRecord? record)
+    private static uint CalculateGrid2WeeklyProfileXp(
+        IEnumerable<Grid2ProfileXpSnapshotRecord> records,
+        DateTimeOffset startsAt,
+        DateTimeOffset expiresAt)
     {
-        if (record is null || record.TimesMet <= 0)
+        var snapshots = records
+            .Where(value => value.CapturedAt < expiresAt)
+            .OrderBy(value => value.CapturedAt)
+            .ToArray();
+        if (snapshots.Length == 0)
         {
             return 0;
         }
 
-        var xp = (long)record.TimesMet * Grid2RivalRaceXp;
+        var latest = snapshots[^1];
+        var baseline = snapshots
+            .Where(value => value.CapturedAt <= startsAt)
+            .LastOrDefault()
+            ?? snapshots.FirstOrDefault(value => value.CapturedAt >= startsAt);
+        if (baseline is null)
+        {
+            return 0;
+        }
+
+        var xp = (long)latest.XpTotal - baseline.XpTotal;
+        if (xp <= 0)
+        {
+            return 0;
+        }
+
         return xp > uint.MaxValue
             ? uint.MaxValue
             : (uint)xp;
@@ -1109,14 +1165,6 @@ public sealed class EntityFrameworkRaceNetStore(
         return totalXp > uint.MaxValue
             ? uint.MaxValue
             : (uint)totalXp;
-    }
-
-    private static bool IsGrid2RivalOpponentInWindow(
-        Grid2RivalOpponentRecord record,
-        DateTimeOffset startsAt,
-        DateTimeOffset expiresAt)
-    {
-        return record.LastSeenAt >= startsAt && record.LastSeenAt < expiresAt;
     }
 
     private static bool IsGrid2RivalNameAllowed(string displayName)
@@ -1697,6 +1745,25 @@ public sealed class EntityFrameworkRaceNetStore(
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
                 """
+                CREATE TABLE IF NOT EXISTS "Grid2ProfileXpSnapshots" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2ProfileXpSnapshots" PRIMARY KEY AUTOINCREMENT,
+                    "PlayerProfileId" INTEGER NOT NULL,
+                    "SaveGameId" INTEGER NULL,
+                    "XpTotal" INTEGER NOT NULL,
+                    "XpLevel" INTEGER NOT NULL,
+                    "CapturedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_Grid2ProfileXpSnapshots_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
+                );
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt"
+                ON "Grid2ProfileXpSnapshots" ("PlayerProfileId", "CapturedAt");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
                 CREATE TABLE IF NOT EXISTS "Grid2RivalSessionData" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2RivalSessionData" PRIMARY KEY AUTOINCREMENT,
                     "PlayerProfileId" INTEGER NOT NULL,
@@ -1898,6 +1965,29 @@ public sealed class EntityFrameworkRaceNetStore(
                 """
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalScores_PlayerProfileId_RaceNetEventId_RaceNetRaceId' AND object_id = OBJECT_ID(N'[Grid2GlobalScores]'))
                     CREATE INDEX [IX_Grid2GlobalScores_PlayerProfileId_RaceNetEventId_RaceNetRaceId] ON [Grid2GlobalScores] ([PlayerProfileId], [RaceNetEventId], [RaceNetRaceId]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF OBJECT_ID(N'[Grid2ProfileXpSnapshots]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [Grid2ProfileXpSnapshots] (
+                        [Id] bigint NOT NULL IDENTITY,
+                        [PlayerProfileId] bigint NOT NULL,
+                        [SaveGameId] bigint NULL,
+                        [XpTotal] int NOT NULL,
+                        [XpLevel] int NOT NULL,
+                        [CapturedAt] datetimeoffset NOT NULL,
+                        CONSTRAINT [PK_Grid2ProfileXpSnapshots] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_Grid2ProfileXpSnapshots_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
+                    );
+                END
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt' AND object_id = OBJECT_ID(N'[Grid2ProfileXpSnapshots]'))
+                    CREATE INDEX [IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt] ON [Grid2ProfileXpSnapshots] ([PlayerProfileId], [CapturedAt]);
                 """,
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(

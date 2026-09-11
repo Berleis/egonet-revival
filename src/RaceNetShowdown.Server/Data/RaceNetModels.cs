@@ -229,6 +229,23 @@ public sealed class Grid2GlobalScoreRecord
     public DateTimeOffset SubmittedAt { get; set; }
 }
 
+public sealed class Grid2ProfileXpSnapshotRecord
+{
+    public long Id { get; set; }
+
+    public long PlayerProfileId { get; set; }
+
+    public PlayerProfile? PlayerProfile { get; set; }
+
+    public long? SaveGameId { get; set; }
+
+    public int XpTotal { get; set; }
+
+    public int XpLevel { get; set; }
+
+    public DateTimeOffset CapturedAt { get; set; }
+}
+
 public sealed class Grid2RivalSessionDataRecord
 {
     public long Id { get; set; }

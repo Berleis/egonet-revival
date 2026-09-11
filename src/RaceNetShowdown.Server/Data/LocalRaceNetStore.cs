@@ -221,6 +221,14 @@ public sealed class LocalRaceNetStore : IRaceNetStore
         return Task.CompletedTask;
     }
 
+    public Task SaveGrid2ProfileSnapshotAsync(
+        RaceNetSessionInfo session,
+        Grid2ProfileSnapshotSubmission submission,
+        CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
