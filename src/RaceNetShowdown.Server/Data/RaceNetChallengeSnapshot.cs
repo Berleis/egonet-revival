@@ -74,6 +74,11 @@ public sealed record Grid2MultiplayerEventSubmission(
     long? RaceNetId,
     IReadOnlyList<Grid2RaceParticipant> HumanParticipants);
 
+public sealed record Grid2ProfileSnapshotSubmission(
+    long? SaveGameId,
+    int XpTotal,
+    int XpLevel);
+
 public sealed record Grid2RaceParticipant(
     ulong SteamId,
     string Name,

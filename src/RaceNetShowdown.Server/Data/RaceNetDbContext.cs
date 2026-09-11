@@ -22,6 +22,8 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     public DbSet<Grid2GlobalScoreRecord> Grid2GlobalScores => Set<Grid2GlobalScoreRecord>();
 
+    public DbSet<Grid2ProfileXpSnapshotRecord> Grid2ProfileXpSnapshots => Set<Grid2ProfileXpSnapshotRecord>();
+
     public DbSet<Grid2RivalSessionDataRecord> Grid2RivalSessionData => Set<Grid2RivalSessionDataRecord>();
 
     public DbSet<Grid2RivalAssignmentRecord> Grid2RivalAssignments => Set<Grid2RivalAssignmentRecord>();
@@ -131,6 +133,18 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
         {
             entity.HasIndex(value => new { value.RaceNetEventId, value.RaceNetRaceId });
             entity.HasIndex(value => new { value.PlayerProfileId, value.RaceNetEventId, value.RaceNetRaceId });
+
+            entity
+                .HasOne(value => value.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.PlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Grid2ProfileXpSnapshotRecord>(entity =>
+        {
+            entity.ToTable("Grid2ProfileXpSnapshots");
+            entity.HasIndex(value => new { value.PlayerProfileId, value.CapturedAt });
 
             entity
                 .HasOne(value => value.PlayerProfile)

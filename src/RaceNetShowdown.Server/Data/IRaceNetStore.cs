@@ -77,6 +77,11 @@ public interface IRaceNetStore
         Grid2MultiplayerEventSubmission submission,
         CancellationToken cancellationToken);
 
+    Task SaveGrid2ProfileSnapshotAsync(
+        RaceNetSessionInfo session,
+        Grid2ProfileSnapshotSubmission submission,
+        CancellationToken cancellationToken);
+
     Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken);

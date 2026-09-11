@@ -26,6 +26,17 @@ internal static class Grid2EgoNetPayloads
         IRaceNetStore store,
         CancellationToken cancellationToken)
     {
+        if (functionName == "DataMining.Profile")
+        {
+            var profile = EgoNetRequestParser.ReadGrid2ProfileSnapshot(body);
+            if (profile is not null && session is not null)
+            {
+                await store.SaveGrid2ProfileSnapshotAsync(session, profile, cancellationToken);
+            }
+
+            return Empty(headers);
+        }
+
         if (functionName == "DataMining.EndEvent")
         {
             var multiplayerEvent = EgoNetRequestParser.ReadGrid2MultiplayerEventSubmission(body);
