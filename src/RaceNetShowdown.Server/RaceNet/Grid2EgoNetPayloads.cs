@@ -372,8 +372,8 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Si64("PlatformId", checked((long)rival.SteamId)),
             EgoNetBinary.Si32("Type", rival.Type),
             EgoNetBinary.Bool("CanSeePresence", true),
-            EgoNetBinary.Ui32("TotalXPWon", 0),
-            EgoNetBinary.Ui32("RivalXPWon", 0));
+            EgoNetBinary.Ui32("TotalXPWon", rival.TotalXpWon),
+            EgoNetBinary.Ui32("RivalXPWon", rival.RivalXpWon));
     }
 
 

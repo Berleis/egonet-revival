@@ -17,6 +17,7 @@ public sealed class EntityFrameworkRaceNetStore(
     private const string Grid2GlobalEventStatusPrevious = "previous";
     private const string Grid2GlobalEventStatusArchived = "archived";
     private const int Grid2GlobalEventResetHourUtc = 10;
+    private const int Grid2RivalRaceXp = 85;
     private const DayOfWeek Grid2GlobalEventResetDay = DayOfWeek.Friday;
     private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
     private static readonly TimeSpan Grid2GlobalEventLifetime = TimeSpan.FromDays(7);
@@ -685,6 +686,12 @@ public sealed class EntityFrameworkRaceNetStore(
             expiresAt,
             createIfMissing: true,
             cancellationToken);
+        rivals = await LoadGrid2RivalXpAsync(
+            session.PlayerProfileId,
+            rivals,
+            startsAt,
+            expiresAt,
+            cancellationToken);
 
         logger.LogInformation(
             "GRID 2 rivals selected for {Player}: startsAt={StartsAt:o} expiresAt={ExpiresAt:o} rivals={Rivals}",
@@ -799,6 +806,60 @@ public sealed class EntityFrameworkRaceNetStore(
                 IsGrid2RivalNameAllowed(value.RivalPlayerProfile.DisplayName))
             .OrderBy(value => GetGrid2RivalTypeSortOrder(value.Type))
             .Select(ToGrid2RivalSnapshot)
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyList<Grid2RivalSnapshot>> LoadGrid2RivalXpAsync(
+        long playerProfileId,
+        IReadOnlyList<Grid2RivalSnapshot> rivals,
+        DateTimeOffset startsAt,
+        DateTimeOffset expiresAt,
+        CancellationToken cancellationToken)
+    {
+        if (playerProfileId <= 0 || rivals.Count == 0)
+        {
+            return rivals;
+        }
+
+        var rivalIds = rivals
+            .Select(value => value.EgonetId)
+            .Where(value => value > 0)
+            .Distinct()
+            .ToArray();
+        if (rivalIds.Length == 0)
+        {
+            return rivals;
+        }
+
+        var opponentRecords = await dbContext.Grid2RivalOpponents
+            .AsNoTracking()
+            .Where(value =>
+                value.LastSeenAt >= startsAt &&
+                value.LastSeenAt < expiresAt &&
+                ((value.PlayerProfileId == playerProfileId && rivalIds.Contains(value.OpponentPlayerProfileId)) ||
+                 (rivalIds.Contains(value.PlayerProfileId) && value.OpponentPlayerProfileId == playerProfileId)))
+            .ToListAsync(cancellationToken);
+
+        var recordsByPair = opponentRecords
+            .GroupBy(value => (value.PlayerProfileId, value.OpponentPlayerProfileId))
+            .ToDictionary(
+                value => value.Key,
+                value => value
+                    .OrderByDescending(record => record.LastSeenAt)
+                    .First());
+
+        return rivals
+            .Select(rival =>
+            {
+                recordsByPair.TryGetValue((playerProfileId, rival.EgonetId), out var playerRecord);
+                recordsByPair.TryGetValue((rival.EgonetId, playerProfileId), out var rivalRecord);
+
+                return rival with
+                {
+                    TotalXpWon = CalculateGrid2RivalXp(playerRecord),
+                    RivalXpWon = CalculateGrid2RivalXp(rivalRecord)
+                };
+            })
             .ToArray();
     }
 
@@ -980,6 +1041,11 @@ public sealed class EntityFrameworkRaceNetStore(
             };
             dbContext.Grid2RivalOpponents.Add(record);
         }
+        else if (record.LastSeenAt < GetGrid2CurrentGlobalEventStartsAt(now))
+        {
+            record.FirstSeenAt = now;
+            record.TimesMet = 0;
+        }
 
         record.LastRaceNetEventId = submission.RaceNetId;
         record.LastSaveGameId = submission.SaveGameId;
@@ -992,6 +1058,19 @@ public sealed class EntityFrameworkRaceNetStore(
         record.OpponentVehicleId = opponent.Participant.VehicleId;
         record.TimesMet = Math.Max(1, record.TimesMet + 1);
         record.LastSeenAt = now;
+    }
+
+    private static uint CalculateGrid2RivalXp(Grid2RivalOpponentRecord? record)
+    {
+        if (record is null || record.TimesMet <= 0)
+        {
+            return 0;
+        }
+
+        var xp = (long)record.TimesMet * Grid2RivalRaceXp;
+        return xp > uint.MaxValue
+            ? uint.MaxValue
+            : (uint)xp;
     }
 
     private static bool IsGrid2RivalNameAllowed(string displayName)

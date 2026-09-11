@@ -61,7 +61,9 @@ public sealed record Grid2RivalSnapshot(
     ulong SteamId,
     string Name,
     long EgonetId,
-    int Type);
+    int Type,
+    uint TotalXpWon = 0,
+    uint RivalXpWon = 0);
 
 public sealed record Grid2RivalSessionDataSnapshot(
     long EgonetId,
