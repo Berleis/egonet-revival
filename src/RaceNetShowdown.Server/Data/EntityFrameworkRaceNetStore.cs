@@ -721,23 +721,41 @@ public sealed class EntityFrameworkRaceNetStore(
             return;
         }
 
-        dbContext.Grid2ProfileXpSnapshots.Add(new Grid2ProfileXpSnapshotRecord
+        var xpDelta = latest is not null && submission.XpTotal > latest.XpTotal
+            ? (long)submission.XpTotal - latest.XpTotal
+            : 0;
+        var xpDeltaReferenceKey = latest is null
+            ? string.Empty
+            : $"profile:{latest.Id}:{submission.XpTotal.ToString(CultureInfo.InvariantCulture)}";
+        var record = new Grid2ProfileXpSnapshotRecord
         {
             PlayerProfileId = session.PlayerProfileId,
             SaveGameId = submission.SaveGameId,
             XpTotal = submission.XpTotal,
             XpLevel = submission.XpLevel,
             CapturedAt = now
-        });
+        };
+
+        dbContext.Grid2ProfileXpSnapshots.Add(record);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await TrySaveGrid2WeeklyXpDeltaAsync(
+            session.PlayerProfileId,
+            session.DisplayName,
+            now,
+            xpDelta,
+            "profile",
+            xpDeltaReferenceKey,
+            cancellationToken);
+
         logger.LogInformation(
-            "GRID 2 profile XP saved for {Player}: saveGameId={SaveGameId} xpTotal={XpTotal} xpLevel={XpLevel}",
+            "GRID 2 profile XP saved for {Player}: saveGameId={SaveGameId} xpTotal={XpTotal} xpLevel={XpLevel} xpDelta={XpDelta}",
             session.DisplayName,
             submission.SaveGameId?.ToString(CultureInfo.InvariantCulture) ?? "<none>",
             submission.XpTotal,
-            submission.XpLevel);
+            submission.XpLevel,
+            xpDelta);
     }
 
     public async Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
@@ -921,12 +939,28 @@ public sealed class EntityFrameworkRaceNetStore(
             .ToDictionary(
                 value => value.Key,
                 value => CalculateGrid2WeeklyProfileXp(value, startsAt, expiresAt));
+        var xpDeltas = await dbContext.Grid2WeeklyXpDeltas
+            .AsNoTracking()
+            .Where(value =>
+                profileIds.Contains(value.PlayerProfileId) &&
+                value.WeekStartsAt == startsAt &&
+                value.EarnedAt < expiresAt)
+            .ToListAsync(cancellationToken);
+        var weeklyDeltaXpByProfileId = xpDeltas
+            .GroupBy(value => value.PlayerProfileId)
+            .ToDictionary(
+                value => value.Key,
+                value => SumGrid2RivalXp(value.Select(delta => delta.Amount)));
 
         return rivals
             .Select(rival =>
             {
-                var playerXp = weeklyXpByProfileId.GetValueOrDefault(playerProfileId);
-                var rivalXp = weeklyXpByProfileId.GetValueOrDefault(rival.EgonetId);
+                var playerXp = MaxGrid2RivalXp(
+                    weeklyXpByProfileId.GetValueOrDefault(playerProfileId),
+                    weeklyDeltaXpByProfileId.GetValueOrDefault(playerProfileId));
+                var rivalXp = MaxGrid2RivalXp(
+                    weeklyXpByProfileId.GetValueOrDefault(rival.EgonetId),
+                    weeklyDeltaXpByProfileId.GetValueOrDefault(rival.EgonetId));
 
                 return rival with
                 {
@@ -935,6 +969,74 @@ public sealed class EntityFrameworkRaceNetStore(
                 };
             })
             .ToArray();
+    }
+
+    private async Task TrySaveGrid2WeeklyXpDeltaAsync(
+        long playerProfileId,
+        string displayName,
+        DateTimeOffset earnedAt,
+        long amount,
+        string source,
+        string referenceKey,
+        CancellationToken cancellationToken)
+    {
+        if (playerProfileId <= 0 || amount <= 0 || string.IsNullOrWhiteSpace(referenceKey))
+        {
+            return;
+        }
+
+        if (await dbContext.Grid2WeeklyXpDeltas
+            .AsNoTracking()
+            .AnyAsync(value =>
+                value.PlayerProfileId == playerProfileId &&
+                value.Source == source &&
+                value.ReferenceKey == referenceKey,
+                cancellationToken))
+        {
+            return;
+        }
+
+        var weekStartsAt = GetGrid2CurrentGlobalEventStartsAt(earnedAt);
+        dbContext.Grid2WeeklyXpDeltas.Add(new Grid2WeeklyXpDeltaRecord
+        {
+            PlayerProfileId = playerProfileId,
+            WeekStartsAt = weekStartsAt,
+            Amount = amount,
+            Source = source,
+            ReferenceKey = referenceKey,
+            EarnedAt = earnedAt
+        });
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            foreach (var entry in dbContext.ChangeTracker.Entries<Grid2WeeklyXpDeltaRecord>())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.State = EntityState.Detached;
+                }
+            }
+
+            logger.LogDebug(
+                ex,
+                "GRID 2 weekly XP delta skipped for {Player}: source={Source} reference={ReferenceKey}",
+                displayName,
+                source,
+                referenceKey);
+            return;
+        }
+
+        logger.LogInformation(
+            "GRID 2 weekly XP delta saved for {Player}: startsAt={StartsAt:o} amount={Amount} source={Source} reference={ReferenceKey}",
+            displayName,
+            weekStartsAt,
+            amount,
+            source,
+            referenceKey);
     }
 
     private async Task<IReadOnlyList<Grid2RivalSnapshot>> SelectGrid2RivalsAsync(
@@ -1156,30 +1258,34 @@ public sealed class EntityFrameworkRaceNetStore(
             .Where(value => value.CapturedAt < expiresAt)
             .OrderBy(value => value.CapturedAt)
             .ToArray();
-        if (snapshots.Length == 0)
+        if (snapshots.Length < 2)
         {
             return 0;
         }
 
-        var latest = snapshots[^1];
-        var baseline = snapshots
-            .Where(value => value.CapturedAt <= startsAt)
-            .LastOrDefault()
-            ?? snapshots.FirstOrDefault(value => value.CapturedAt >= startsAt);
-        if (baseline is null)
+        var xp = 0UL;
+        for (var i = 1; i < snapshots.Length; i++)
         {
-            return 0;
+            var current = snapshots[i];
+            if (current.CapturedAt < startsAt || current.CapturedAt >= expiresAt)
+            {
+                continue;
+            }
+
+            var delta = (long)current.XpTotal - snapshots[i - 1].XpTotal;
+            if (delta <= 0)
+            {
+                continue;
+            }
+
+            xp += (ulong)delta;
+            if (xp > uint.MaxValue)
+            {
+                return uint.MaxValue;
+            }
         }
 
-        var xp = (long)latest.XpTotal - baseline.XpTotal;
-        if (xp <= 0)
-        {
-            return 0;
-        }
-
-        return xp > uint.MaxValue
-            ? uint.MaxValue
-            : (uint)xp;
+        return (uint)xp;
     }
 
     private static uint AddGrid2RivalXp(uint playerXp, uint rivalXp)
@@ -1188,6 +1294,31 @@ public sealed class EntityFrameworkRaceNetStore(
         return totalXp > uint.MaxValue
             ? uint.MaxValue
             : (uint)totalXp;
+    }
+
+    private static uint SumGrid2RivalXp(IEnumerable<long> xpAmounts)
+    {
+        var totalXp = 0UL;
+        foreach (var amount in xpAmounts)
+        {
+            if (amount <= 0)
+            {
+                continue;
+            }
+
+            totalXp += (ulong)amount;
+            if (totalXp > uint.MaxValue)
+            {
+                return uint.MaxValue;
+            }
+        }
+
+        return (uint)totalXp;
+    }
+
+    private static uint MaxGrid2RivalXp(uint first, uint second)
+    {
+        return first >= second ? first : second;
     }
 
     private static bool IsGrid2RivalNameAllowed(string displayName)
@@ -1892,6 +2023,32 @@ public sealed class EntityFrameworkRaceNetStore(
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
                 """
+                CREATE TABLE IF NOT EXISTS "Grid2WeeklyXpDeltas" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2WeeklyXpDeltas" PRIMARY KEY AUTOINCREMENT,
+                    "PlayerProfileId" INTEGER NOT NULL,
+                    "WeekStartsAt" TEXT NOT NULL,
+                    "Amount" INTEGER NOT NULL,
+                    "Source" TEXT NOT NULL,
+                    "ReferenceKey" TEXT NOT NULL,
+                    "EarnedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_Grid2WeeklyXpDeltas_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
+                );
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Grid2WeeklyXpDeltas_PlayerProfileId_WeekStartsAt"
+                ON "Grid2WeeklyXpDeltas" ("PlayerProfileId", "WeekStartsAt");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_Grid2WeeklyXpDeltas_PlayerProfileId_Source_ReferenceKey"
+                ON "Grid2WeeklyXpDeltas" ("PlayerProfileId", "Source", "ReferenceKey");
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
                 CREATE TABLE IF NOT EXISTS "Grid2RivalSessionData" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2RivalSessionData" PRIMARY KEY AUTOINCREMENT,
                     "PlayerProfileId" INTEGER NOT NULL,
@@ -2143,6 +2300,36 @@ public sealed class EntityFrameworkRaceNetStore(
                 """
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt' AND object_id = OBJECT_ID(N'[Grid2ProfileXpSnapshots]'))
                     CREATE INDEX [IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt] ON [Grid2ProfileXpSnapshots] ([PlayerProfileId], [CapturedAt]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF OBJECT_ID(N'[Grid2WeeklyXpDeltas]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [Grid2WeeklyXpDeltas] (
+                        [Id] bigint NOT NULL IDENTITY,
+                        [PlayerProfileId] bigint NOT NULL,
+                        [WeekStartsAt] datetimeoffset NOT NULL,
+                        [Amount] bigint NOT NULL,
+                        [Source] nvarchar(32) NOT NULL,
+                        [ReferenceKey] nvarchar(128) NOT NULL,
+                        [EarnedAt] datetimeoffset NOT NULL,
+                        CONSTRAINT [PK_Grid2WeeklyXpDeltas] PRIMARY KEY ([Id]),
+                        CONSTRAINT [FK_Grid2WeeklyXpDeltas_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
+                    );
+                END
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2WeeklyXpDeltas_PlayerProfileId_WeekStartsAt' AND object_id = OBJECT_ID(N'[Grid2WeeklyXpDeltas]'))
+                    CREATE INDEX [IX_Grid2WeeklyXpDeltas_PlayerProfileId_WeekStartsAt] ON [Grid2WeeklyXpDeltas] ([PlayerProfileId], [WeekStartsAt]);
+                """,
+                cancellationToken);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2WeeklyXpDeltas_PlayerProfileId_Source_ReferenceKey' AND object_id = OBJECT_ID(N'[Grid2WeeklyXpDeltas]'))
+                    CREATE UNIQUE INDEX [IX_Grid2WeeklyXpDeltas_PlayerProfileId_Source_ReferenceKey] ON [Grid2WeeklyXpDeltas] ([PlayerProfileId], [Source], [ReferenceKey]);
                 """,
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
