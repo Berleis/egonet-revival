@@ -26,6 +26,8 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     public DbSet<Grid2ProfileXpSnapshotRecord> Grid2ProfileXpSnapshots => Set<Grid2ProfileXpSnapshotRecord>();
 
+    public DbSet<Grid2WeeklyXpDeltaRecord> Grid2WeeklyXpDeltas => Set<Grid2WeeklyXpDeltaRecord>();
+
     public DbSet<Grid2RivalSessionDataRecord> Grid2RivalSessionData => Set<Grid2RivalSessionDataRecord>();
 
     public DbSet<Grid2RivalAssignmentRecord> Grid2RivalAssignments => Set<Grid2RivalAssignmentRecord>();
@@ -160,6 +162,21 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
         {
             entity.ToTable("Grid2ProfileXpSnapshots");
             entity.HasIndex(value => new { value.PlayerProfileId, value.CapturedAt });
+
+            entity
+                .HasOne(value => value.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(value => value.PlayerProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Grid2WeeklyXpDeltaRecord>(entity =>
+        {
+            entity.ToTable("Grid2WeeklyXpDeltas");
+            entity.HasIndex(value => new { value.PlayerProfileId, value.WeekStartsAt });
+            entity.HasIndex(value => new { value.PlayerProfileId, value.Source, value.ReferenceKey }).IsUnique();
+            entity.Property(value => value.Source).HasMaxLength(32);
+            entity.Property(value => value.ReferenceKey).HasMaxLength(128);
 
             entity
                 .HasOne(value => value.PlayerProfile)
