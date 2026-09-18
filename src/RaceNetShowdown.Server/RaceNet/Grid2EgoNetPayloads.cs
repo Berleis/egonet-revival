@@ -72,7 +72,9 @@ internal static class Grid2EgoNetPayloads
                 session,
                 raceNetEventId,
                 cancellationToken);
-            return Html(BuildPreviousGlobalDomination(previousEvent), headers);
+            return previousEvent is null
+                ? NoResult(headers)
+                : Html(BuildPreviousGlobalDomination(previousEvent), headers);
         }
 
         if (functionName == "RaceNetRivals.GetRivals")
@@ -135,7 +137,7 @@ internal static class Grid2EgoNetPayloads
             "RaceNet.ValidateSocialLinks" => Html(BuildValidation(), headers),
             "RaceNet.ValidateUsername" => Html(BuildValidation(), headers),
             "RaceNetGlobalDomination.GetEvent" => Html(BuildCurrentGlobalDomination(null), headers),
-            "RaceNetGlobalDomination.GetPreviousEvent" => Html(BuildPreviousGlobalDomination(null), headers),
+            "RaceNetGlobalDomination.GetPreviousEvent" => NoResult(headers),
             "RaceNetGlobalDomination.PostScore" => Empty(headers),
             "RaceNetRivals.BlockRival" => Empty(headers),
             "RaceNetRivals.GetRivals" => Html(BuildRivals(new Grid2RivalsSnapshot(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, [])), headers),
@@ -168,6 +170,16 @@ internal static class Grid2EgoNetPayloads
     private static RaceNetResponse Empty(IReadOnlyDictionary<string, string> headers)
     {
         return new RaceNetResponse(EgoNetContentType, [], headers);
+    }
+
+    private static RaceNetResponse NoResult(IReadOnlyDictionary<string, string> headers)
+    {
+        var responseHeaders = new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase)
+        {
+            ["X-EgoNet-Result"] = "2"
+        };
+
+        return new RaceNetResponse(HtmlContentType, [], responseHeaders);
     }
 
     private static byte[] BuildLogin(CapturedBody body, RaceNetSessionInfo? session)
@@ -285,14 +297,14 @@ internal static class Grid2EgoNetPayloads
                     .ToArray() ?? []));
     }
 
-    private static byte[] BuildPreviousGlobalDomination(Grid2GlobalEventSnapshot? globalEvent)
+    private static byte[] BuildPreviousGlobalDomination(Grid2GlobalEventSnapshot globalEvent)
     {
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Vector(
                 "Races",
-                globalEvent?.Races
+                globalEvent.Races
                     .Select(race => BuildGlobalRace(race, globalEvent.LeaderboardEntries))
-                    .ToArray() ?? []));
+                    .ToArray()));
     }
 
     private static Action<BinaryWriter> BuildGlobalRace(
