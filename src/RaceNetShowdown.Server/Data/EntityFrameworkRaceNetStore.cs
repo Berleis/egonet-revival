@@ -16,7 +16,6 @@ public sealed class EntityFrameworkRaceNetStore(
     private const string Grid2GlobalEventStatusActive = "active";
     private const string Grid2GlobalEventStatusPrevious = "previous";
     private const string Grid2GlobalEventStatusArchived = "archived";
-    private const string Grid2GlobalPreviousEventFunction = "RaceNetGlobalDomination.GetPreviousEvent";
     private const int Grid2GlobalEventResetHourUtc = 10;
     private const DayOfWeek Grid2GlobalEventResetDay = DayOfWeek.Friday;
     private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromDays(7);
@@ -606,6 +605,7 @@ public sealed class EntityFrameworkRaceNetStore(
 
     public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
+        long? raceNetEventId,
         CancellationToken cancellationToken)
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
@@ -620,21 +620,21 @@ public sealed class EntityFrameworkRaceNetStore(
             return null;
         }
 
-        if (await HasGrid2GlobalRewardClaimAsync(session.PlayerProfileId, previousEvent.RaceNetEventId, cancellationToken))
+        if (raceNetEventId.HasValue && raceNetEventId.Value != previousEvent.RaceNetEventId)
         {
-            return null;
-        }
-
-        if (await WasGrid2PreviousEventAlreadyReturnedAsync(session, previousEvent, cancellationToken))
-        {
-            await TryClaimGrid2GlobalRewardAsync(session, previousEvent, "backfilled", cancellationToken);
             return null;
         }
 
         var snapshot = await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
-        return await TryClaimGrid2GlobalRewardAsync(session, previousEvent, "delivered", cancellationToken)
-            ? snapshot
-            : null;
+        if (!await HasGrid2GlobalRewardClaimAsync(
+                session.PlayerProfileId,
+                previousEvent.RaceNetEventId,
+                cancellationToken))
+        {
+            await TryClaimGrid2GlobalRewardAsync(session, previousEvent, "delivered", cancellationToken);
+        }
+
+        return snapshot;
     }
 
     public async Task SaveGrid2MultiplayerEventAsync(
@@ -1493,32 +1493,6 @@ public sealed class EntityFrameworkRaceNetStore(
             .AnyAsync(value =>
                 value.PlayerProfileId == playerProfileId &&
                 value.RaceNetEventId == raceNetEventId,
-                cancellationToken);
-    }
-
-    private async Task<bool> WasGrid2PreviousEventAlreadyReturnedAsync(
-        RaceNetSessionInfo session,
-        Grid2GlobalEventRecord previousEvent,
-        CancellationToken cancellationToken)
-    {
-        var sessionIds = await dbContext.RaceNetSessions
-            .AsNoTracking()
-            .Where(value => value.PlayerProfileId == session.PlayerProfileId)
-            .Select(value => value.SessionId)
-            .ToListAsync(cancellationToken);
-        if (sessionIds.Count == 0)
-        {
-            return false;
-        }
-
-        return await dbContext.RaceNetCalls
-            .AsNoTracking()
-            .AnyAsync(value =>
-                value.EgoNetFunction == Grid2GlobalPreviousEventFunction &&
-                sessionIds.Contains(value.EgoNetSessionId) &&
-                value.ResponseStatus >= 200 &&
-                value.ResponseStatus < 300 &&
-                value.Time >= previousEvent.ExpiresAt,
                 cancellationToken);
     }
 

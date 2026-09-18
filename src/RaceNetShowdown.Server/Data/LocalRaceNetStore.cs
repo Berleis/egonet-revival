@@ -208,6 +208,7 @@ public sealed class LocalRaceNetStore : IRaceNetStore
 
     public Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
+        long? raceNetEventId,
         CancellationToken cancellationToken)
     {
         return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
