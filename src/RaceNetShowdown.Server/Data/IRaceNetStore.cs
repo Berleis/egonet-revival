@@ -70,6 +70,7 @@ public interface IRaceNetStore
 
     Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
+        long? raceNetEventId,
         CancellationToken cancellationToken);
 
     Task SaveGrid2MultiplayerEventAsync(
