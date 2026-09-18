@@ -614,24 +614,31 @@ public sealed class EntityFrameworkRaceNetStore(
             return null;
         }
 
-        var previousEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
-        if (previousEvent is null)
+        var completedEvent = raceNetEventId.HasValue
+            ? await LoadGrid2GlobalEventByIdAsync(raceNetEventId.Value, cancellationToken)
+            : await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
+        if (completedEvent is null ||
+            completedEvent.Status == Grid2GlobalEventStatusActive ||
+            completedEvent.ExpiresAt > DateTimeOffset.UtcNow)
         {
             return null;
         }
 
-        if (raceNetEventId.HasValue && raceNetEventId.Value != previousEvent.RaceNetEventId)
-        {
-            return null;
-        }
-
-        var snapshot = await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
-        if (!await HasGrid2GlobalRewardClaimAsync(
+        if (!await HasGrid2GlobalScoreAsync(
                 session.PlayerProfileId,
-                previousEvent.RaceNetEventId,
+                completedEvent.RaceNetEventId,
                 cancellationToken))
         {
-            await TryClaimGrid2GlobalRewardAsync(session, previousEvent, "delivered", cancellationToken);
+            return null;
+        }
+
+        var snapshot = await ToGrid2GlobalEventSnapshotAsync(completedEvent, session, cancellationToken);
+        if (!await HasGrid2GlobalRewardClaimAsync(
+                session.PlayerProfileId,
+                completedEvent.RaceNetEventId,
+                cancellationToken))
+        {
+            await TryClaimGrid2GlobalRewardAsync(session, completedEvent, "delivered", cancellationToken);
         }
 
         return snapshot;
@@ -1481,6 +1488,31 @@ public sealed class EntityFrameworkRaceNetStore(
         return events
             .OrderByDescending(value => value.RaceNetEventId)
             .FirstOrDefault();
+    }
+
+    private async Task<Grid2GlobalEventRecord?> LoadGrid2GlobalEventByIdAsync(
+        long raceNetEventId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Grid2GlobalEvents
+            .AsNoTracking()
+            .Include(value => value.Races)
+            .FirstOrDefaultAsync(
+                value => value.RaceNetEventId == raceNetEventId,
+                cancellationToken);
+    }
+
+    private async Task<bool> HasGrid2GlobalScoreAsync(
+        long playerProfileId,
+        long raceNetEventId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Grid2GlobalScores
+            .AsNoTracking()
+            .AnyAsync(value =>
+                value.PlayerProfileId == playerProfileId &&
+                value.RaceNetEventId == raceNetEventId,
+                cancellationToken);
     }
 
     private async Task<bool> HasGrid2GlobalRewardClaimAsync(
