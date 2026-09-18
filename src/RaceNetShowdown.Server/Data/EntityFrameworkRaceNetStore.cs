@@ -598,9 +598,31 @@ public sealed class EntityFrameworkRaceNetStore(
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
         var activeEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusActive, cancellationToken);
-        return activeEvent is null
-            ? null
-            : await ToGrid2GlobalEventSnapshotAsync(activeEvent, session, cancellationToken);
+        if (activeEvent is null)
+        {
+            return null;
+        }
+
+        var snapshot = await ToGrid2GlobalEventSnapshotAsync(activeEvent, session, cancellationToken);
+        if (session is null || session.PlayerProfileId <= 0)
+        {
+            return snapshot;
+        }
+
+        var pendingEvent = await LoadLatestPendingGrid2GlobalEventAsync(
+            session.PlayerProfileId,
+            cancellationToken);
+        if (pendingEvent is null)
+        {
+            return snapshot;
+        }
+
+        logger.LogInformation(
+            "GRID 2 pending global reward recovery armed for {Player}: event={EventId}",
+            session.DisplayName,
+            pendingEvent.RaceNetEventId);
+
+        return snapshot with { ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1) };
     }
 
     public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
@@ -614,22 +636,31 @@ public sealed class EntityFrameworkRaceNetStore(
             return null;
         }
 
+        var now = DateTimeOffset.UtcNow;
         var completedEvent = raceNetEventId.HasValue
             ? await LoadGrid2GlobalEventByIdAsync(raceNetEventId.Value, cancellationToken)
             : await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
         if (completedEvent is null ||
             completedEvent.Status == Grid2GlobalEventStatusActive ||
-            completedEvent.ExpiresAt > DateTimeOffset.UtcNow)
-        {
-            return null;
-        }
-
-        if (!await HasGrid2GlobalScoreAsync(
+            completedEvent.ExpiresAt > now ||
+            !await HasGrid2GlobalScoreAsync(
                 session.PlayerProfileId,
                 completedEvent.RaceNetEventId,
                 cancellationToken))
         {
-            return null;
+            completedEvent = await LoadLatestPendingGrid2GlobalEventAsync(
+                session.PlayerProfileId,
+                cancellationToken);
+            if (completedEvent is null)
+            {
+                return null;
+            }
+
+            logger.LogInformation(
+                "GRID 2 pending global reward recovery selected for {Player}: requestedEvent={RequestedEventId} deliveredEvent={DeliveredEventId}",
+                session.DisplayName,
+                raceNetEventId,
+                completedEvent.RaceNetEventId);
         }
 
         var snapshot = await ToGrid2GlobalEventSnapshotAsync(completedEvent, session, cancellationToken);
@@ -1500,6 +1531,32 @@ public sealed class EntityFrameworkRaceNetStore(
             .FirstOrDefaultAsync(
                 value => value.RaceNetEventId == raceNetEventId,
                 cancellationToken);
+    }
+
+    private async Task<Grid2GlobalEventRecord?> LoadLatestPendingGrid2GlobalEventAsync(
+        long playerProfileId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var raceNetEventId = await dbContext.Grid2GlobalEvents
+            .AsNoTracking()
+            .Where(globalEvent =>
+                globalEvent.Status != Grid2GlobalEventStatusActive &&
+                globalEvent.ExpiresAt <= now)
+            .Where(globalEvent => dbContext.Grid2GlobalScores.Any(score =>
+                score.PlayerProfileId == playerProfileId &&
+                score.RaceNetEventId == globalEvent.RaceNetEventId))
+            .Where(globalEvent => !dbContext.Grid2GlobalRewardClaims.Any(claim =>
+                claim.PlayerProfileId == playerProfileId &&
+                claim.RaceNetEventId == globalEvent.RaceNetEventId))
+            .OrderByDescending(globalEvent => globalEvent.ExpiresAt)
+            .ThenByDescending(globalEvent => globalEvent.RaceNetEventId)
+            .Select(globalEvent => (long?)globalEvent.RaceNetEventId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return raceNetEventId.HasValue
+            ? await LoadGrid2GlobalEventByIdAsync(raceNetEventId.Value, cancellationToken)
+            : null;
     }
 
     private async Task<bool> HasGrid2GlobalScoreAsync(
