@@ -598,31 +598,9 @@ public sealed class EntityFrameworkRaceNetStore(
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
         var activeEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusActive, cancellationToken);
-        if (activeEvent is null)
-        {
-            return null;
-        }
-
-        var snapshot = await ToGrid2GlobalEventSnapshotAsync(activeEvent, session, cancellationToken);
-        if (session is null || session.PlayerProfileId <= 0)
-        {
-            return snapshot;
-        }
-
-        var pendingEvent = await LoadLatestPendingGrid2GlobalEventAsync(
-            session.PlayerProfileId,
-            cancellationToken);
-        if (pendingEvent is null)
-        {
-            return snapshot;
-        }
-
-        logger.LogInformation(
-            "GRID 2 pending global reward recovery armed for {Player}: event={EventId}",
-            session.DisplayName,
-            pendingEvent.RaceNetEventId);
-
-        return snapshot with { ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1) };
+        return activeEvent is null
+            ? null
+            : await ToGrid2GlobalEventSnapshotAsync(activeEvent, session, cancellationToken);
     }
 
     public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
