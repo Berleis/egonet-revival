@@ -61,9 +61,7 @@ public sealed record Grid2RivalSnapshot(
     ulong SteamId,
     string Name,
     long EgonetId,
-    int Type,
-    uint TotalXpWon = 0,
-    uint RivalXpWon = 0);
+    int Type);
 
 public sealed record Grid2RivalSessionDataSnapshot(
     long EgonetId,
@@ -73,11 +71,6 @@ public sealed record Grid2MultiplayerEventSubmission(
     long? SaveGameId,
     long? RaceNetId,
     IReadOnlyList<Grid2RaceParticipant> HumanParticipants);
-
-public sealed record Grid2ProfileSnapshotSubmission(
-    long? SaveGameId,
-    int XpTotal,
-    int XpLevel);
 
 public sealed record Grid2RaceParticipant(
     ulong SteamId,

@@ -229,55 +229,6 @@ public sealed class Grid2GlobalScoreRecord
     public DateTimeOffset SubmittedAt { get; set; }
 }
 
-public sealed class Grid2GlobalRewardClaimRecord
-{
-    public long Id { get; set; }
-
-    public long PlayerProfileId { get; set; }
-
-    public PlayerProfile? PlayerProfile { get; set; }
-
-    public long RaceNetEventId { get; set; }
-
-    public DateTimeOffset ClaimedAt { get; set; }
-}
-
-public sealed class Grid2ProfileXpSnapshotRecord
-{
-    public long Id { get; set; }
-
-    public long PlayerProfileId { get; set; }
-
-    public PlayerProfile? PlayerProfile { get; set; }
-
-    public long? SaveGameId { get; set; }
-
-    public int XpTotal { get; set; }
-
-    public int XpLevel { get; set; }
-
-    public DateTimeOffset CapturedAt { get; set; }
-}
-
-public sealed class Grid2WeeklyXpDeltaRecord
-{
-    public long Id { get; set; }
-
-    public long PlayerProfileId { get; set; }
-
-    public PlayerProfile? PlayerProfile { get; set; }
-
-    public DateTimeOffset WeekStartsAt { get; set; }
-
-    public long Amount { get; set; }
-
-    public string Source { get; set; } = string.Empty;
-
-    public string ReferenceKey { get; set; } = string.Empty;
-
-    public DateTimeOffset EarnedAt { get; set; }
-}
-
 public sealed class Grid2RivalSessionDataRecord
 {
     public long Id { get; set; }
