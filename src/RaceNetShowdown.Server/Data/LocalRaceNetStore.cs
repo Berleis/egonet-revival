@@ -208,7 +208,6 @@ public sealed class LocalRaceNetStore : IRaceNetStore
 
     public Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
-        long? raceNetEventId,
         CancellationToken cancellationToken)
     {
         return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
@@ -217,14 +216,6 @@ public sealed class LocalRaceNetStore : IRaceNetStore
     public Task SaveGrid2MultiplayerEventAsync(
         RaceNetSessionInfo session,
         Grid2MultiplayerEventSubmission submission,
-        CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
-
-    public Task SaveGrid2ProfileSnapshotAsync(
-        RaceNetSessionInfo session,
-        Grid2ProfileSnapshotSubmission submission,
         CancellationToken cancellationToken)
     {
         return Task.CompletedTask;

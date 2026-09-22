@@ -26,17 +26,6 @@ internal static class Grid2EgoNetPayloads
         IRaceNetStore store,
         CancellationToken cancellationToken)
     {
-        if (functionName == "DataMining.Profile")
-        {
-            var profile = EgoNetRequestParser.ReadGrid2ProfileSnapshot(body);
-            if (profile is not null && session is not null)
-            {
-                await store.SaveGrid2ProfileSnapshotAsync(session, profile, cancellationToken);
-            }
-
-            return Empty(headers);
-        }
-
         if (functionName == "DataMining.EndEvent")
         {
             var multiplayerEvent = EgoNetRequestParser.ReadGrid2MultiplayerEventSubmission(body);
@@ -67,14 +56,8 @@ internal static class Grid2EgoNetPayloads
 
         if (functionName == "RaceNetGlobalDomination.GetPreviousEvent")
         {
-            var raceNetEventId = EgoNetRequestParser.ReadTopLevelInteger(body, "RaceNetEventId");
-            var previousEvent = await store.GetGrid2PreviousGlobalEventAsync(
-                session,
-                raceNetEventId,
-                cancellationToken);
-            return previousEvent is null
-                ? NoResult(headers)
-                : Html(BuildPreviousGlobalDomination(previousEvent), headers);
+            var previousEvent = await store.GetGrid2PreviousGlobalEventAsync(session, cancellationToken);
+            return Html(BuildPreviousGlobalDomination(previousEvent), headers);
         }
 
         if (functionName == "RaceNetRivals.GetRivals")
@@ -137,7 +120,7 @@ internal static class Grid2EgoNetPayloads
             "RaceNet.ValidateSocialLinks" => Html(BuildValidation(), headers),
             "RaceNet.ValidateUsername" => Html(BuildValidation(), headers),
             "RaceNetGlobalDomination.GetEvent" => Html(BuildCurrentGlobalDomination(null), headers),
-            "RaceNetGlobalDomination.GetPreviousEvent" => NoResult(headers),
+            "RaceNetGlobalDomination.GetPreviousEvent" => Html(BuildPreviousGlobalDomination(null), headers),
             "RaceNetGlobalDomination.PostScore" => Empty(headers),
             "RaceNetRivals.BlockRival" => Empty(headers),
             "RaceNetRivals.GetRivals" => Html(BuildRivals(new Grid2RivalsSnapshot(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, [])), headers),
@@ -170,16 +153,6 @@ internal static class Grid2EgoNetPayloads
     private static RaceNetResponse Empty(IReadOnlyDictionary<string, string> headers)
     {
         return new RaceNetResponse(EgoNetContentType, [], headers);
-    }
-
-    private static RaceNetResponse NoResult(IReadOnlyDictionary<string, string> headers)
-    {
-        var responseHeaders = new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase)
-        {
-            ["X-EgoNet-Result"] = "2"
-        };
-
-        return new RaceNetResponse(HtmlContentType, [], responseHeaders);
     }
 
     private static byte[] BuildLogin(CapturedBody body, RaceNetSessionInfo? session)
@@ -297,14 +270,14 @@ internal static class Grid2EgoNetPayloads
                     .ToArray() ?? []));
     }
 
-    private static byte[] BuildPreviousGlobalDomination(Grid2GlobalEventSnapshot globalEvent)
+    private static byte[] BuildPreviousGlobalDomination(Grid2GlobalEventSnapshot? globalEvent)
     {
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Vector(
                 "Races",
-                globalEvent.Races
+                globalEvent?.Races
                     .Select(race => BuildGlobalRace(race, globalEvent.LeaderboardEntries))
-                    .ToArray()));
+                    .ToArray() ?? []));
     }
 
     private static Action<BinaryWriter> BuildGlobalRace(
@@ -399,8 +372,8 @@ internal static class Grid2EgoNetPayloads
             EgoNetBinary.Si64("PlatformId", checked((long)rival.SteamId)),
             EgoNetBinary.Si32("Type", rival.Type),
             EgoNetBinary.Bool("CanSeePresence", true),
-            EgoNetBinary.Ui32("TotalXPWon", rival.TotalXpWon),
-            EgoNetBinary.Ui32("RivalXPWon", rival.RivalXpWon));
+            EgoNetBinary.Ui32("TotalXPWon", 0),
+            EgoNetBinary.Ui32("RivalXPWon", 0));
     }
 
 

@@ -605,52 +605,13 @@ public sealed class EntityFrameworkRaceNetStore(
 
     public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
-        long? raceNetEventId,
         CancellationToken cancellationToken)
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
-        if (session is null || session.PlayerProfileId <= 0)
-        {
-            return null;
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        var completedEvent = raceNetEventId.HasValue
-            ? await LoadGrid2GlobalEventByIdAsync(raceNetEventId.Value, cancellationToken)
-            : await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
-        if (completedEvent is null ||
-            completedEvent.Status == Grid2GlobalEventStatusActive ||
-            completedEvent.ExpiresAt > now ||
-            !await HasGrid2GlobalScoreAsync(
-                session.PlayerProfileId,
-                completedEvent.RaceNetEventId,
-                cancellationToken))
-        {
-            completedEvent = await LoadLatestPendingGrid2GlobalEventAsync(
-                session.PlayerProfileId,
-                cancellationToken);
-            if (completedEvent is null)
-            {
-                return null;
-            }
-
-            logger.LogInformation(
-                "GRID 2 pending global reward recovery selected for {Player}: requestedEvent={RequestedEventId} deliveredEvent={DeliveredEventId}",
-                session.DisplayName,
-                raceNetEventId,
-                completedEvent.RaceNetEventId);
-        }
-
-        var snapshot = await ToGrid2GlobalEventSnapshotAsync(completedEvent, session, cancellationToken);
-        if (!await HasGrid2GlobalRewardClaimAsync(
-                session.PlayerProfileId,
-                completedEvent.RaceNetEventId,
-                cancellationToken))
-        {
-            await TryClaimGrid2GlobalRewardAsync(session, completedEvent, "delivered", cancellationToken);
-        }
-
-        return snapshot;
+        var previousEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
+        return previousEvent is null
+            ? null
+            : await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
     }
 
     public async Task SaveGrid2MultiplayerEventAsync(
@@ -710,70 +671,6 @@ public sealed class EntityFrameworkRaceNetStore(
             string.Join(", ", participants.Select(FormatGrid2Participant)));
     }
 
-    public async Task SaveGrid2ProfileSnapshotAsync(
-        RaceNetSessionInfo session,
-        Grid2ProfileSnapshotSubmission submission,
-        CancellationToken cancellationToken)
-    {
-        if (session.PlayerProfileId <= 0 || submission.XpTotal < 0)
-        {
-            return;
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        var currentWeekStartsAt = GetGrid2CurrentGlobalEventStartsAt(now);
-        var latest = await dbContext.Grid2ProfileXpSnapshots
-            .AsNoTracking()
-            .Where(value => value.PlayerProfileId == session.PlayerProfileId)
-            .OrderByDescending(value => value.CapturedAt)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (latest is not null &&
-            latest.CapturedAt >= currentWeekStartsAt &&
-            latest.SaveGameId == submission.SaveGameId &&
-            latest.XpTotal == submission.XpTotal &&
-            latest.XpLevel == submission.XpLevel)
-        {
-            return;
-        }
-
-        var xpDelta = latest is not null && submission.XpTotal > latest.XpTotal
-            ? (long)submission.XpTotal - latest.XpTotal
-            : 0;
-        var xpDeltaReferenceKey = latest is null
-            ? string.Empty
-            : $"profile:{latest.Id}:{submission.XpTotal.ToString(CultureInfo.InvariantCulture)}";
-        var record = new Grid2ProfileXpSnapshotRecord
-        {
-            PlayerProfileId = session.PlayerProfileId,
-            SaveGameId = submission.SaveGameId,
-            XpTotal = submission.XpTotal,
-            XpLevel = submission.XpLevel,
-            CapturedAt = now
-        };
-
-        dbContext.Grid2ProfileXpSnapshots.Add(record);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        await TrySaveGrid2WeeklyXpDeltaAsync(
-            session.PlayerProfileId,
-            session.DisplayName,
-            now,
-            xpDelta,
-            "profile",
-            xpDeltaReferenceKey,
-            cancellationToken);
-
-        logger.LogInformation(
-            "GRID 2 profile XP saved for {Player}: saveGameId={SaveGameId} xpTotal={XpTotal} xpLevel={XpLevel} xpDelta={XpDelta}",
-            session.DisplayName,
-            submission.SaveGameId?.ToString(CultureInfo.InvariantCulture) ?? "<none>",
-            submission.XpTotal,
-            submission.XpLevel,
-            xpDelta);
-    }
-
     public async Task<Grid2RivalsSnapshot> GetGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
@@ -788,19 +685,6 @@ public sealed class EntityFrameworkRaceNetStore(
             expiresAt,
             createIfMissing: true,
             cancellationToken);
-        try
-        {
-            rivals = await LoadGrid2RivalXpAsync(
-                session.PlayerProfileId,
-                rivals,
-                startsAt,
-                expiresAt,
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to load GRID 2 rival XP for {Player}", session.DisplayName);
-        }
 
         logger.LogInformation(
             "GRID 2 rivals selected for {Player}: startsAt={StartsAt:o} expiresAt={ExpiresAt:o} rivals={Rivals}",
@@ -918,143 +802,6 @@ public sealed class EntityFrameworkRaceNetStore(
             .ToArray();
     }
 
-    private async Task<IReadOnlyList<Grid2RivalSnapshot>> LoadGrid2RivalXpAsync(
-        long playerProfileId,
-        IReadOnlyList<Grid2RivalSnapshot> rivals,
-        DateTimeOffset startsAt,
-        DateTimeOffset expiresAt,
-        CancellationToken cancellationToken)
-    {
-        if (playerProfileId <= 0 || rivals.Count == 0)
-        {
-            return rivals;
-        }
-
-        var rivalIds = rivals
-            .Select(value => value.EgonetId)
-            .Where(value => value > 0)
-            .Distinct()
-            .ToArray();
-        if (rivalIds.Length == 0)
-        {
-            return rivals;
-        }
-
-        var profileIds = rivalIds
-            .Append(playerProfileId)
-            .Distinct()
-            .ToArray();
-        var xpSnapshots = await dbContext.Grid2ProfileXpSnapshots
-            .AsNoTracking()
-            .Where(value =>
-                profileIds.Contains(value.PlayerProfileId) &&
-                value.CapturedAt < expiresAt)
-            .ToListAsync(cancellationToken);
-        var weeklyXpByProfileId = xpSnapshots
-            .GroupBy(value => value.PlayerProfileId)
-            .ToDictionary(
-                value => value.Key,
-                value => CalculateGrid2WeeklyProfileXp(value, startsAt, expiresAt));
-        var xpDeltas = await dbContext.Grid2WeeklyXpDeltas
-            .AsNoTracking()
-            .Where(value =>
-                profileIds.Contains(value.PlayerProfileId) &&
-                value.WeekStartsAt == startsAt &&
-                value.EarnedAt < expiresAt)
-            .ToListAsync(cancellationToken);
-        var weeklyDeltaXpByProfileId = xpDeltas
-            .GroupBy(value => value.PlayerProfileId)
-            .ToDictionary(
-                value => value.Key,
-                value => SumGrid2RivalXp(value.Select(delta => delta.Amount)));
-
-        return rivals
-            .Select(rival =>
-            {
-                var playerXp = MaxGrid2RivalXp(
-                    weeklyXpByProfileId.GetValueOrDefault(playerProfileId),
-                    weeklyDeltaXpByProfileId.GetValueOrDefault(playerProfileId));
-                var rivalXp = MaxGrid2RivalXp(
-                    weeklyXpByProfileId.GetValueOrDefault(rival.EgonetId),
-                    weeklyDeltaXpByProfileId.GetValueOrDefault(rival.EgonetId));
-
-                return rival with
-                {
-                    TotalXpWon = AddGrid2RivalXp(playerXp, rivalXp),
-                    RivalXpWon = rivalXp
-                };
-            })
-            .ToArray();
-    }
-
-    private async Task TrySaveGrid2WeeklyXpDeltaAsync(
-        long playerProfileId,
-        string displayName,
-        DateTimeOffset earnedAt,
-        long amount,
-        string source,
-        string referenceKey,
-        CancellationToken cancellationToken)
-    {
-        if (playerProfileId <= 0 || amount <= 0 || string.IsNullOrWhiteSpace(referenceKey))
-        {
-            return;
-        }
-
-        if (await dbContext.Grid2WeeklyXpDeltas
-            .AsNoTracking()
-            .AnyAsync(value =>
-                value.PlayerProfileId == playerProfileId &&
-                value.Source == source &&
-                value.ReferenceKey == referenceKey,
-                cancellationToken))
-        {
-            return;
-        }
-
-        var weekStartsAt = GetGrid2CurrentGlobalEventStartsAt(earnedAt);
-        dbContext.Grid2WeeklyXpDeltas.Add(new Grid2WeeklyXpDeltaRecord
-        {
-            PlayerProfileId = playerProfileId,
-            WeekStartsAt = weekStartsAt,
-            Amount = amount,
-            Source = source,
-            ReferenceKey = referenceKey,
-            EarnedAt = earnedAt
-        });
-
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            foreach (var entry in dbContext.ChangeTracker.Entries<Grid2WeeklyXpDeltaRecord>())
-            {
-                if (entry.State == EntityState.Added)
-                {
-                    entry.State = EntityState.Detached;
-                }
-            }
-
-            logger.LogDebug(
-                ex,
-                "GRID 2 weekly XP delta skipped for {Player}: source={Source} reference={ReferenceKey}",
-                displayName,
-                source,
-                referenceKey);
-            return;
-        }
-
-        logger.LogInformation(
-            "GRID 2 weekly XP delta saved for {Player}: startsAt={StartsAt:o} amount={Amount} source={Source} reference={ReferenceKey}",
-            displayName,
-            weekStartsAt,
-            amount,
-            source,
-            referenceKey);
-    }
-
     private async Task<IReadOnlyList<Grid2RivalSnapshot>> SelectGrid2RivalsAsync(
         RaceNetSessionInfo session,
         CancellationToken cancellationToken)
@@ -1074,7 +821,7 @@ public sealed class EntityFrameworkRaceNetStore(
             })
             .ToListAsync(cancellationToken);
         var sessionDataUpdatedByProfileId = sessionDataRecords
-            .Where(value => IsGrid2RivalSessionDataMeaningful(value.SessionData))
+            .Where(value => value.SessionData.Length > 0)
             .GroupBy(value => value.PlayerProfileId)
             .ToDictionary(
                 value => value.Key,
@@ -1158,17 +905,6 @@ public sealed class EntityFrameworkRaceNetStore(
         var now = DateTimeOffset.UtcNow;
         var record = await dbContext.Grid2RivalSessionData
             .FirstOrDefaultAsync(value => value.PlayerProfileId == session.PlayerProfileId, cancellationToken);
-        var isMeaningful = IsGrid2RivalSessionDataMeaningful(sessionData);
-        if (!isMeaningful)
-        {
-            logger.LogInformation(
-                "GRID 2 blank rival session data ignored for {Player}: {Length} bytes nonZero={NonZeroBytes} preview={Preview}",
-                session.DisplayName,
-                sessionData.Length,
-                CountNonZeroBytes(sessionData),
-                FormatGrid2HexPreview(sessionData));
-            return;
-        }
 
         if (record is null)
         {
@@ -1188,11 +924,9 @@ public sealed class EntityFrameworkRaceNetStore(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "GRID 2 rival session data saved by {Player}: {Length} bytes nonZero={NonZeroBytes} preview={Preview}",
+            "GRID 2 rival session data saved by {Player}: {Length} bytes",
             session.DisplayName,
-            sessionData.Length,
-            CountNonZeroBytes(sessionData),
-            FormatGrid2HexPreview(sessionData));
+            sessionData.Length);
     }
 
     public async Task<IReadOnlyList<Grid2RivalSessionDataSnapshot>> GetGrid2RivalSessionDataAsync(
@@ -1214,7 +948,7 @@ public sealed class EntityFrameworkRaceNetStore(
             .Where(value => ids.Contains(value.PlayerProfileId))
             .ToListAsync(cancellationToken);
         var dataByProfileId = records
-            .Where(value => IsGrid2RivalSessionDataMeaningful(value.SessionData))
+            .Where(value => value.SessionData.Length > 0)
             .ToDictionary(value => value.PlayerProfileId, value => value.SessionData.ToArray());
 
         return ids
@@ -1246,11 +980,6 @@ public sealed class EntityFrameworkRaceNetStore(
             };
             dbContext.Grid2RivalOpponents.Add(record);
         }
-        else if (record.LastSeenAt < GetGrid2CurrentGlobalEventStartsAt(now))
-        {
-            record.FirstSeenAt = now;
-            record.TimesMet = 0;
-        }
 
         record.LastRaceNetEventId = submission.RaceNetId;
         record.LastSaveGameId = submission.SaveGameId;
@@ -1263,78 +992,6 @@ public sealed class EntityFrameworkRaceNetStore(
         record.OpponentVehicleId = opponent.Participant.VehicleId;
         record.TimesMet = Math.Max(1, record.TimesMet + 1);
         record.LastSeenAt = now;
-    }
-
-    private static uint CalculateGrid2WeeklyProfileXp(
-        IEnumerable<Grid2ProfileXpSnapshotRecord> records,
-        DateTimeOffset startsAt,
-        DateTimeOffset expiresAt)
-    {
-        var snapshots = records
-            .Where(value => value.CapturedAt < expiresAt)
-            .OrderBy(value => value.CapturedAt)
-            .ToArray();
-        if (snapshots.Length < 2)
-        {
-            return 0;
-        }
-
-        var xp = 0UL;
-        for (var i = 1; i < snapshots.Length; i++)
-        {
-            var current = snapshots[i];
-            if (current.CapturedAt < startsAt || current.CapturedAt >= expiresAt)
-            {
-                continue;
-            }
-
-            var delta = (long)current.XpTotal - snapshots[i - 1].XpTotal;
-            if (delta <= 0)
-            {
-                continue;
-            }
-
-            xp += (ulong)delta;
-            if (xp > uint.MaxValue)
-            {
-                return uint.MaxValue;
-            }
-        }
-
-        return (uint)xp;
-    }
-
-    private static uint AddGrid2RivalXp(uint playerXp, uint rivalXp)
-    {
-        var totalXp = (ulong)playerXp + rivalXp;
-        return totalXp > uint.MaxValue
-            ? uint.MaxValue
-            : (uint)totalXp;
-    }
-
-    private static uint SumGrid2RivalXp(IEnumerable<long> xpAmounts)
-    {
-        var totalXp = 0UL;
-        foreach (var amount in xpAmounts)
-        {
-            if (amount <= 0)
-            {
-                continue;
-            }
-
-            totalXp += (ulong)amount;
-            if (totalXp > uint.MaxValue)
-            {
-                return uint.MaxValue;
-            }
-        }
-
-        return (uint)totalXp;
-    }
-
-    private static uint MaxGrid2RivalXp(uint first, uint second)
-    {
-        return first >= second ? first : second;
     }
 
     private static bool IsGrid2RivalNameAllowed(string displayName)
@@ -1401,7 +1058,7 @@ public sealed class EntityFrameworkRaceNetStore(
     private static string FormatGrid2Rivals(IEnumerable<Grid2RivalSnapshot> rivals)
     {
         var descriptions = rivals
-            .Select(value => $"{GetGrid2RivalTypeName(value.Type)}={value.Name}/{value.SteamId} egonet={value.EgonetId} totalXp={value.TotalXpWon} rivalXp={value.RivalXpWon}")
+            .Select(value => $"{GetGrid2RivalTypeName(value.Type)}={value.Name}/{value.SteamId}")
             .ToArray();
 
         return descriptions.Length == 0
@@ -1423,23 +1080,6 @@ public sealed class EntityFrameworkRaceNetStore(
     private static string FormatGrid2Participant(Grid2RaceParticipant participant)
     {
         return $"{participant.Name}/{participant.SteamId} pos={FormatGrid2Nullable(participant.Position)} status={FormatGrid2Nullable(participant.Status)} result={FormatGrid2Nullable(participant.Result)} vehicle={FormatGrid2Nullable(participant.VehicleId)}";
-    }
-
-    private static int CountNonZeroBytes(byte[] bytes)
-    {
-        return bytes.Count(value => value != 0);
-    }
-
-    private static bool IsGrid2RivalSessionDataMeaningful(byte[] sessionData)
-    {
-        return CountNonZeroBytes(sessionData) > 1;
-    }
-
-    private static string FormatGrid2HexPreview(byte[] bytes)
-    {
-        return bytes.Length == 0
-            ? "<empty>"
-            : Convert.ToHexString(bytes.AsSpan(0, Math.Min(bytes.Length, 16)));
     }
 
     private static string FormatGrid2Nullable<T>(T? value)
@@ -1497,113 +1137,6 @@ public sealed class EntityFrameworkRaceNetStore(
         return events
             .OrderByDescending(value => value.RaceNetEventId)
             .FirstOrDefault();
-    }
-
-    private async Task<Grid2GlobalEventRecord?> LoadGrid2GlobalEventByIdAsync(
-        long raceNetEventId,
-        CancellationToken cancellationToken)
-    {
-        return await dbContext.Grid2GlobalEvents
-            .AsNoTracking()
-            .Include(value => value.Races)
-            .FirstOrDefaultAsync(
-                value => value.RaceNetEventId == raceNetEventId,
-                cancellationToken);
-    }
-
-    private async Task<Grid2GlobalEventRecord?> LoadLatestPendingGrid2GlobalEventAsync(
-        long playerProfileId,
-        CancellationToken cancellationToken)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var raceNetEventId = await dbContext.Grid2GlobalEvents
-            .AsNoTracking()
-            .Where(globalEvent =>
-                globalEvent.Status != Grid2GlobalEventStatusActive &&
-                globalEvent.ExpiresAt <= now)
-            .Where(globalEvent => dbContext.Grid2GlobalScores.Any(score =>
-                score.PlayerProfileId == playerProfileId &&
-                score.RaceNetEventId == globalEvent.RaceNetEventId))
-            .Where(globalEvent => !dbContext.Grid2GlobalRewardClaims.Any(claim =>
-                claim.PlayerProfileId == playerProfileId &&
-                claim.RaceNetEventId == globalEvent.RaceNetEventId))
-            .OrderByDescending(globalEvent => globalEvent.ExpiresAt)
-            .ThenByDescending(globalEvent => globalEvent.RaceNetEventId)
-            .Select(globalEvent => (long?)globalEvent.RaceNetEventId)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return raceNetEventId.HasValue
-            ? await LoadGrid2GlobalEventByIdAsync(raceNetEventId.Value, cancellationToken)
-            : null;
-    }
-
-    private async Task<bool> HasGrid2GlobalScoreAsync(
-        long playerProfileId,
-        long raceNetEventId,
-        CancellationToken cancellationToken)
-    {
-        return await dbContext.Grid2GlobalScores
-            .AsNoTracking()
-            .AnyAsync(value =>
-                value.PlayerProfileId == playerProfileId &&
-                value.RaceNetEventId == raceNetEventId,
-                cancellationToken);
-    }
-
-    private async Task<bool> HasGrid2GlobalRewardClaimAsync(
-        long playerProfileId,
-        long raceNetEventId,
-        CancellationToken cancellationToken)
-    {
-        return await dbContext.Grid2GlobalRewardClaims
-            .AsNoTracking()
-            .AnyAsync(value =>
-                value.PlayerProfileId == playerProfileId &&
-                value.RaceNetEventId == raceNetEventId,
-                cancellationToken);
-    }
-
-    private async Task<bool> TryClaimGrid2GlobalRewardAsync(
-        RaceNetSessionInfo session,
-        Grid2GlobalEventRecord previousEvent,
-        string reason,
-        CancellationToken cancellationToken)
-    {
-        dbContext.Grid2GlobalRewardClaims.Add(new Grid2GlobalRewardClaimRecord
-        {
-            PlayerProfileId = session.PlayerProfileId,
-            RaceNetEventId = previousEvent.RaceNetEventId,
-            ClaimedAt = DateTimeOffset.UtcNow
-        });
-
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            foreach (var entry in dbContext.ChangeTracker.Entries<Grid2GlobalRewardClaimRecord>())
-            {
-                if (entry.State == EntityState.Added)
-                {
-                    entry.State = EntityState.Detached;
-                }
-            }
-
-            logger.LogDebug(
-                ex,
-                "GRID 2 global reward claim skipped for {Player}: event={EventId}",
-                session.DisplayName,
-                previousEvent.RaceNetEventId);
-            return false;
-        }
-
-        logger.LogInformation(
-            "GRID 2 global reward claimed for {Player}: event={EventId} reason={Reason}",
-            session.DisplayName,
-            previousEvent.RaceNetEventId,
-            reason);
-        return true;
     }
 
     private async Task<Grid2GlobalEventSnapshot> ToGrid2GlobalEventSnapshotAsync(
@@ -2022,74 +1555,6 @@ public sealed class EntityFrameworkRaceNetStore(
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
                 """
-                CREATE TABLE IF NOT EXISTS "Grid2GlobalRewardClaims" (
-                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2GlobalRewardClaims" PRIMARY KEY AUTOINCREMENT,
-                    "PlayerProfileId" INTEGER NOT NULL,
-                    "RaceNetEventId" INTEGER NOT NULL,
-                    "ClaimedAt" TEXT NOT NULL,
-                    CONSTRAINT "FK_Grid2GlobalRewardClaims_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
-                );
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE UNIQUE INDEX IF NOT EXISTS "IX_Grid2GlobalRewardClaims_PlayerProfileId_RaceNetEventId"
-                ON "Grid2GlobalRewardClaims" ("PlayerProfileId", "RaceNetEventId");
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE INDEX IF NOT EXISTS "IX_Grid2GlobalRewardClaims_RaceNetEventId"
-                ON "Grid2GlobalRewardClaims" ("RaceNetEventId");
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE TABLE IF NOT EXISTS "Grid2ProfileXpSnapshots" (
-                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2ProfileXpSnapshots" PRIMARY KEY AUTOINCREMENT,
-                    "PlayerProfileId" INTEGER NOT NULL,
-                    "SaveGameId" INTEGER NULL,
-                    "XpTotal" INTEGER NOT NULL,
-                    "XpLevel" INTEGER NOT NULL,
-                    "CapturedAt" TEXT NOT NULL,
-                    CONSTRAINT "FK_Grid2ProfileXpSnapshots_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
-                );
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE INDEX IF NOT EXISTS "IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt"
-                ON "Grid2ProfileXpSnapshots" ("PlayerProfileId", "CapturedAt");
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE TABLE IF NOT EXISTS "Grid2WeeklyXpDeltas" (
-                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2WeeklyXpDeltas" PRIMARY KEY AUTOINCREMENT,
-                    "PlayerProfileId" INTEGER NOT NULL,
-                    "WeekStartsAt" TEXT NOT NULL,
-                    "Amount" INTEGER NOT NULL,
-                    "Source" TEXT NOT NULL,
-                    "ReferenceKey" TEXT NOT NULL,
-                    "EarnedAt" TEXT NOT NULL,
-                    CONSTRAINT "FK_Grid2WeeklyXpDeltas_PlayerProfiles_PlayerProfileId" FOREIGN KEY ("PlayerProfileId") REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
-                );
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE INDEX IF NOT EXISTS "IX_Grid2WeeklyXpDeltas_PlayerProfileId_WeekStartsAt"
-                ON "Grid2WeeklyXpDeltas" ("PlayerProfileId", "WeekStartsAt");
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                CREATE UNIQUE INDEX IF NOT EXISTS "IX_Grid2WeeklyXpDeltas_PlayerProfileId_Source_ReferenceKey"
-                ON "Grid2WeeklyXpDeltas" ("PlayerProfileId", "Source", "ReferenceKey");
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
                 CREATE TABLE IF NOT EXISTS "Grid2RivalSessionData" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_Grid2RivalSessionData" PRIMARY KEY AUTOINCREMENT,
                     "PlayerProfileId" INTEGER NOT NULL,
@@ -2291,86 +1756,6 @@ public sealed class EntityFrameworkRaceNetStore(
                 """
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalScores_PlayerProfileId_RaceNetEventId_RaceNetRaceId' AND object_id = OBJECT_ID(N'[Grid2GlobalScores]'))
                     CREATE INDEX [IX_Grid2GlobalScores_PlayerProfileId_RaceNetEventId_RaceNetRaceId] ON [Grid2GlobalScores] ([PlayerProfileId], [RaceNetEventId], [RaceNetRaceId]);
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF OBJECT_ID(N'[Grid2GlobalRewardClaims]', N'U') IS NULL
-                BEGIN
-                    CREATE TABLE [Grid2GlobalRewardClaims] (
-                        [Id] bigint NOT NULL IDENTITY,
-                        [PlayerProfileId] bigint NOT NULL,
-                        [RaceNetEventId] bigint NOT NULL,
-                        [ClaimedAt] datetimeoffset NOT NULL,
-                        CONSTRAINT [PK_Grid2GlobalRewardClaims] PRIMARY KEY ([Id]),
-                        CONSTRAINT [FK_Grid2GlobalRewardClaims_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
-                    );
-                END
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalRewardClaims_PlayerProfileId_RaceNetEventId' AND object_id = OBJECT_ID(N'[Grid2GlobalRewardClaims]'))
-                    CREATE UNIQUE INDEX [IX_Grid2GlobalRewardClaims_PlayerProfileId_RaceNetEventId] ON [Grid2GlobalRewardClaims] ([PlayerProfileId], [RaceNetEventId]);
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2GlobalRewardClaims_RaceNetEventId' AND object_id = OBJECT_ID(N'[Grid2GlobalRewardClaims]'))
-                    CREATE INDEX [IX_Grid2GlobalRewardClaims_RaceNetEventId] ON [Grid2GlobalRewardClaims] ([RaceNetEventId]);
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF OBJECT_ID(N'[Grid2ProfileXpSnapshots]', N'U') IS NULL
-                BEGIN
-                    CREATE TABLE [Grid2ProfileXpSnapshots] (
-                        [Id] bigint NOT NULL IDENTITY,
-                        [PlayerProfileId] bigint NOT NULL,
-                        [SaveGameId] bigint NULL,
-                        [XpTotal] int NOT NULL,
-                        [XpLevel] int NOT NULL,
-                        [CapturedAt] datetimeoffset NOT NULL,
-                        CONSTRAINT [PK_Grid2ProfileXpSnapshots] PRIMARY KEY ([Id]),
-                        CONSTRAINT [FK_Grid2ProfileXpSnapshots_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
-                    );
-                END
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt' AND object_id = OBJECT_ID(N'[Grid2ProfileXpSnapshots]'))
-                    CREATE INDEX [IX_Grid2ProfileXpSnapshots_PlayerProfileId_CapturedAt] ON [Grid2ProfileXpSnapshots] ([PlayerProfileId], [CapturedAt]);
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF OBJECT_ID(N'[Grid2WeeklyXpDeltas]', N'U') IS NULL
-                BEGIN
-                    CREATE TABLE [Grid2WeeklyXpDeltas] (
-                        [Id] bigint NOT NULL IDENTITY,
-                        [PlayerProfileId] bigint NOT NULL,
-                        [WeekStartsAt] datetimeoffset NOT NULL,
-                        [Amount] bigint NOT NULL,
-                        [Source] nvarchar(32) NOT NULL,
-                        [ReferenceKey] nvarchar(128) NOT NULL,
-                        [EarnedAt] datetimeoffset NOT NULL,
-                        CONSTRAINT [PK_Grid2WeeklyXpDeltas] PRIMARY KEY ([Id]),
-                        CONSTRAINT [FK_Grid2WeeklyXpDeltas_PlayerProfiles_PlayerProfileId] FOREIGN KEY ([PlayerProfileId]) REFERENCES [PlayerProfiles] ([Id]) ON DELETE NO ACTION
-                    );
-                END
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2WeeklyXpDeltas_PlayerProfileId_WeekStartsAt' AND object_id = OBJECT_ID(N'[Grid2WeeklyXpDeltas]'))
-                    CREATE INDEX [IX_Grid2WeeklyXpDeltas_PlayerProfileId_WeekStartsAt] ON [Grid2WeeklyXpDeltas] ([PlayerProfileId], [WeekStartsAt]);
-                """,
-                cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(
-                """
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Grid2WeeklyXpDeltas_PlayerProfileId_Source_ReferenceKey' AND object_id = OBJECT_ID(N'[Grid2WeeklyXpDeltas]'))
-                    CREATE UNIQUE INDEX [IX_Grid2WeeklyXpDeltas_PlayerProfileId_Source_ReferenceKey] ON [Grid2WeeklyXpDeltas] ([PlayerProfileId], [Source], [ReferenceKey]);
                 """,
                 cancellationToken);
             await dbContext.Database.ExecuteSqlRawAsync(
