@@ -23,6 +23,8 @@ public sealed class RaceNetOptions
 
     public string LogDirectory { get; init; } = "logs";
 
+    public int Dirt4DailyTestSeconds { get; init; }
+
     public string GameId { get; init; } = "dirt-showdown";
 
     public string GameName { get; init; } = "DiRT Showdown";

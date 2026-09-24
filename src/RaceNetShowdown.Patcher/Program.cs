@@ -12,6 +12,11 @@ var gameProfiles = new Dictionary<string, (string DisplayName, string DefaultGam
         @"C:\Program Files (x86)\Steam\steamapps\common\DiRT Showdown",
         ["showdown.exe", "showdown_avx.exe"],
         ["showdown", "showdown_avx"]),
+    ["dirt-4"] = (
+        "DiRT 4",
+        @"C:\Program Files (x86)\Steam\steamapps\common\DiRT 4" ,
+        ["dirt4.exe"],
+        ["dirt4"]),
     ["grid-2"] = (
         "GRID 2",
         @"C:\Program Files (x86)\Steam\steamapps\common\grid 2",

@@ -12,6 +12,17 @@
       "installerExecutableAsset": "EgoNet Revival - DiRT Showdown Installer.exe"
     },
     {
+      "id": "dirt-4",
+      "name": "DiRT 4",
+      "platform": "Steam / PC",
+      "status": "public-testing",
+      "packagePath": "games/dirt-4",
+      "releaseTagPrefix": "dirt-4-v",
+      "installerAsset": "install-dirt-4-mod.cmd",
+      "installerProject": "games/dirt-4/installer/Dirt4ModInstaller.csproj",
+      "installerExecutableAsset": "EgoNet Revival - DiRT 4 Installer.exe"
+    },
+    {
       "id": "grid-2",
       "name": "GRID 2",
       "platform": "Steam / PC",

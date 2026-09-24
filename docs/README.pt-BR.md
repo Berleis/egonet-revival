@@ -2,7 +2,9 @@
 
 Servidor ASP.NET Core open-source para substituir serviços EgoNet/RaceNet descontinuados da Codemasters.
 
-O EgoNet Revival atualmente restaura o fluxo de Challenges do RaceNet no DiRT Showdown e está expandindo o suporte do RaceNet para GRID 2 no Steam/PC. A ideia de longo prazo é manter uma base comum para suportar outros jogos da Codemasters afetados por serviços EgoNet/RaceNet descontinuados.
+O EgoNet Revival atualmente restaura fluxos do RaceNet no DiRT Showdown, DiRT 4
+e GRID 2 no Steam/PC. A ideia de longo prazo é manter uma base comum para
+suportar outros jogos da Codemasters afetados por serviços EgoNet/RaceNet descontinuados.
 
 Idioma principal: [English](../README.md) | Tradução: [Espanhol](README.es.md)
 
@@ -11,6 +13,7 @@ Idioma principal: [English](../README.md) | Tradução: [Espanhol](README.es.md)
 | Jogo | Plataforma | Estado |
 | --- | --- | --- |
 | DiRT Showdown | Steam / PC | Em teste público, fluxo de Challenges funcional |
+| DiRT 4 | Steam / PC | Em teste público, Community Events funcionais; Pro Tour experimental |
 | F1 2018 | Steam / PC | Ativador local de memória para eventos expirados |
 | GRID 2 | Steam / PC | Em teste público inicial, Desafio Mundial e Rivais com ciclo semanal funcional |
 
@@ -21,6 +24,7 @@ Este repositório é uma base compartilhada para vários projetos de restauraç�
 | Jogo | Pacote | Prefixo de tag | Asset para jogadores |
 | --- | --- | --- | --- |
 | DiRT Showdown | [`games/dirt-showdown`](../games/dirt-showdown) | `dirt-showdown-v` | `EgoNet Revival - DiRT Showdown Installer.exe` |
+| DiRT 4 | [`games/dirt-4`](../games/dirt-4) | `dirt-4-v` | `EgoNet Revival - DiRT 4 Installer.exe` |
 | F1 2018 | [`games/f1-2018`](../games/f1-2018) | `f1-2018-v` | `EgoNet Revival - F1 2018 Event Activator.exe` |
 | GRID 2 | [`games/grid-2`](../games/grid-2) | `grid-2-v` | `EgoNet Revival - GRID 2 Installer.exe` |
 
@@ -31,7 +35,7 @@ git tag dirt-showdown-v0.1.0
 git push origin dirt-showdown-v0.1.0
 ```
 
-Isso publica os assets do jogo correspondente sem misturar pacotes. Por exemplo, tags `dirt-showdown-v...` publicam o DiRT Showdown, tags `grid-2-v...` publicam o GRID 2 e tags `f1-2018-v...` publicam o F1 2018.
+Isso publica os assets do jogo correspondente sem misturar pacotes. Por exemplo, tags `dirt-showdown-v...` publicam o DiRT Showdown, tags `dirt-4-v...` publicam o DiRT 4, tags `grid-2-v...` publicam o GRID 2 e tags `f1-2018-v...` publicam o F1 2018.
 
 Scripts auxiliares de desenvolvimento ficam agrupados por jogo em [`tools`](../tools). Assets públicos para jogadores ficam em [`games`](../games) e nas GitHub Releases.
 
@@ -56,6 +60,7 @@ Ainda em melhoria:
 - Painel/admin.
 - Perfis compartilhados mais limpos para jogos futuros.
 - Validação pública do fluxo de Rivais do GRID 2 com mais corridas multiplayer reais.
+- Validação de pontuação e promoção do Pro Tour do DiRT 4 com sessões multiplayer reais.
 
 ## Instalar o Mod do DiRT Showdown
 
@@ -98,6 +103,35 @@ O instalador é autocontido. Ele:
 - testa o endpoint HTTPS de saúde.
 
 Para desfazer o patch dos executáveis, use a opção `Verificar integridade dos arquivos do jogo` na Steam para o DiRT Showdown. Se também quiser remover completamente o redirecionamento, apague o bloco `EgoNet Revival DiRT Showdown` do arquivo `hosts` do Windows.
+
+## Instalar o Mod do DiRT 4
+
+O DiRT 4 está em teste público. Os Community Events funcionam com rotações
+persistentes de Daily, Weekly e Monthly baseadas no calendário. O Pro Tour
+continua experimental; a Jam Session usa o multiplayer da Steam sem depender
+do servidor EgoNet.
+
+Requisitos:
+
+- Windows.
+- Versão Steam do DiRT 4 instalada.
+- Acesso de Administrador no PC.
+- O jogo precisa estar fechado antes da instalação.
+
+Passos:
+
+1. Abra a [página de releases do DiRT 4](https://github.com/Berleis/egonet-revival/releases?q=dirt-4-v&expanded=true).
+2. Baixe `EgoNet Revival - DiRT 4 Installer.exe` da release `dirt-4-v...` mais recente.
+3. Clique com o botão direito no instalador e escolha `Executar como administrador`.
+4. Escolha a pasta de instalação do DiRT 4 se ela não for detectada automaticamente.
+5. Clique em `Install Mod`.
+6. Abra o DiRT 4 pela Steam.
+7. Entre em `Competitive > Community Events` dentro do jogo.
+
+A release também inclui `install-dirt-4-mod.cmd` como alternativa por linha de
+comando. A documentação e os detalhes de validação ficam em
+[`games/dirt-4`](../games/dirt-4), com as ferramentas de regressão em
+[`tools/dirt-4`](../tools/dirt-4).
 
 ## Instalar o Mod do GRID 2
 
@@ -180,7 +214,7 @@ O DiRT Showdown ainda tenta conversar com os endpoints RaceNet/EgoNet originais,
 
 O instalador redireciona os hostnames RaceNet do jogo para o servidor substituto e instala uma autoridade certificadora local que o executável do jogo passa a confiar depois do patch. Depois disso, o jogo consegue fazer suas requisições HTTPS normais novamente.
 
-O servidor recebe os payloads binários EgoNet originais do jogo, lê a função de serviço solicitada e retorna respostas compatíveis. Para o DiRT Showdown, ele armazena perfis de jogadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost e resultados de challenges em SQLite. Para GRID 2, ele armazena eventos do Desafio Mundial, pontuações enviadas, atribuições semanais de Rivais, dados de sessão de Rivais e adversários recentes encontrados em corridas multiplayer.
+O servidor recebe os payloads binários EgoNet originais do jogo, lê a função de serviço solicitada e retorna respostas compatíveis. Para o DiRT Showdown, ele armazena perfis de jogadores, amigos observados, challenges enviados, uploads de ghost, downloads de ghost e resultados de challenges em SQLite. Para o DiRT 4, ele armazena rotações dos Community Events, tentativas, tempos de estágio, resultados e recompensas no banco de dados compartilhado. Para GRID 2, ele armazena eventos do Desafio Mundial, pontuações enviadas, atribuições semanais de Rivais, dados de sessão de Rivais e adversários recentes encontrados em corridas multiplayer.
 
 Isto não é um desbloqueador de conquistas, editor de save ou editor de estatísticas da Steam. As conquistas continuam sendo acionadas pelos próprios jogos quando o fluxo restaurado ou reativado dentro do jogo é concluído.
 
@@ -256,14 +290,16 @@ Não envie essas pastas para o Git. A pasta `data/certs` precisa continuar está
 
 - `games/games.json`: manifesto dos pacotes de jogos suportados.
 - `games/dirt-showdown`: pacote, projeto do instalador visual, instalador `.cmd` alternativo e notas de release do DiRT Showdown.
+- `games/dirt-4`: pacote de teste público, instaladores, notas de protocolo e notas de release do DiRT 4.
 - `games/grid-2`: pacote, projeto do instalador visual, instalador `.cmd` alternativo e notas de release do GRID 2.
 - `.github/workflows/game-releases.yml`: empacota assets de release por jogo a partir de tags específicas.
 - `scripts/package-game-release.ps1`: empacota um jogo suportado para artifacts de CI/release.
-- `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado pelo DiRT Showdown e pelo GRID 2.
+- `src/RaceNetShowdown.Server`: servidor ASP.NET Core usado pelo DiRT Showdown, DiRT 4 e GRID 2.
 - `src/RaceNetShowdown.Patcher`: ferramenta de patch usada pelos scripts locais de desenvolvimento.
 - `src/F12018EventActivator`: ativador de memória do processo do F1 2018 para os eventos semanais expirados.
 - `src/RaceNetShowdown.TlsProbe`: ferramenta de diagnóstico TLS para investigar conexões iniciais.
 - `tools/dirt-showdown`: scripts de desenvolvimento para patch local, patch contra servidor hospedado, restauração, status, regeneração de certificados e diagnóstico TLS do DiRT Showdown.
+- `tools/dirt-4`: scripts de desenvolvimento para patch local, restauração e verificação de status do DiRT 4.
 - `tools/grid-2`: scripts de desenvolvimento para patch local, servidor de discovery e diagnóstico TLS do GRID 2.
 - `tools/f1-2018`: script auxiliar para o F1 2018 Event Activator.
 

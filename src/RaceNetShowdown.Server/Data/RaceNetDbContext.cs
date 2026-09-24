@@ -16,6 +16,8 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     public DbSet<ChallengeResultRecord> ChallengeResults => Set<ChallengeResultRecord>();
 
+    public DbSet<Dirt4CommunityStateRecord> Dirt4CommunityState => Set<Dirt4CommunityStateRecord>();
+
     public DbSet<Grid2GlobalEventRecord> Grid2GlobalEvents => Set<Grid2GlobalEventRecord>();
 
     public DbSet<Grid2GlobalRaceRecord> Grid2GlobalRaces => Set<Grid2GlobalRaceRecord>();
@@ -107,6 +109,11 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
         modelBuilder.Entity<ChallengeResultRecord>(entity =>
         {
             entity.Property(value => value.RawPayloadHex).HasMaxLength(16_384);
+        });
+
+        modelBuilder.Entity<Dirt4CommunityStateRecord>(entity =>
+        {
+            entity.ToTable("Dirt4CommunityState");
         });
 
         modelBuilder.Entity<Grid2GlobalEventRecord>(entity =>

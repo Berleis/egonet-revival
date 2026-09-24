@@ -8,6 +8,7 @@ namespace RaceNetShowdown.Server.Data;
 
 public sealed class EntityFrameworkRaceNetStore(
     RaceNetDbContext dbContext,
+    IHostEnvironment hostEnvironment,
     ILogger<EntityFrameworkRaceNetStore> logger) : IRaceNetStore
 {
     private const string ChallengeStatusOpen = "open";
@@ -26,6 +27,8 @@ public sealed class EntityFrameworkRaceNetStore(
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        await EnsureDirt4CommunityStateTableAsync(cancellationToken);
+        await ImportLegacyDirt4CommunityStateAsync(cancellationToken);
         await EnsureGrid2GlobalTablesAsync(cancellationToken);
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
     }
@@ -555,6 +558,68 @@ public sealed class EntityFrameworkRaceNetStore(
         challenge.CompletedAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string?> LoadDirt4CommunityStateAsync(CancellationToken cancellationToken)
+    {
+        return await dbContext.Dirt4CommunityState
+            .AsNoTracking()
+            .Where(value => value.Id == 1)
+            .Select(value => value.StateJson)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task SaveDirt4CommunityStateAsync(string stateJson, CancellationToken cancellationToken)
+    {
+        var state = await dbContext.Dirt4CommunityState
+            .SingleOrDefaultAsync(value => value.Id == 1, cancellationToken);
+        if (state is null)
+        {
+            dbContext.Dirt4CommunityState.Add(new Dirt4CommunityStateRecord
+            {
+                Id = 1,
+                StateJson = stateJson,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+        else
+        {
+            state.StateJson = stateJson;
+            state.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ImportLegacyDirt4CommunityStateAsync(CancellationToken cancellationToken)
+    {
+        if (await dbContext.Dirt4CommunityState.AnyAsync(cancellationToken))
+            return;
+
+        var candidates = new List<string>
+        {
+            Path.Combine(hostEnvironment.ContentRootPath, "_local", "dirt4-community.json")
+        };
+        if (dbContext.Database.IsSqlite())
+        {
+            var dataSource = dbContext.Database.GetDbConnection().DataSource;
+            if (!string.IsNullOrWhiteSpace(dataSource))
+            {
+                var databasePath = Path.GetFullPath(dataSource, hostEnvironment.ContentRootPath);
+                candidates.Add(Path.Combine(Path.GetDirectoryName(databasePath)!, "dirt4-community.json"));
+            }
+        }
+
+        foreach (var path in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(path)) continue;
+            var stateJson = await File.ReadAllTextAsync(path, cancellationToken);
+            _ = new Dirt4DailyStore(stateJson);
+            await SaveDirt4CommunityStateAsync(stateJson, cancellationToken);
+            File.Delete(path);
+            logger.LogInformation("Imported legacy DiRT 4 Community Event state from {Path}", path);
+            return;
+        }
     }
 
     public async Task SaveGrid2GlobalScoreAsync(
@@ -1465,6 +1530,40 @@ public sealed class EntityFrameworkRaceNetStore(
             new(6_265, false, 31, 355, 0, 554, 24, 7, 3, -1, -1, 0, false, -1, 2),
             new(6_266, true, 32, 359, 0, 509, 22, 7, 2, -1, -1, 0, false, -1, 3)
         ];
+    }
+
+    private async Task EnsureDirt4CommunityStateTableAsync(CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.IsSqlite())
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                CREATE TABLE IF NOT EXISTS "Dirt4CommunityState" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Dirt4CommunityState" PRIMARY KEY,
+                    "StateJson" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL
+                );
+                """,
+                cancellationToken);
+            return;
+        }
+
+        if (dbContext.Database.IsSqlServer())
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF OBJECT_ID(N'[Dirt4CommunityState]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [Dirt4CommunityState] (
+                        [Id] int NOT NULL,
+                        [StateJson] nvarchar(max) NOT NULL,
+                        [UpdatedAt] datetimeoffset NOT NULL,
+                        CONSTRAINT [PK_Dirt4CommunityState] PRIMARY KEY ([Id])
+                    );
+                END
+                """,
+                cancellationToken);
+        }
     }
 
     private async Task EnsureGrid2GlobalTablesAsync(CancellationToken cancellationToken)

@@ -112,10 +112,12 @@ internal static class EgoNetBinaryFormatter
                     break;
 
                 case "fl32":
+                case "fp32":
                     Line(depth, $"{Offset(offset)} {label} value={ReadSingle().ToString(CultureInfo.InvariantCulture)}");
                     break;
 
                 case "fl64":
+                case "fp64":
                     Line(depth, $"{Offset(offset)} {label} value={ReadDouble().ToString(CultureInfo.InvariantCulture)}");
                     break;
 

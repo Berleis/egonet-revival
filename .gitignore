@@ -36,3 +36,4 @@ external/
 # OS files
 Thumbs.db
 desktop.ini
+/racenet_logs_final/

@@ -23,10 +23,12 @@ public sealed class RaceNetResponder
     private readonly ConcurrentDictionary<long, byte[]> _localGhostDataBySlot = new();
     private byte[]? _localLastUploadedGhostData;
     private long _localNextIssuedChallengeId = 10_000;
+    private readonly Dirt4DailyStore _localDirt4DailyStore;
 
     public RaceNetResponder(RaceNetOptions options)
     {
         Options = options;
+        _localDirt4DailyStore = new(dailyTestSeconds: options.Dirt4DailyTestSeconds);
     }
 
     private RaceNetOptions Options { get; }
@@ -55,7 +57,7 @@ public sealed class RaceNetResponder
                 game = "multi-game",
                 gameName = "EgoNet Revival",
                 configuredFallbackGame = Options.GameId,
-                supportedGames = new[] { "dirt-showdown", "grid-2" },
+                supportedGames = new[] { "dirt-showdown", "grid-2", "dirt-4" },
                 discoveryMode = Options.DiscoveryMode,
                 time = DateTimeOffset.Now
             });
@@ -173,7 +175,7 @@ public sealed class RaceNetResponder
                 game = "multi-game",
                 gameName = "EgoNet Revival",
                 configuredFallbackGame = Options.GameId,
-                supportedGames = new[] { "dirt-showdown", "grid-2" },
+                supportedGames = new[] { "dirt-showdown", "grid-2", "dirt-4" },
                 discoveryMode = Options.DiscoveryMode,
                 time = DateTimeOffset.Now
             });
@@ -275,6 +277,15 @@ public sealed class RaceNetResponder
             ["X-EgoNet-SessionID"] = session?.SessionId ?? "local-racenet-session"
         };
 
+        if (requestGame == RaceNetGame.Dirt4)
+        {
+            var dirt4Response = await Dirt4EgoNetPayloads.TryBuildAsync(normalized, body, session, headers,
+                store, Options.Dirt4DailyTestSeconds, cancellationToken);
+            if (dirt4Response is not null)
+            {
+                return dirt4Response;
+            }
+        }
         if (requestGame == RaceNetGame.Grid2)
         {
             var grid2Response = await Grid2EgoNetPayloads.TryBuildAsync(normalized, body, session, headers, store, cancellationToken);
@@ -359,6 +370,14 @@ public sealed class RaceNetResponder
             ["X-EgoNet-SessionID"] = session?.SessionId ?? "local-racenet-session"
         };
 
+        if (requestGame == RaceNetGame.Dirt4)
+        {
+            var dirt4Response = Dirt4EgoNetPayloads.TryBuild(normalized, body, session, headers, _localDirt4DailyStore);
+            if (dirt4Response is not null)
+            {
+                return dirt4Response;
+            }
+        }
         if (requestGame == RaceNetGame.Grid2)
         {
             var grid2Response = Grid2EgoNetPayloads.TryBuild(normalized, body, session, headers);
@@ -824,6 +843,7 @@ public sealed class RaceNetResponder
     {
         return ResolveRequestGame(request, body) switch
         {
+            RaceNetGame.Dirt4 => "dirt-4",
             RaceNetGame.Grid2 => "grid-2",
             _ => "dirt-showdown"
         };
@@ -835,12 +855,61 @@ public sealed class RaceNetResponder
         var host = request.Host.Host;
         var egoNetFunction = request.Headers["X-EgoNet-Function"].ToString();
 
+        if (IsDirt4RequestPath(path) || IsDirt4Host(host) || IsDirt4Function(egoNetFunction) || IsDirt4Body(body) || IsDirt4VersionedAuth(egoNetFunction, request.Headers["X-EgoNet-Game-Version"].ToString()))
+        {
+            return RaceNetGame.Dirt4;
+        }
+
         if (IsGrid2RequestPath(path) || IsGrid2Host(host) || IsGrid2Function(egoNetFunction) || IsGrid2Body(body))
         {
             return RaceNetGame.Grid2;
         }
 
         return RaceNetGame.DirtShowdown;
+    }
+
+    private static bool IsDirt4RequestPath(string path)
+    {
+        return path.Contains("dirt4", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDirt4Host(string host)
+    {
+        return host.Contains("dirt4", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDirt4Function(string functionName)
+    {
+        return functionName is
+            "AsyncChallenge.GetEvents" or
+            "AsyncChallenge.StartStage" or
+            "DataMining.DataEvent" or
+            "DataMining.StatsEvent" or
+            "GhostCar.Upload" or
+            "LiveLadder.DownloadPrincipalData" or
+            "LiveLadder.GetSessionList" or
+            "LiveLadder.SessionConfigDownload" or
+            "LiveLadder.SubmitSession" or
+            "LiveLadder.SubmitSessionScores" or
+            "LiveLadder.SessionStart" or
+            "LiveLadder.QuitSession" or
+            "LiveLadder.PenalisePlayer" or
+            "Localisation.GetStrings" or
+            "Mailbox.GetPendingMessageCount" or
+            "RaceNetLeaderboard.GetFriendsEntries" or
+            "RaceNetLeaderboard.GetLeaderboardEntries" or
+            "LoginService.GetCurrentVersion";
+    }
+
+    private static bool IsDirt4VersionedAuth(string functionName, string gameVersion)
+    {
+        return gameVersion == "1219082" &&
+            functionName is "LoginService.Login" or "LoginService.Tick";
+    }
+
+    private static bool IsDirt4Body(CapturedBody body)
+    {
+        return EgoNetRequestParser.ReadTopLevelInteger(body, "GameId") == 11;
     }
 
     private static bool IsGrid2RequestPath(string path)
@@ -868,6 +937,7 @@ public sealed class RaceNetResponder
     private enum RaceNetGame
     {
         DirtShowdown,
-        Grid2
+        Grid2,
+        Dirt4
     }
 }

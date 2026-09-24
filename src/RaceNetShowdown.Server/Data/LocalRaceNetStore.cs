@@ -17,6 +17,7 @@ public sealed class LocalRaceNetStore : IRaceNetStore
     private static readonly ConcurrentDictionary<string, List<RaceNetIssuedChallenge>> IssuedChallengesBySession = new();
     private static readonly ConcurrentDictionary<long, byte[]> GhostDataBySlot = new();
     private static readonly ConcurrentDictionary<long, byte[]> Grid2RivalSessionDataByProfile = new();
+    private static string? _dirt4CommunityState;
     private static byte[]? _lastUploadedGhostData;
     private static long _nextIssuedChallengeId = 10_000;
 
@@ -187,6 +188,17 @@ public sealed class LocalRaceNetStore : IRaceNetStore
             Friends = friends
         };
 
+        return Task.CompletedTask;
+    }
+
+    public Task<string?> LoadDirt4CommunityStateAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Volatile.Read(ref _dirt4CommunityState));
+    }
+
+    public Task SaveDirt4CommunityStateAsync(string stateJson, CancellationToken cancellationToken)
+    {
+        Volatile.Write(ref _dirt4CommunityState, stateJson);
         return Task.CompletedTask;
     }
 

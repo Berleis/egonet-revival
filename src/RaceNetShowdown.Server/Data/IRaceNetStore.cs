@@ -59,6 +59,10 @@ public interface IRaceNetStore
         EgoNetSubmittedChallengeResult result,
         CancellationToken cancellationToken);
 
+    Task<string?> LoadDirt4CommunityStateAsync(CancellationToken cancellationToken);
+
+    Task SaveDirt4CommunityStateAsync(string stateJson, CancellationToken cancellationToken);
+
     Task SaveGrid2GlobalScoreAsync(
         RaceNetSessionInfo session,
         Grid2GlobalScoreSubmission submission,

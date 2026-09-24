@@ -5,8 +5,13 @@ Each supported game has its own package folder, installer, notes, and release ta
 | Game | Package | Release tag prefix | Release assets |
 | --- | --- | --- | --- |
 | DiRT Showdown | `games/dirt-showdown` | `dirt-showdown-v` | `EgoNet Revival - DiRT Showdown Installer.exe`, `install-dirt-showdown-mod.cmd` |
+| DiRT 4 | `games/dirt-4` | `dirt-4-v` | `EgoNet Revival - DiRT 4 Installer.exe`, `install-dirt-4-mod.cmd` |
 | GRID 2 | `games/grid-2` | `grid-2-v` | `EgoNet Revival - GRID 2 Installer.exe`, `install-grid-2-mod.cmd` |
 | F1 2018 | `games/f1-2018` | `f1-2018-v` | `EgoNet Revival - F1 2018 Event Activator.exe`, `activate-f1-2018-events.cmd` |
+
+DiRT 4 is in public testing with Community Events enabled, persistent calendar
+rotations and results. Pro Tour remains experimental; Jam Session uses Steam
+multiplayer independently of the EgoNet server.
 
 GRID 2 is in early public testing. The package is available so testers can install against the hosted server; Global Challenge and Rivals now share the Friday 10:00 UTC weekly RaceNet cycle.
 
