@@ -169,6 +169,15 @@ public sealed class Grid2GlobalEventRecord
     public List<Grid2GlobalRaceRecord> Races { get; set; } = [];
 }
 
+public sealed class Dirt4CommunityStateRecord
+{
+    public int Id { get; set; }
+
+    public string StateJson { get; set; } = "[]";
+
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
 public sealed class Grid2GlobalRaceRecord
 {
     public long Id { get; set; }

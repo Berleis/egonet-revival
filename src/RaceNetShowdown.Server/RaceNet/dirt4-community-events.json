@@ -1,0 +1,1654 @@
+[
+  {
+    "EventMeta": {
+      "EventId": 62202,
+      "Name": "lng_dirt_daily_live",
+      "DisciplineId": 2,
+      "LeaderboardId": 1152921504638694433,
+      "RanLastEvent": false,
+      "ExpiryTime": 1761559200,
+      "StartTime": -2006054656,
+      "AdvertStartTime": -2006054656,
+      "EventType": 0,
+      "PersonalBest": 0,
+      "SponsorIds": [
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        }
+      ],
+      "EventRestart": false,
+      "StageRestart": false,
+      "PromoEventAd": "",
+      "EventStatus": 0,
+      "EventCompType": 0,
+      "GameOptions": 200,
+      "FearlessCount": 0
+    },
+    "StageData": {
+      "CountryDBId": 14,
+      "TotalStages": 1,
+      "AvailableStages": 1,
+      "Stages": [
+        {
+          "StageId": 1,
+          "TrackModelId": 478,
+          "LeaderboardId": 1152921504638694433,
+          "LocationId": 0,
+          "TimeOfDayId": 4,
+          "WeatherId": 15,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 1,
+          "CareerStageId": 0,
+          "TrackGenValue": 0,
+          "StageBest": 139795,
+          "StageOverall": 139795,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 144367,
+          "T2T3BarrierTime": 148873,
+          "T3T4BarrierTime": 158166,
+          "Difficulty": 2,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 4,
+          "TrackgenName": {
+            "RegionId": 0,
+            "FlavourId": 0,
+            "NamingStyleId": 0,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        }
+      ]
+    },
+    "Restrictions": {
+      "VehicleIds": [
+        {
+          "ID": 504
+        }
+      ],
+      "VehicleClassIds": [],
+      "MftrCountryIds": [],
+      "DriveTrainIds": [],
+      "ManufacturerIds": [],
+      "MaxBHP": 0
+    },
+    "Rewards": {
+      "ContentUnlocked": false,
+      "TierRewards": [
+        {
+          "TierId": 1,
+          "MaxCredits": 75000,
+          "MinCredits": 65000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 2,
+          "MaxCredits": 50000,
+          "MinCredits": 40000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 3,
+          "MaxCredits": 35000,
+          "MinCredits": 28000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 4,
+          "MaxCredits": 15000,
+          "MinCredits": 7500,
+          "RewardVehicleId": 0
+        }
+      ]
+    }
+  },
+  {
+    "EventMeta": {
+      "EventId": 62203,
+      "Name": "lng_dirt_daily_owners_club",
+      "DisciplineId": 1,
+      "LeaderboardId": 1152921504638694955,
+      "RanLastEvent": false,
+      "ExpiryTime": 1761559200,
+      "StartTime": -2006054656,
+      "AdvertStartTime": -2006054656,
+      "EventType": 4,
+      "PersonalBest": 0,
+      "SponsorIds": [
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        }
+      ],
+      "EventRestart": false,
+      "StageRestart": false,
+      "PromoEventAd": "",
+      "EventStatus": 0,
+      "EventCompType": 0,
+      "GameOptions": 140,
+      "FearlessCount": 0
+    },
+    "StageData": {
+      "CountryDBId": 13,
+      "TotalStages": 1,
+      "AvailableStages": 1,
+      "Stages": [
+        {
+          "StageId": 1,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638694955,
+          "LocationId": 14,
+          "TimeOfDayId": 5,
+          "WeatherId": 3,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 86712857722933257,
+          "StageBest": 304890,
+          "StageOverall": 304890,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 310084,
+          "T2T3BarrierTime": 333736,
+          "T3T4BarrierTime": 370302,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 277,
+            "FlavourId": 6,
+            "NamingStyleId": 8,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        }
+      ]
+    },
+    "Restrictions": {
+      "VehicleIds": [
+        {
+          "ID": 399
+        }
+      ],
+      "VehicleClassIds": [],
+      "MftrCountryIds": [],
+      "DriveTrainIds": [],
+      "ManufacturerIds": [],
+      "MaxBHP": 0
+    },
+    "Rewards": {
+      "ContentUnlocked": false,
+      "TierRewards": [
+        {
+          "TierId": 1,
+          "MaxCredits": 75000,
+          "MinCredits": 65000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 2,
+          "MaxCredits": 50000,
+          "MinCredits": 40000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 3,
+          "MaxCredits": 35000,
+          "MinCredits": 28000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 4,
+          "MaxCredits": 15000,
+          "MinCredits": 7500,
+          "RewardVehicleId": 0
+        }
+      ]
+    }
+  },
+  {
+    "EventMeta": {
+      "EventId": 61976,
+      "Name": "lng_dirt_weekly",
+      "DisciplineId": 1,
+      "LeaderboardId": 1152921504638578883,
+      "RanLastEvent": false,
+      "ExpiryTime": 1761559200,
+      "StartTime": -2006054656,
+      "AdvertStartTime": -2006054656,
+      "EventType": 1,
+      "PersonalBest": 0,
+      "SponsorIds": [
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        }
+      ],
+      "EventRestart": false,
+      "StageRestart": false,
+      "PromoEventAd": "",
+      "EventStatus": 0,
+      "EventCompType": 0,
+      "GameOptions": 204,
+      "FearlessCount": 0
+    },
+    "StageData": {
+      "CountryDBId": 19,
+      "TotalStages": 6,
+      "AvailableStages": 6,
+      "Stages": [
+        {
+          "StageId": 1,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638578723,
+          "LocationId": 21,
+          "TimeOfDayId": 3,
+          "WeatherId": 7,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 96702706731492361,
+          "StageBest": 471021,
+          "StageOverall": 471021,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 490443,
+          "T2T3BarrierTime": 531224,
+          "T3T4BarrierTime": 609180,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 187,
+            "FlavourId": 17,
+            "NamingStyleId": 8,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 2,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638578755,
+          "LocationId": 21,
+          "TimeOfDayId": 3,
+          "WeatherId": 4,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 248425964230840329,
+          "StageBest": 391731,
+          "StageOverall": 862871,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 900409,
+          "T2T3BarrierTime": 972394,
+          "T3T4BarrierTime": 1093833,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 161,
+            "FlavourId": 8,
+            "NamingStyleId": 6,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 3,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638578787,
+          "LocationId": 21,
+          "TimeOfDayId": 5,
+          "WeatherId": 4,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 95163313913630729,
+          "StageBest": 364173,
+          "StageOverall": 1227044,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1279891,
+          "T2T3BarrierTime": 1362592,
+          "T3T4BarrierTime": 1479361,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 230,
+            "FlavourId": 17,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 4,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638578819,
+          "LocationId": 21,
+          "TimeOfDayId": 6,
+          "WeatherId": 4,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 159049502457845257,
+          "StageBest": 391797,
+          "StageOverall": 1636365,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1688897,
+          "T2T3BarrierTime": 1814197,
+          "T3T4BarrierTime": 1982731,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 168,
+            "FlavourId": 17,
+            "NamingStyleId": 8,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 5,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638578851,
+          "LocationId": 21,
+          "TimeOfDayId": 6,
+          "WeatherId": 26,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 105288397971809801,
+          "StageBest": 513042,
+          "StageOverall": 2133114,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2242414,
+          "T2T3BarrierTime": 2405180,
+          "T3T4BarrierTime": 2597375,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 156,
+            "FlavourId": 17,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 6,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638578883,
+          "LocationId": 21,
+          "TimeOfDayId": 7,
+          "WeatherId": 27,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 95294919393509897,
+          "StageBest": 356093,
+          "StageOverall": 2489207,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2623880,
+          "T2T3BarrierTime": 2808808,
+          "T3T4BarrierTime": 3037256,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 181,
+            "FlavourId": 17,
+            "NamingStyleId": 8,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        }
+      ]
+    },
+    "Restrictions": {
+      "VehicleIds": [],
+      "VehicleClassIds": [
+        {
+          "ID": 101
+        }
+      ],
+      "MftrCountryIds": [],
+      "DriveTrainIds": [],
+      "ManufacturerIds": [],
+      "MaxBHP": 0
+    },
+    "Rewards": {
+      "ContentUnlocked": false,
+      "TierRewards": [
+        {
+          "TierId": 1,
+          "MaxCredits": 275000,
+          "MinCredits": 250000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 2,
+          "MaxCredits": 220000,
+          "MinCredits": 190000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 3,
+          "MaxCredits": 180000,
+          "MinCredits": 110000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 4,
+          "MaxCredits": 85000,
+          "MinCredits": 40000,
+          "RewardVehicleId": 0
+        }
+      ]
+    }
+  },
+  {
+    "EventMeta": {
+      "EventId": 61978,
+      "Name": "lng_dirt_weekly2",
+      "DisciplineId": 1,
+      "LeaderboardId": 1152921504638579917,
+      "RanLastEvent": false,
+      "ExpiryTime": 1761559200,
+      "StartTime": -2006054656,
+      "AdvertStartTime": -2006054656,
+      "EventType": 5,
+      "PersonalBest": 0,
+      "SponsorIds": [
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        }
+      ],
+      "EventRestart": false,
+      "StageRestart": false,
+      "PromoEventAd": "",
+      "EventStatus": 0,
+      "EventCompType": 0,
+      "GameOptions": 204,
+      "FearlessCount": 0
+    },
+    "StageData": {
+      "CountryDBId": 4,
+      "TotalStages": 6,
+      "AvailableStages": 6,
+      "Stages": [
+        {
+          "StageId": 1,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638579757,
+          "LocationId": 3,
+          "TimeOfDayId": 10,
+          "WeatherId": 3,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 77999005160228873,
+          "StageBest": 249137,
+          "StageOverall": 249137,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 265443,
+          "T2T3BarrierTime": 295957,
+          "T3T4BarrierTime": 353511,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 83,
+            "FlavourId": 6,
+            "NamingStyleId": 14,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 2,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638579789,
+          "LocationId": 3,
+          "TimeOfDayId": 1,
+          "WeatherId": 4,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 167788744811264009,
+          "StageBest": 360090,
+          "StageOverall": 617264,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 645291,
+          "T2T3BarrierTime": 707287,
+          "T3T4BarrierTime": 784772,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 120,
+            "FlavourId": 6,
+            "NamingStyleId": 6,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 3,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638579821,
+          "LocationId": 3,
+          "TimeOfDayId": 1,
+          "WeatherId": 4,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 177358068360127497,
+          "StageBest": 386906,
+          "StageOverall": 999249,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1056804,
+          "T2T3BarrierTime": 1169344,
+          "T3T4BarrierTime": 1267632,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 100,
+            "FlavourId": 6,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 4,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638579853,
+          "LocationId": 3,
+          "TimeOfDayId": 2,
+          "WeatherId": 26,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 107106212374245897,
+          "StageBest": 455968,
+          "StageOverall": 1469571,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1555000,
+          "T2T3BarrierTime": 1714537,
+          "T3T4BarrierTime": 1897161,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 105,
+            "FlavourId": 6,
+            "NamingStyleId": 6,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 5,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638579885,
+          "LocationId": 3,
+          "TimeOfDayId": 4,
+          "WeatherId": 24,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 157912073139686921,
+          "StageBest": 245496,
+          "StageOverall": 1755160,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1819952,
+          "T2T3BarrierTime": 1999547,
+          "T3T4BarrierTime": 2219002,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 71,
+            "FlavourId": 6,
+            "NamingStyleId": 6,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 6,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638579917,
+          "LocationId": 3,
+          "TimeOfDayId": 5,
+          "WeatherId": 24,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 169734616596199433,
+          "StageBest": 429776,
+          "StageOverall": 2149846,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2265822,
+          "T2T3BarrierTime": 2521568,
+          "T3T4BarrierTime": 2742249,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 110,
+            "FlavourId": 7,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        }
+      ]
+    },
+    "Restrictions": {
+      "VehicleIds": [],
+      "VehicleClassIds": [
+        {
+          "ID": 73
+        }
+      ],
+      "MftrCountryIds": [],
+      "DriveTrainIds": [],
+      "ManufacturerIds": [],
+      "MaxBHP": 0
+    },
+    "Rewards": {
+      "ContentUnlocked": false,
+      "TierRewards": [
+        {
+          "TierId": 1,
+          "MaxCredits": 275000,
+          "MinCredits": 250000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 2,
+          "MaxCredits": 220000,
+          "MinCredits": 190000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 3,
+          "MaxCredits": 180000,
+          "MinCredits": 110000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 4,
+          "MaxCredits": 85000,
+          "MinCredits": 40000,
+          "RewardVehicleId": 0
+        }
+      ]
+    }
+  },
+  {
+    "EventMeta": {
+      "EventId": 61213,
+      "Name": "lng_dirt_monthly",
+      "DisciplineId": 1,
+      "LeaderboardId": 1152921504638188421,
+      "RanLastEvent": false,
+      "ExpiryTime": 1761991200,
+      "StartTime": -2006054656,
+      "AdvertStartTime": -2006054656,
+      "EventType": 2,
+      "PersonalBest": 0,
+      "SponsorIds": [
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        },
+        {
+          "ID": 0
+        }
+      ],
+      "EventRestart": false,
+      "StageRestart": false,
+      "PromoEventAd": "",
+      "EventStatus": 0,
+      "EventCompType": 0,
+      "GameOptions": 204,
+      "FearlessCount": 0
+    },
+    "StageData": {
+      "CountryDBId": 8,
+      "TotalStages": 12,
+      "AvailableStages": 12,
+      "Stages": [
+        {
+          "StageId": 1,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188069,
+          "LocationId": 26,
+          "TimeOfDayId": 3,
+          "WeatherId": 4,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 167364822602899465,
+          "StageBest": 217451,
+          "StageOverall": 217451,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 236226,
+          "T2T3BarrierTime": 257338,
+          "T3T4BarrierTime": 300036,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 383,
+            "FlavourId": 2,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 2,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188101,
+          "LocationId": 26,
+          "TimeOfDayId": 3,
+          "WeatherId": 26,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 77277113011999241,
+          "StageBest": 200762,
+          "StageOverall": 421444,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 467102,
+          "T2T3BarrierTime": 519442,
+          "T3T4BarrierTime": 594835,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 347,
+            "FlavourId": 2,
+            "NamingStyleId": 14,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 3,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188133,
+          "LocationId": 26,
+          "TimeOfDayId": 4,
+          "WeatherId": 27,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 4812927988771337,
+          "StageBest": 180052,
+          "StageOverall": 671878,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 674823,
+          "T2T3BarrierTime": 749535,
+          "T3T4BarrierTime": 836097,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 370,
+            "FlavourId": 2,
+            "NamingStyleId": 0,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 4,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188165,
+          "LocationId": 26,
+          "TimeOfDayId": 6,
+          "WeatherId": 26,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 86721066449681929,
+          "StageBest": 228522,
+          "StageOverall": 837420,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 938056,
+          "T2T3BarrierTime": 1034734,
+          "T3T4BarrierTime": 1154082,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 369,
+            "FlavourId": 2,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 5,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188197,
+          "LocationId": 26,
+          "TimeOfDayId": 7,
+          "WeatherId": 26,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 77135752083338761,
+          "StageBest": 195920,
+          "StageOverall": 1146383,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1162495,
+          "T2T3BarrierTime": 1283933,
+          "T3T4BarrierTime": 1451697,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 374,
+            "FlavourId": 2,
+            "NamingStyleId": 16,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 6,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188229,
+          "LocationId": 26,
+          "TimeOfDayId": 7,
+          "WeatherId": 24,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 14805872803440137,
+          "StageBest": 228510,
+          "StageOverall": 1304599,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1401271,
+          "T2T3BarrierTime": 1549871,
+          "T3T4BarrierTime": 1737139,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 342,
+            "FlavourId": 2,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 7,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188261,
+          "LocationId": 26,
+          "TimeOfDayId": 3,
+          "WeatherId": 4,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 157934690348039177,
+          "StageBest": 182289,
+          "StageOverall": 1486888,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1612284,
+          "T2T3BarrierTime": 1760156,
+          "T3T4BarrierTime": 1953001,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 336,
+            "FlavourId": 30,
+            "NamingStyleId": 3,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 8,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188293,
+          "LocationId": 26,
+          "TimeOfDayId": 3,
+          "WeatherId": 3,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 240251712258754569,
+          "StageBest": 236259,
+          "StageOverall": 1723147,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 1853502,
+          "T2T3BarrierTime": 2028210,
+          "T3T4BarrierTime": 2236884,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 356,
+            "FlavourId": 2,
+            "NamingStyleId": 8,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 9,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188325,
+          "LocationId": 26,
+          "TimeOfDayId": 5,
+          "WeatherId": 4,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 87003071510857737,
+          "StageBest": 232000,
+          "StageOverall": 1986686,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2114515,
+          "T2T3BarrierTime": 2293805,
+          "T3T4BarrierTime": 2537529,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 360,
+            "FlavourId": 32,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 10,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188357,
+          "LocationId": 26,
+          "TimeOfDayId": 5,
+          "WeatherId": 26,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 23094014349838345,
+          "StageBest": 210592,
+          "StageOverall": 2158402,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2345206,
+          "T2T3BarrierTime": 2561965,
+          "T3T4BarrierTime": 2839889,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 414,
+            "FlavourId": 30,
+            "NamingStyleId": 2,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 11,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188389,
+          "LocationId": 26,
+          "TimeOfDayId": 6,
+          "WeatherId": 26,
+          "HasServiceArea": true,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 3,
+          "CareerStageId": 0,
+          "TrackGenValue": 240126269550230025,
+          "StageBest": 240974,
+          "StageOverall": 2399376,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2612617,
+          "T2T3BarrierTime": 2885167,
+          "T3T4BarrierTime": 3212572,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 386,
+            "FlavourId": 32,
+            "NamingStyleId": 6,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        },
+        {
+          "StageId": 12,
+          "TrackModelId": 0,
+          "LeaderboardId": 1152921504638188421,
+          "LocationId": 26,
+          "TimeOfDayId": 8,
+          "WeatherId": 27,
+          "HasServiceArea": false,
+          "TargetTime": {
+            "OverallTime": 0,
+            "Split1": 0,
+            "Split2": 0,
+            "Split3": 0,
+            "Split4": 0,
+            "Split5": 0,
+            "Split6": 0,
+            "Split7": 0,
+            "Split8": 0,
+            "Split9": 0,
+            "Split10": 0
+          },
+          "GameOptions": 2,
+          "CareerStageId": 0,
+          "TrackGenValue": 78261590804299785,
+          "StageBest": 225512,
+          "StageOverall": 2679838,
+          "PlayerBest": 0,
+          "PlayerOverall": 0,
+          "PlayerRank": 0,
+          "DeltaBest": 0,
+          "Percentile": 0,
+          "DeltaPercentile": 0,
+          "T1T2BarrierTime": 2864278,
+          "T2T3BarrierTime": 3175351,
+          "T3T4BarrierTime": 3547374,
+          "Difficulty": 0,
+          "HeatLaps": 0,
+          "SemiLaps": 0,
+          "FinalLaps": 0,
+          "TrackgenName": {
+            "RegionId": 384,
+            "FlavourId": 2,
+            "NamingStyleId": 10,
+            "IsReversed": false,
+            "StageIndex": 0
+          }
+        }
+      ]
+    },
+    "Restrictions": {
+      "VehicleIds": [],
+      "VehicleClassIds": [
+        {
+          "ID": 97
+        }
+      ],
+      "MftrCountryIds": [],
+      "DriveTrainIds": [],
+      "ManufacturerIds": [],
+      "MaxBHP": 0
+    },
+    "Rewards": {
+      "ContentUnlocked": false,
+      "TierRewards": [
+        {
+          "TierId": 1,
+          "MaxCredits": 550000,
+          "MinCredits": 510000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 2,
+          "MaxCredits": 450000,
+          "MinCredits": 400000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 3,
+          "MaxCredits": 380000,
+          "MinCredits": 240000,
+          "RewardVehicleId": 0
+        },
+        {
+          "TierId": 4,
+          "MaxCredits": 190000,
+          "MinCredits": 80000,
+          "RewardVehicleId": 0
+        }
+      ]
+    }
+  }
+]

@@ -6,6 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>F12018EventActivator</AssemblyName>
+    <ApplicationIcon>installer-icon.ico</ApplicationIcon>
+    <AssemblyTitle>EgoNet Revival - F1 2018 Event Activator</AssemblyTitle>
+    <Product>EgoNet Revival</Product>
+    <Description>Championship event activator for F1 2018</Description>
   </PropertyGroup>
 
 </Project>

@@ -207,7 +207,7 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
 });
 
 app.Logger.LogInformation("EgoNet Revival server starting");
-app.Logger.LogInformation("Supported game profiles: DiRT Showdown, GRID 2");
+app.Logger.LogInformation("Supported game profiles: DiRT Showdown, GRID 2, DiRT 4");
 app.Logger.LogInformation("Configured fallback game profile: {GameName} ({GameId})", raceNetOptions.GameName, raceNetOptions.GameId);
 app.Logger.LogInformation("HTTP  endpoint: http://127.0.0.1:{Port}", raceNetOptions.HttpPort);
 app.Logger.LogInformation("HTTPS endpoint: https://127.0.0.1:{Port}", raceNetOptions.HttpsPort);

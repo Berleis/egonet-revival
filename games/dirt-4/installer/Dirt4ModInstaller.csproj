@@ -7,8 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>installer-icon.ico</ApplicationIcon>
-    <AssemblyTitle>EgoNet Revival - DiRT Showdown Installer</AssemblyTitle>
+    <AssemblyTitle>EgoNet Revival - DiRT 4 Installer</AssemblyTitle>
     <Product>EgoNet Revival</Product>
-    <Description>RaceNet restoration installer for DiRT Showdown</Description>
+    <Description>RaceNet restoration installer for DiRT 4</Description>
   </PropertyGroup>
 </Project>

@@ -231,6 +231,63 @@ internal static class EgoNetRequestParser
         return ReadChallengeContext(body).Principals;
     }
 
+    public static IReadOnlyList<Dirt4LeaderboardPresence> ReadLeaderboardPresences(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0) return [];
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic") return [];
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "Presences" && tag == "vvtr") return ReadLeaderboardPresenceVector(reader);
+                SkipValue(reader, tag);
+            }
+        }
+        catch { }
+        return [];
+    }
+
+    private static IReadOnlyList<Dirt4LeaderboardPresence> ReadLeaderboardPresenceVector(BinaryReader reader)
+    {
+        var result = new List<Dirt4LeaderboardPresence>();
+        var count = reader.ReadInt32();
+        for (var i = 0; i < count; i++) result.Add(ReadLeaderboardPresence(reader));
+        return result;
+    }
+
+    private static Dirt4LeaderboardPresence ReadLeaderboardPresence(BinaryReader reader)
+    {
+        if (ReadTag(reader) != "vdic") throw new InvalidDataException("Invalid leaderboard presence.");
+        var cross = false;
+        long egonet = 0, account = 0;
+        ulong network = 0;
+        var displayName = string.Empty;
+        var fields = reader.ReadInt32();
+        for (var field = 0; field < fields; field++)
+        {
+            var name = ReadName(reader);
+            var tag = ReadTag(reader);
+            if (name == "IsCrossPlatform" && tag == "bool") cross = reader.ReadBoolean();
+            else if (name == "EgonetId" && TryReadInteger(reader, tag, out var value)) egonet = value;
+            else if (name == "AccountRef" && TryReadInteger(reader, tag, out value)) account = value;
+            else ReadLeaderboardPresenceField(reader, name, tag, ref network, ref displayName);
+        }
+        return new(cross, egonet, account, network, displayName);
+    }
+
+    private static void ReadLeaderboardPresenceField(BinaryReader reader, string name, string tag,
+        ref ulong network, ref string displayName)
+    {
+        if (name == "NetworkId" && tag == "ui64") network = reader.ReadUInt64();
+        else if (name == "Name" && tag == "dstr") displayName = ReadString(reader);
+        else SkipValue(reader, tag);
+    }
+
     public static string? ReadTopLevelString(CapturedBody body, string fieldName)
     {
         if (body.BodyBytes.Length == 0)
@@ -305,6 +362,100 @@ internal static class EgoNetRequestParser
         return null;
     }
 
+    public static bool? ReadTopLevelBoolean(CapturedBody body, string fieldName)
+    {
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic") return null;
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == fieldName && tag == "bool") return reader.ReadBoolean();
+                SkipValue(reader, tag);
+            }
+        }
+        catch (Exception ex) when (ex is EndOfStreamException or InvalidDataException or IOException or ArgumentException)
+        {
+            return null;
+        }
+        return null;
+    }
+
+    public static byte[]? ReadTopLevelBlob(CapturedBody body, string fieldName)
+    {
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic") return null;
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == fieldName && tag == "blob") return ReadBlob(reader);
+                SkipValue(reader, tag);
+            }
+        }
+        catch (Exception ex) when (ex is EndOfStreamException or InvalidDataException or IOException or ArgumentException)
+        {
+            return null;
+        }
+        return null;
+    }
+
+    public static IReadOnlyList<string> ReadTopLevelStringVector(CapturedBody body, string fieldName)
+    {
+        if (body.BodyBytes.Length == 0)
+        {
+            return [];
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic")
+            {
+                return [];
+            }
+
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == fieldName && tag == "vvtr")
+                {
+                    var count = reader.ReadInt32();
+                    var values = new List<string>(count);
+                    for (var j = 0; j < count; j++)
+                    {
+                        if (ReadTag(reader) != "dstr")
+                        {
+                            return [];
+                        }
+
+                        values.Add(ReadString(reader));
+                    }
+
+                    return values;
+                }
+
+                SkipValue(reader, tag);
+            }
+        }
+        catch
+        {
+            return [];
+        }
+
+        return [];
+    }
     public static IReadOnlyList<long> ReadTopLevelIntegerVector(CapturedBody body, string fieldName)
     {
         if (body.BodyBytes.Length == 0)
@@ -1120,7 +1271,10 @@ internal static class EgoNetRequestParser
 
             case "dstr":
             case "blob":
-                reader.BaseStream.Position += reader.ReadInt32();
+                var length = reader.ReadInt32();
+                if (length < 0 || length > reader.BaseStream.Length - reader.BaseStream.Position)
+                    throw new InvalidDataException("Invalid EgoNet variable-length field.");
+                reader.BaseStream.Position += length;
                 break;
 
             case "si32":
