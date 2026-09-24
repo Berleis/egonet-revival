@@ -40,6 +40,8 @@ public sealed class EntityFrameworkRaceNetStore(
     {
         var now = DateTimeOffset.UtcNow;
         var sessionId = context.Request.Headers["X-EgoNet-SessionID"].ToString();
+        var remoteAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var loginName = EgoNetRequestParser.ReadTopLevelString(body, "Name");
 
         if (!string.IsNullOrWhiteSpace(sessionId))
         {
@@ -50,6 +52,8 @@ public sealed class EntityFrameworkRaceNetStore(
             if (existingSession?.PlayerProfile is not null &&
                 IsWireCompatibleSessionId(existingSession.SessionId))
             {
+                if (!string.IsNullOrWhiteSpace(loginName))
+                    existingSession.PlayerProfile.DisplayName = loginName.Trim();
                 existingSession.LastSeenAt = now;
                 existingSession.PlayerProfile.LastSeenAt = now;
                 await dbContext.SaveChangesAsync(cancellationToken);
@@ -58,9 +62,7 @@ public sealed class EntityFrameworkRaceNetStore(
             }
         }
 
-        var remoteAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = context.Request.Headers.UserAgent.ToString();
-        var loginName = EgoNetRequestParser.ReadTopLevelString(body, "Name");
 
         if (string.IsNullOrWhiteSpace(loginName))
         {
