@@ -14,7 +14,7 @@ public sealed class Dirt4RotationTests
     [Fact]
     public void CatalogHasDistinctOptionsAndOnlyFiveLiveSlots()
     {
-        Assert.Equal(new[] { 28, 24, 2, 2, 3 }, Enumerable.Range(0, 5)
+        Assert.Equal(new[] { 84, 72, 36, 36, 36 }, Enumerable.Range(0, 5)
             .Select(i => Dirt4CommunityEvents.RotationFor(i).Count));
         var store = new Dirt4DailyStore();
         var formatted = Format(Dirt4CommunityEvents.Build(Now, store, "driver", []));
@@ -23,8 +23,12 @@ public sealed class Dirt4RotationTests
         {
             var entries = Dirt4CommunityEvents.RotationFor(slot);
             Assert.Equal(entries.Count, entries.Select(e => e.Id).Distinct().Count());
-            Assert.Equal(entries.Count, entries.Select(e => string.Join("/", e.Event.StageData.Stages
-                .Select(s => $"{s.TrackModelId}:{s.TrackGenValue}"))).Distinct().Count());
+            Assert.Equal(entries.Count, entries.Select(e => JsonSerializer.Serialize(new
+            {
+                e.Event.Restrictions,
+                Stages = e.Event.StageData.Stages.Select(s => new
+                    { s.TrackModelId, s.TrackGenValue, s.LocationId, s.WeatherId, s.TimeOfDayId })
+            })).Distinct().Count());
         }
     }
 
@@ -36,7 +40,12 @@ public sealed class Dirt4RotationTests
         var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { round }));
         var restrictions = round.Definition!.Restrictions;
         var vehicle = restrictions.VehicleIds.Length > 0 ? restrictions.VehicleIds[0].ID :
-            restrictions.VehicleClassIds[0].ID switch { 101 => 468, 73 => 537, 97 => 390, _ => throw new InvalidDataException() };
+            restrictions.VehicleClassIds[0].ID switch
+            {
+                101 => 468, 99 => 532, 97 => 390, 72 => 389, 100 => 534, 93 => 529,
+                98 => 396, 96 => 482, 74 => 480, 94 => 490, 86 => 483, 73 => 537,
+                _ => throw new InvalidDataException()
+            };
         for (var stage = 0; stage < round.StageCount; stage++)
         {
             var at = Now.AddSeconds(stage * 2);
@@ -49,6 +58,8 @@ public sealed class Dirt4RotationTests
         Assert.Equal(round.RotationId, store.Find(round.EventId)!.RotationId);
         var events = Dirt4CommunityEvents.Build(Now, store, "driver", [round.EventId]);
         Assert.Contains($"TrackModelId: ui32 value={round.Definition!.StageData.Stages[0].TrackModelId}", Format(events));
+        Assert.Contains($"WeatherId: ui32 value={round.Definition.StageData.Stages[0].WeatherId}", Format(events));
+        Assert.Contains($"TimeOfDayId: ui32 value={round.Definition.StageData.Stages[0].TimeOfDayId}", Format(events));
         Assert.Equal(events, Dirt4CommunityEvents.Build(Now, new Dirt4DailyStore(store.Export()), "driver", [round.EventId]));
         Assert.Empty(store.Completed("driver", Now, []));
         var ended = DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt);
@@ -135,6 +146,10 @@ public sealed class Dirt4RotationTests
             var rounds = Enumerable.Range(0, 5).Select(slot => store.Current(Now.AddDays(day), slot)).ToArray();
             Assert.NotEqual(rounds[2].Definition!.StageData.Stages[0].TrackGenValue,
                 rounds[3].Definition!.StageData.Stages[0].TrackGenValue);
+            Assert.NotEqual(rounds[2].Definition!.Restrictions.VehicleClassIds[0].ID,
+                rounds[3].Definition!.Restrictions.VehicleClassIds[0].ID);
+            Assert.NotEqual(rounds[2].Definition!.StageData.Stages[0].WeatherId,
+                rounds[3].Definition!.StageData.Stages[0].WeatherId);
             foreach (var round in rounds)
                 foreach (var leaderboard in round.StageLeaderboardIds!)
                     if (!ids.TryAdd(leaderboard, round.EventId)) Assert.Equal(round.EventId, ids[leaderboard]);
@@ -163,19 +178,97 @@ public sealed class Dirt4RotationTests
     }
 
     [Fact]
-    public void RallySeedsKeepTheirCapturedLocationNameAndConditions()
+    public void RallySeedsKeepTheirCapturedLocationAndNameWithExplicitConditions()
     {
         using var source = typeof(RaceNetOptions).Assembly.GetManifestResourceStream(
             "RaceNetShowdown.Server.RaceNet.dirt4-community-events.json")!;
         var original = JsonSerializer.Deserialize<Dirt4CommunityEvents.EventDefinition[]>(source)!;
         var tuples = original.SelectMany(e => e.StageData.Stages).Where(s => s.TrackGenValue > 0)
-            .Select(s => (s.TrackGenValue, s.LocationId, s.TimeOfDayId, s.WeatherId, s.TrackgenName)).ToHashSet();
+            .Select(s => (s.TrackGenValue, s.LocationId, s.TrackgenName)).ToHashSet();
         foreach (var entry in Enumerable.Range(0, 5).SelectMany(Dirt4CommunityEvents.RotationFor))
             foreach (var stage in entry.Event.StageData.Stages.Where(s => s.TrackGenValue > 0))
-                Assert.Contains((stage.TrackGenValue, stage.LocationId, stage.TimeOfDayId, stage.WeatherId, stage.TrackgenName), tuples);
+            {
+                Assert.Contains((stage.TrackGenValue, stage.LocationId, stage.TrackgenName), tuples);
+                Assert.Contains(stage.WeatherId, new uint[] { 1, 2, 3, 4, 5, 7, 15 });
+                Assert.InRange(stage.TimeOfDayId, 3U, 6U);
+            }
         var weekly = Dirt4CommunityEvents.RotationFor(2)[0].Event;
         Assert.Equal(original[4].StageData.Stages.Take(6).Select(s => s.T3T4BarrierTime),
             weekly.StageData.Stages.Select(s => s.T3T4BarrierTime));
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)]
+    public void EachRallySlotIncludesTwelveClassesAndAllConditionProfiles(int slot)
+    {
+        var entries = Dirt4CommunityEvents.RotationFor(slot)
+            .Where(e => e.Event.StageData.Stages[0].TrackModelId == 0).ToArray();
+        int[] expected = [72, 73, 74, 86, 93, 94, 96, 97, 98, 99, 100, 101];
+        int ClassOf(Dirt4CommunityEvents.EventDefinition e) => slot >= 2
+            ? Assert.Single(e.Restrictions.VehicleClassIds).ID
+            : Assert.Single(e.Restrictions.VehicleIds).ID switch
+            {
+                468 => 101, 532 => 99, 390 => 97, 389 => 72, 534 => 100, 529 => 93,
+                396 => 98, 482 => 96, 480 => 74, 490 => 94, 483 => 86, 537 => 73,
+                _ => throw new InvalidDataException()
+            };
+        Assert.Equal(expected, entries.Select(e => ClassOf(e.Event)).Distinct().Order());
+        Assert.Equal(new uint[] { 1, 2, 5 }, entries.Select(e => e.Event.StageData.Stages[0].WeatherId).Distinct().Order());
+        if (slot >= 2)
+            foreach (var group in entries.GroupBy(e => ClassOf(e.Event)))
+                Assert.Equal(new uint[] { 1, 2, 5 }, group.Select(e => e.Event.StageData.Stages[0].WeatherId).Order());
+    }
+
+    [Fact]
+    public void EveryDayOffersASunnyDaylightDailyAcrossBothCompleteCycles()
+    {
+        // LCM(84 Daily choices, 72 Owners choices) is 504 days, including wraparound.
+        for (var day = 0; day <= 504; day++)
+        {
+            var at = Now.AddDays(day);
+            var window = Dirt4EventCalendar.Window(at, 0);
+            var daily = Dirt4CommunityEvents.SelectRotation(0, window.Start).Event;
+            var owners = Dirt4CommunityEvents.SelectRotation(1, window.Start).Event;
+            Assert.Contains(new[] { daily, owners }, e =>
+                e.StageData.Stages.All(s => s.WeatherId == 1 && s.TimeOfDayId is >= 3 and <= 6));
+        }
+    }
+
+    [Fact]
+    public void RallycrossHasThreePlayableClassesWithoutRallyVehicles()
+    {
+        var entries = Dirt4CommunityEvents.RotationFor(0)
+            .Where(e => e.Event.StageData.Stages[0].TrackModelId > 0).ToArray();
+        Assert.Equal(new[] { 504, 513, 541 }, entries.Select(e => Assert.Single(e.Event.Restrictions.VehicleIds).ID)
+            .Distinct().Order());
+        Assert.All(entries, e => Assert.Empty(e.Event.Restrictions.VehicleClassIds));
+        Assert.Equal(new uint[] { 436, 476, 536, 537 }, entries.Select(e => e.Event.StageData.Stages[0].TrackModelId)
+            .Distinct().Order());
+    }
+
+    [Fact]
+    public void IssuedV1ClassWeatherAndProgressSurviveTheV2Catalog()
+    {
+        var round = Round(2, 0);
+        var definition = round.Definition!;
+        round = round with { RotationId = "v1/weekly-2", Definition = definition with
+        {
+            Restrictions = definition.Restrictions with { VehicleClassIds = [new(97)] },
+            StageData = definition.StageData with
+                { Stages = definition.StageData.Stages.Select(s => s with { WeatherId = 26, TimeOfDayId = 7 }).ToArray() }
+        } };
+        var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { round }));
+        Assert.True(store.Start(round.StageLeaderboard(0), "driver", Now, 390));
+        Assert.True(store.Finish(round.StageLeaderboard(0), "driver", 100_000, Now.AddSeconds(1), 390));
+        var before = Dirt4CommunityEvents.Build(Now, store, "driver", [round.EventId]);
+        store = new Dirt4DailyStore(store.Export());
+        var current = store.Current(Now, 2);
+        Assert.Equal("v1/weekly-2", current.RotationId);
+        Assert.Equal(97, Assert.Single(current.Definition!.Restrictions.VehicleClassIds).ID);
+        Assert.All(current.Definition.StageData.Stages, s => Assert.Equal(26U, s.WeatherId));
+        Assert.Equal(before, Dirt4CommunityEvents.Build(Now, store, "driver", [round.EventId]));
+        Assert.True(store.Start(round.StageLeaderboard(1), "driver", Now.AddSeconds(2), 390));
+        Assert.StartsWith("v2/", store.Current(DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt), 2).RotationId!);
     }
 
     [Fact]

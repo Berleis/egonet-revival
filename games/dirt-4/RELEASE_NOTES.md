@@ -4,7 +4,9 @@
 
 - Fixed friend-filter requests borrowing another player's name and Steam ID. Career and Community leaderboards now use the player's matched identity across filter changes and restarts; legacy associations are rebuilt instead of trusting the first friend in the list.
 - Added a deterministic expanded Community Event rotation using captured rally stages and circuit IDs verified in the local DiRT 4 catalogue.
-- Temporarily removed the original full events from new-round selection, leaving 28 Daily Live, 24 Owners Club, two choices per Weekly slot and three Monthly choices. Already issued rounds remain unchanged; tier times and payouts remain provisional for player feedback.
+- Expanded the active rotation to 84 Daily Live, 72 Owners Club, 36 choices per Weekly slot and 36 Monthly choices, across 12 rally classes and three rallycross classes. These reuse existing routes with different vehicles and conditions, not 264 different roads.
+- Added clear daylight, cloudy and rain profiles using DiRT 4 preset IDs. The two Weekly slots use different classes and conditions; each calendar day offers a clear daytime Daily or Owners Club event.
+- Kept original full events out of new-round selection and preserved already issued rounds. Class/weather changes still use provisional capture-derived tier times and payouts for player-feedback tuning.
 - Added full per-round event snapshots, preserving issued events, attempts, leaderboards and rewards across catalog updates.
 - Preserved the original daily / Monday / first-of-month 10:00 UTC reset boundaries.
 - Added automated catalog, calendar, legacy migration, reward, leaderboard and HTTP/SQLite restart tests.
