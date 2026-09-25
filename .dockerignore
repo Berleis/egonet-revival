@@ -6,11 +6,16 @@ build-check
 debug
 external
 .research
+_local
+racenet_logs_final
 .tmp-build
 .tmp-egonet-server
 /data
 src/**/bin
 src/**/obj
+tests/**/bin
+tests/**/obj
+TestResults
 src/**/logs
 src/**/certs
 *.db

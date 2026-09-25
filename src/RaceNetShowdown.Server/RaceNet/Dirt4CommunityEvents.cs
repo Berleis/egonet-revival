@@ -3,13 +3,18 @@ using System.Text.Json.Serialization;
 
 namespace RaceNetShowdown.Server.RaceNet;
 
-internal static class Dirt4CommunityEvents
+internal static partial class Dirt4CommunityEvents
 {
     private static readonly EventDefinition[] Events = LoadCatalog();
     internal static int TemplateCount => Events.Length;
     internal static Dirt4EventTemplate Template(int index)
     {
-        var e = Events[index];
+        return Template(Events[index]);
+    }
+    internal static Dirt4EventTemplate Template(Dirt4DailyRound round) => Template(Definition(round));
+    internal static EventDefinition Definition(Dirt4DailyRound round) => round.Definition ?? Events[round.TemplateIndex];
+    internal static Dirt4EventTemplate Template(EventDefinition e)
+    {
         return new(e.EventMeta.EventId, e.EventMeta.EventType, e.EventMeta.LeaderboardId,
             e.StageData.Stages.Select(s => s.LeaderboardId).ToArray(),
             e.Restrictions.VehicleIds.Select(v => (long)v.ID).ToArray());
@@ -48,7 +53,8 @@ internal static class Dirt4CommunityEvents
     {
         if (ids.Count == 0)
             return Pack(now, Enumerable.Range(0, Events.Length).Select(i =>
-                Progress(store.Current(now, i), store, player, omitScores)));
+                Progress(store.Current(now, i), store, player, omitScores))
+                .Concat(store.PendingResults(player, now).Select(r => Progress(r, store, player, omitScores))));
 
         var events = new List<EventDefinition>();
         foreach (var id in ids.Distinct())
@@ -61,9 +67,10 @@ internal static class Dirt4CommunityEvents
 
     internal static byte[] BuildResults(DateTimeOffset now, Dirt4DailyStore store, string player, IReadOnlyList<long> ids)
     {
-        var results = store.Completed(player, now, ids).Select(round =>
+        var rounds = ids.Count == 0 ? store.PendingResults(player, now) : store.Completed(player, now, ids);
+        var results = rounds.Select(round =>
         {
-            var e = Events[round.TemplateIndex];
+            var e = Definition(round);
             var stage = e.StageData.Stages[^1];
             var time = round.Time(player);
             var tier = time <= stage.T1T2BarrierTime ? 1 : time <= stage.T2T3BarrierTime ? 2 :
@@ -83,7 +90,9 @@ internal static class Dirt4CommunityEvents
                 EgoNetBinary.Si64("EventTargetTime", stage.TargetTime.OverallTime),
                 BuildRewards(e.Rewards));
         }).ToArray();
-        return EgoNetBinary.Dictionary(EgoNetBinary.Dict("Results", EgoNetBinary.Vector("Results", results)));
+        var response = EgoNetBinary.Dictionary(EgoNetBinary.Dict("Results", EgoNetBinary.Vector("Results", results)));
+        store.MarkResultsIssued(player, now, rounds.Select(r => r.EventId).ToArray());
+        return response;
     }
 
     private static byte[] Pack(DateTimeOffset now, IEnumerable<EventDefinition> events) =>
@@ -101,7 +110,7 @@ internal static class Dirt4CommunityEvents
 
     private static EventDefinition Progress(Dirt4DailyRound round, Dirt4DailyStore store, string player, bool omitScores)
     {
-        var e = Events[round.TemplateIndex];
+        var e = Definition(round);
         var time = omitScores ? 0 : round.Time(player);
         return e with {
             EventMeta = e.EventMeta with { EventId = round.EventId, LeaderboardId = round.LeaderboardId,
@@ -244,25 +253,25 @@ internal static class Dirt4CommunityEvents
                 EgoNetBinary.Si32("StageIndex", name.StageIndex)));
     }
 
-    private sealed record EventDefinition(EventMeta EventMeta, StageData StageData, Restrictions Restrictions, Rewards Rewards);
-    private sealed record EventMeta(long EventId, string Name, uint DisciplineId, long LeaderboardId,
+    internal sealed record EventDefinition(EventMeta EventMeta, StageData StageData, Restrictions Restrictions, Rewards Rewards);
+    internal sealed record EventMeta(long EventId, string Name, uint DisciplineId, long LeaderboardId,
         bool RanLastEvent, int ExpiryTime, int StartTime, int AdvertStartTime, int EventType, long PersonalBest,
         IdEntry[] SponsorIds, bool EventRestart, bool StageRestart, string PromoEventAd, int EventStatus,
         short EventCompType, ushort GameOptions, byte FearlessCount);
-    private sealed record StageData(uint CountryDBId, uint TotalStages, uint AvailableStages, StageDefinition[] Stages);
-    private sealed record Restrictions(IdEntry[] VehicleIds, IdEntry[] VehicleClassIds, IdEntry[] MftrCountryIds,
+    internal sealed record StageData(uint CountryDBId, uint TotalStages, uint AvailableStages, StageDefinition[] Stages);
+    internal sealed record Restrictions(IdEntry[] VehicleIds, IdEntry[] VehicleClassIds, IdEntry[] MftrCountryIds,
         IdEntry[] DriveTrainIds, IdEntry[] ManufacturerIds, int MaxBHP);
-    private sealed record IdEntry(int ID);
-    private sealed record Rewards(bool ContentUnlocked, TierReward[] TierRewards);
-    private sealed record TierReward(int TierId, int MaxCredits, int MinCredits, int RewardVehicleId);
-    private sealed record StageDefinition(byte StageId, uint TrackModelId, long LeaderboardId, uint LocationId,
+    internal sealed record IdEntry(int ID);
+    internal sealed record Rewards(bool ContentUnlocked, TierReward[] TierRewards);
+    internal sealed record TierReward(int TierId, int MaxCredits, int MinCredits, int RewardVehicleId);
+    internal sealed record StageDefinition(byte StageId, uint TrackModelId, long LeaderboardId, uint LocationId,
         uint TimeOfDayId, uint WeatherId, bool HasServiceArea, TargetTime TargetTime, ushort GameOptions,
         uint CareerStageId, long TrackGenValue, long StageBest, long StageOverall, long PlayerBest, long PlayerOverall,
         int PlayerRank, long DeltaBest, int Percentile, int DeltaPercentile, long T1T2BarrierTime, long T2T3BarrierTime,
         long T3T4BarrierTime, short Difficulty, short HeatLaps, short SemiLaps, short FinalLaps, TrackgenName TrackgenName);
-    private sealed record TargetTime(long OverallTime, long Split1, long Split2, long Split3, long Split4,
+    internal sealed record TargetTime(long OverallTime, long Split1, long Split2, long Split3, long Split4,
         long Split5, long Split6, long Split7, long Split8, long Split9, long Split10);
-    private sealed record TrackgenName(uint RegionId, uint FlavourId, uint NamingStyleId, bool IsReversed, int StageIndex);
+    internal sealed record TrackgenName(uint RegionId, uint FlavourId, uint NamingStyleId, bool IsReversed, int StageIndex);
 }
 
 internal sealed record Dirt4EventTemplate(long EventId, int EventType, long LeaderboardId,

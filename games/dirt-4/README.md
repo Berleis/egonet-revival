@@ -43,7 +43,9 @@ The GUI installer project lives in `installer`. Operational developer scripts li
 - Pro Tour is experimental while real multiplayer scoring and promotion still need validation.
 - Jam Session uses Steam multiplayer independently of the EgoNet server.
 
-DiRT 4 support is published as public testing. Event templates currently repeat the captured original events at each rotation. Community Event state uses the same configured database as the other server profiles.
+DiRT 4 support is published as public testing. The active development catalogue contains 28 Daily Live choices, 24 Owners Club choices, two choices per Weekly slot and three Monthly choices. Original full events are temporarily excluded from new rounds; their data remains available for existing rounds and as source material for the new combinations. These are 59 slot choices, not 59 newly recovered roads or historic events. Tier times and payouts remain provisional for feedback-driven tuning, and the new combinations still require in-game validation before deployment.
+
+Community Event state uses the same configured database as the other server profiles. Each new round stores its complete event definition, so catalog updates and restarts cannot change an issued event. Existing rounds and pending rewards retain their original definitions.
 
 ## Release Tags
 

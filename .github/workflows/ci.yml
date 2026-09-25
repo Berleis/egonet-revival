@@ -32,6 +32,10 @@ jobs:
       - name: Build
         run: dotnet build EgoNetRevival.sln --configuration Release --no-restore
 
+      - name: Test server
+        # The HTTP regression uses isolated ports, certificates and a temporary SQLite database.
+        run: dotnet test tests/RaceNetShowdown.Server.Tests --configuration Release --no-build
+
       - name: Verify certificate generation
         run: dotnet run --project src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj --configuration Release --no-build -- --regenerate-certs
 
