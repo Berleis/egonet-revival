@@ -67,7 +67,11 @@ public sealed class Dirt4ProTourHttpTests
                     await Send(client, host, "LiveLadder.SubmitSession", Advertisement().BodyBytes);
                     foreach (var guest in players.Skip(1))
                     {
-                        AssertOne((await Send(client, guest, "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
+                        var list = (await Send(client, guest, "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes;
+                        AssertOne(list);
+                        Assert.Contains("SessionDataLen: si32 value=8", Format(list));
+                        Assert.Contains("SessionPlayers: si32 value=1", Format(list));
+                        Assert.Contains("SessionTier: si32 value=7", Format(list));
                         await Send(client, guest, "LiveLadder.QuitSession", Connection().BodyBytes);
                     }
                     AssertEmpty((await Send(client, players[1], "LiveLadder.GetSessionList", Search(false).BodyBytes)).Bytes);
