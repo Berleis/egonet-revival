@@ -1,5 +1,15 @@
 # DiRT 4 release notes
 
+## Unreleased
+
+- Fixed friend-filter requests borrowing another player's name and Steam ID. Career and Community leaderboards now use the player's matched identity across filter changes and restarts; legacy associations are rebuilt instead of trusting the first friend in the list.
+- Added a deterministic expanded Community Event rotation using captured rally stages and circuit IDs verified in the local DiRT 4 catalogue.
+- Temporarily removed the original full events from new-round selection, leaving 28 Daily Live, 24 Owners Club, two choices per Weekly slot and three Monthly choices. Already issued rounds remain unchanged; tier times and payouts remain provisional for player feedback.
+- Added full per-round event snapshots, preserving issued events, attempts, leaderboards and rewards across catalog updates.
+- Preserved the original daily / Monday / first-of-month 10:00 UTC reset boundaries.
+- Added automated catalog, calendar, legacy migration, reward, leaderboard and HTTP/SQLite restart tests.
+- New combinations, especially cross-country Monthly events, still require in-game validation. Reference tier times for recomposed events are estimates, not recovered original RaceNet rankings.
+
 ## 0.1.0-public-testing
 
 - Added the DiRT 4 RaceNet profile and captured `/RP15/STEAM/1.0/` endpoint dispatch.

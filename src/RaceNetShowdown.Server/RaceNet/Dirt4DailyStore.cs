@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -51,7 +52,8 @@ internal sealed class Dirt4DailyStore
         if (round.EventId < 1_000_000 || round.EventId > int.MaxValue || round.OpenedAt >= round.ExpiresAt ||
             round.TemplateIndex < 0 || round.TemplateIndex >= Dirt4CommunityEvents.TemplateCount || round.Runs is null)
             return false;
-        var template = Dirt4CommunityEvents.Template(round.TemplateIndex);
+        if (!Dirt4CommunityEvents.ValidSnapshot(round)) return false;
+        var template = Dirt4CommunityEvents.Template(round);
         if (round.StageLeaderboardIds is null)
         {
             if (round.TemplateIndex != 0 || round.CalendarAligned || round.ExpiresAt - round.OpenedAt != 300)
@@ -75,6 +77,8 @@ internal sealed class Dirt4DailyStore
             var completed = stages.Count == round.StageCount && stages.All(s => s.TimeMs.HasValue);
             if (completed != run.TimeMs.HasValue || (completed && stages.Sum(s => s.TimeMs!.Value) != run.TimeMs))
                 return false;
+            if (!Enum.IsDefined(run.ResultDelivery) ||
+                (!completed && run.ResultDelivery != Dirt4ResultDelivery.Untracked)) return false;
         }
         return true;
     }
@@ -96,12 +100,16 @@ internal sealed class Dirt4DailyStore
                 r.OpenedAt == start && r.ExpiresAt == end && r.CalendarAligned == !testing);
             if (current is not null) return current;
 
+            var selection = Dirt4CommunityEvents.SelectRotation(templateIndex, start,
+                testing ? seconds / _dailyTestSeconds : null);
+            template = Dirt4CommunityEvents.Template(selection.Event);
             var id = Math.Max(1_000_000 + seconds / 60, _rounds.Select(r => r.EventId).DefaultIfEmpty().Max() + 1);
             if (id > int.MaxValue) throw new InvalidDataException("DiRT 4 event ID limit reached.");
             var shift = (id - template.EventId) << 9;
             var next = new Dirt4DailyRound(id, start, end, new Dictionary<string, Dirt4DailyRun>())
             {
                 TemplateIndex = templateIndex, CalendarAligned = !testing,
+                RotationId = selection.Id, Definition = selection.Event,
                 EventLeaderboardId = template.LeaderboardId + shift,
                 StageLeaderboardIds = template.StageLeaderboards.Select(lb => lb + shift).ToArray()
             };
@@ -120,6 +128,27 @@ internal sealed class Dirt4DailyStore
         lock (_gate)
             return _rounds.Where(r => r.ExpiresAt <= now.ToUnixTimeSeconds() &&
                 (ids.Count == 0 || ids.Contains(r.EventId)) && r.Time(player) > 0).ToArray();
+    }
+
+    internal IReadOnlyList<Dirt4DailyRound> PendingResults(string player, DateTimeOffset now)
+    {
+        lock (_gate)
+            return Completed(player, now, [])
+                .Where(r => r.Runs[player].ResultDelivery == Dirt4ResultDelivery.Pending)
+                .OrderBy(r => r.ExpiresAt).ThenBy(r => r.EventId).ToArray();
+    }
+
+    internal void MarkResultsIssued(string player, DateTimeOffset now, IReadOnlyList<long> ids)
+    {
+        if (ids.Count == 0) return;
+        lock (_gate)
+            foreach (var round in Completed(player, now, ids))
+            {
+                var run = round.Runs[player];
+                if (run.ResultDelivery == Dirt4ResultDelivery.Issued) continue;
+                Replace(round with { Runs = new Dictionary<string, Dirt4DailyRun>(round.Runs)
+                    { [player] = run with { ResultDelivery = Dirt4ResultDelivery.Issued } } });
+            }
     }
 
     internal bool RanPrevious(Dirt4DailyRound round, string player)
@@ -159,6 +188,9 @@ internal sealed class Dirt4DailyStore
     {
         lock (_gate)
         {
+            var steamId = SteamId(player);
+            if (steamId > 0 && presence.NetworkId > 0 && presence.NetworkId != steamId) return false;
+            presence = presence with { NetworkId = steamId > 0 ? steamId : presence.NetworkId, BoundToPlayer = true };
             _presences[player] = presence;
             var round = _rounds.FirstOrDefault(r => r.StageIndex(leaderboardId) >= 0);
             if (round is null) return true;
@@ -184,19 +216,23 @@ internal sealed class Dirt4DailyStore
             displayName.Equals("DiRT Player", StringComparison.OrdinalIgnoreCase)) return false;
         lock (_gate)
         {
-            if (_presences.TryGetValue(player, out var presence))
-                _presences[player] = presence with { Name = displayName };
-            else
-                _presences[player] = new(false, 0, 0, 0, displayName);
-            var round = _rounds.FirstOrDefault(r => r.StageIndex(leaderboardId) >= 0);
-            if (round is null) return true;
-            if (!round.Runs.TryGetValue(player, out var run)) return false;
-            if (!string.IsNullOrWhiteSpace(run.DisplayName)) return true;
-            Replace(round with { Runs = new Dictionary<string, Dirt4DailyRun>(round.Runs)
-                { [player] = run with { DisplayName = displayName } } });
-            return true;
+            var presence = PlayerPresence(player) with { Name = displayName };
+            return BindPresence(leaderboardId, player, presence);
         }
     }
+
+    internal Dirt4LeaderboardPresence PlayerPresence(string player)
+    {
+        lock (_gate)
+        {
+            if (_presences.TryGetValue(player, out var known) && known.BoundToPlayer) return known;
+            // Older records may contain a friend's Steam ID, even when their name was later overwritten.
+            return new(false, 0, 0, SteamId(player), "DiRT Player");
+        }
+    }
+
+    private static ulong SteamId(string player) => player.StartsWith("steam:", StringComparison.Ordinal) &&
+        ulong.TryParse(player.AsSpan(6), NumberStyles.None, CultureInfo.InvariantCulture, out var id) ? id : 0;
 
     internal bool Finish(long leaderboardId, string player, long timeMs, DateTimeOffset now, long vehicleId = 504,
         uint nationality = 0)
@@ -216,9 +252,11 @@ internal sealed class Dirt4DailyStore
             var seconds = now.ToUnixTimeSeconds();
             if (seconds < stage.StartedAt || seconds >= round.ExpiresAt) return false;
             stages[index] = stage with { TimeMs = timeMs };
+            var completed = stages.Length == round.StageCount;
             Replace(round with { Runs = new Dictionary<string, Dirt4DailyRun>(round.Runs)
                 { [player] = run with { Stages = stages, Nationality = nationality,
-                    TimeMs = stages.Length == round.StageCount ? stages.Sum(s => s.TimeMs!.Value) : null } } });
+                    TimeMs = completed ? stages.Sum(s => s.TimeMs!.Value) : null,
+                    ResultDelivery = completed ? Dirt4ResultDelivery.Pending : Dirt4ResultDelivery.Untracked } } });
             return true;
         }
     }
@@ -231,14 +269,6 @@ internal sealed class Dirt4DailyStore
             var round = _rounds.FirstOrDefault(r => r.StageIndex(leaderboardId) >= 0);
             if (round is null) return StandaloneLeaderboard(leaderboardId, player, presences);
             var stage = round.StageIndex(leaderboardId);
-            HashSet<ulong>? networkIds = null;
-            HashSet<string>? names = null;
-            if (presences is { Count: > 0 })
-            {
-                networkIds = presences.Where(p => p.NetworkId > 0).Select(p => p.NetworkId).ToHashSet();
-                names = presences.Where(p => !string.IsNullOrWhiteSpace(p.Name)).Select(p => p.Name)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            }
 
             var ranked = round.Runs
                 .Where(pair => round.StageTime(pair.Key, stage) > 0)
@@ -258,14 +288,11 @@ internal sealed class Dirt4DailyStore
                 (cumulative ? other.CumulativeTime : other.StageTime) <
                 (cumulative ? cumulativeTime : stageTime));
             var allEntries = ranked.Select(e => new Dirt4LeaderboardEntry(
-                new Dirt4LeaderboardPresence(e.Run.IsCrossPlatform, e.Run.EgonetId ?? 0, e.Run.AccountRef ?? 0,
-                    e.Run.NetworkId ?? 0, e.Run.DisplayName ?? e.Player),
+                PlayerPresence(e.Player),
                 e.StageTime, e.StageTime - bestStage, e.CumulativeTime, e.CumulativeTime - bestCumulative,
                 RankOf(e.StageTime, e.CumulativeTime), checked((uint)(e.Run.VehicleId ?? 0)), e.Run.Nationality))
                 .ToArray();
-            var entries = presences is null ? allEntries : allEntries.Where(entry => presences.Count > 0 &&
-                ((entry.Presence.NetworkId > 0 && networkIds!.Contains(entry.Presence.NetworkId)) ||
-                (!string.IsNullOrWhiteSpace(entry.Presence.Name) && names!.Contains(entry.Presence.Name)))).ToArray();
+            var entries = FilterEntries(allEntries, presences);
             var current = ranked.FirstOrDefault(e => e.Player == player);
             var playerRank = current is null ? 0 : RankOf(current.StageTime, current.CumulativeTime);
             return new(entries, playerRank);
@@ -295,15 +322,6 @@ internal sealed class Dirt4DailyStore
         var board = _leaderboards.FirstOrDefault(l => l.LeaderboardId == leaderboardId);
         if (board is null) return null;
 
-        HashSet<ulong>? networkIds = null;
-        HashSet<string>? names = null;
-        if (requestedPresences is { Count: > 0 })
-        {
-            networkIds = requestedPresences.Where(p => p.NetworkId > 0).Select(p => p.NetworkId).ToHashSet();
-            names = requestedPresences.Where(p => !string.IsNullOrWhiteSpace(p.Name)).Select(p => p.Name)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        }
-
         var ranked = board.Runs
             .OrderBy(pair => pair.Value.TimeMs)
             .ThenBy(pair => pair.Value.SubmittedAt)
@@ -311,24 +329,34 @@ internal sealed class Dirt4DailyStore
         var best = ranked[0].Value.TimeMs;
         var allEntries = ranked.Select((pair, index) =>
         {
-            var presence = _presences.TryGetValue(pair.Key, out var known)
-                ? known
-                : new Dirt4LeaderboardPresence(false, 0, 0, 0, pair.Key);
+            var presence = PlayerPresence(pair.Key);
             return new Dirt4LeaderboardEntry(presence, pair.Value.TimeMs, pair.Value.TimeMs - best,
                 pair.Value.TimeMs, pair.Value.TimeMs - best, index + 1, pair.Value.VehicleId,
                 pair.Value.Nationality);
         }).ToArray();
-        var entries = requestedPresences is null ? allEntries : allEntries.Where(entry =>
-            requestedPresences.Count > 0 &&
-            ((entry.Presence.NetworkId > 0 && networkIds!.Contains(entry.Presence.NetworkId)) ||
-             (!string.IsNullOrWhiteSpace(entry.Presence.Name) && names!.Contains(entry.Presence.Name)))).ToArray();
+        var entries = FilterEntries(allEntries, requestedPresences);
         var playerIndex = Array.FindIndex(ranked, pair => pair.Key == player);
         return new(entries, playerIndex < 0 ? 0 : playerIndex + 1);
     }
 
+    private static Dirt4LeaderboardEntry[] FilterEntries(Dirt4LeaderboardEntry[] entries,
+        IReadOnlyList<Dirt4LeaderboardPresence>? presences)
+    {
+        if (presences is null) return entries;
+        if (presences.Count == 0) return [];
+        var networkIds = presences.Where(p => p.NetworkId > 0).Select(p => p.NetworkId).ToHashSet();
+        var names = presences.Where(p => !string.IsNullOrWhiteSpace(p.Name)).Select(p => p.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var namesWithoutId = presences.Where(p => p.NetworkId == 0 && !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return entries.Where(e => e.Presence.NetworkId > 0
+            ? networkIds.Contains(e.Presence.NetworkId) || namesWithoutId.Contains(e.Presence.Name)
+            : names.Contains(e.Presence.Name)).ToArray();
+    }
+
     private static bool AcceptVehicle(Dirt4DailyRound round, long vehicleId)
     {
-        var allowed = Dirt4CommunityEvents.Template(round.TemplateIndex).VehicleIds;
+        var allowed = Dirt4CommunityEvents.Template(round).VehicleIds;
         return vehicleId > 0 && (allowed.Length == 0 || allowed.Contains(vehicleId));
     }
 
@@ -356,8 +384,11 @@ internal sealed record Dirt4StandaloneLeaderboard(long LeaderboardId,
 internal sealed record Dirt4StandaloneRun(long TimeMs, uint VehicleId, uint Nationality, long SubmittedAt);
 
 internal sealed record Dirt4StageRun(long StartedAt, long? TimeMs);
+internal enum Dirt4ResultDelivery { Untracked, Pending, Issued }
 internal sealed record Dirt4DailyRun(long StartedAt, long? TimeMs)
 {
+    // Legacy runs have no delivery history. Issued means a response was prepared, not a client credit acknowledgement.
+    public Dirt4ResultDelivery ResultDelivery { get; init; }
     public IReadOnlyList<Dirt4StageRun>? Stages { get; init; }
     public long? VehicleId { get; init; }
     public ulong? NetworkId { get; init; }
@@ -369,7 +400,11 @@ internal sealed record Dirt4DailyRun(long StartedAt, long? TimeMs)
 }
 
 internal sealed record Dirt4LeaderboardPresence(bool IsCrossPlatform, long EgonetId, long AccountRef,
-    ulong NetworkId, string Name);
+    ulong NetworkId, string Name)
+{
+    // Metadata provenance for the corrected association logic, not Steam authentication.
+    public bool BoundToPlayer { get; init; }
+}
 internal sealed record Dirt4LeaderboardEntry(Dirt4LeaderboardPresence Presence, long PersonalBest, long TimeDiff,
     long CumulativeBest, long CumulativeDiff, int Rank, uint VehicleId, uint Nationality);
 internal sealed record Dirt4LeaderboardSnapshot(IReadOnlyList<Dirt4LeaderboardEntry> Entries, int PlayerRank);
@@ -378,6 +413,8 @@ internal sealed record Dirt4DailyRound(long EventId, long OpenedAt, long Expires
     IReadOnlyDictionary<string, Dirt4DailyRun> Runs)
 {
     public int TemplateIndex { get; init; }
+    public string? RotationId { get; init; }
+    public Dirt4CommunityEvents.EventDefinition? Definition { get; init; }
     public bool CalendarAligned { get; init; }
     public long? EventLeaderboardId { get; init; }
     public long[]? StageLeaderboardIds { get; init; }

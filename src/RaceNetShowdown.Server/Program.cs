@@ -168,6 +168,15 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
         body.BodyBytes.Length,
         response.BodyBytes.Length);
 
+    if (requestGameId == "dirt-4" && egoNetFunction is "AsyncChallenge.GetEvents" or "AsyncChallenge.GetResults")
+    {
+        var eventIds = EgoNetRequestParser.ReadTopLevelIntegerVector(body, "EventIds");
+        app.Logger.LogInformation(
+            "DiRT 4 community query {Function}: profile {ProfileId}, requested {EventCount} event IDs [{EventIds}], omit scores {OmitScores}",
+            egoNetFunction, session?.PlayerProfileId, eventIds.Count, string.Join(",", eventIds.Take(32)),
+            EgoNetRequestParser.ReadTopLevelBoolean(body, "OmitScores") == true);
+    }
+
     if (captureLogger is not null)
     {
         await captureLogger.WriteAsync(context, body, response);

@@ -14,7 +14,17 @@ internal static class Dirt4Leaderboard
             : null;
         store.BindDisplayName(leaderboardId, player, displayName);
         if (friendsOnly && presences!.Count > 0)
-            store.BindPresence(leaderboardId, player, presences[0]);
+        {
+            var known = store.PlayerPresence(player);
+            var matches = presences.Where(p => known.NetworkId > 0
+                ? p.NetworkId == known.NetworkId
+                : known.Name != "DiRT Player" && string.Equals(p.Name, known.Name, StringComparison.OrdinalIgnoreCase))
+                .Take(2).ToArray();
+            // Presences is a filter list, not an ordered declaration of the current player.
+            if (matches.Length == 1)
+                store.BindPresence(leaderboardId, player, matches[0] with
+                    { Name = known.Name == "DiRT Player" ? matches[0].Name : known.Name });
+        }
         var snapshot = store.Leaderboard(leaderboardId, player, cumulative, presences)
             ?? new Dirt4LeaderboardSnapshot([], 0);
         var entries = snapshot.Entries;

@@ -5,4 +5,7 @@
     <Project Path="src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj" />
     <Project Path="src/RaceNetShowdown.TlsProbe/RaceNetShowdown.TlsProbe.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RaceNetShowdown.Server.Tests/RaceNetShowdown.Server.Tests.csproj" />
+  </Folder>
 </Solution>
