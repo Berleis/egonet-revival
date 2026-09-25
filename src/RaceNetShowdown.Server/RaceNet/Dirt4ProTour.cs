@@ -2,19 +2,76 @@ using RaceNetShowdown.Server.Infrastructure;
 
 namespace RaceNetShowdown.Server.RaceNet;
 
-internal static class Dirt4ProTour
+internal sealed class Dirt4ProTour(ILogger? logger = null)
 {
-    internal static byte[] GetSessionList(CapturedBody body) => EgoNetBinary.Dictionary(
-        EgoNetBinary.Ui32("SessionLocation", Unsigned(body, "SessionLocation")),
-        EgoNetBinary.Ui32("SessionRep", Unsigned(body, "SessionRep")),
-        EgoNetBinary.Bool("IsAltHandling", AltHandling(body)),
-        EgoNetBinary.Vector("SessionList"));
+    internal static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(5);
+    internal const int BaselineTier = 7;
+    // dirt4.exe 0x14010de37 initializes the SessionList capacity to 0x14.
+    internal const int MaxSearchResults = 20;
+    private readonly object _gate = new();
+    private readonly Dictionary<string, Lobby> _lobbies = new(StringComparer.Ordinal);
+
+    internal byte[] GetSessionList(CapturedBody body, string? owner, DateTimeOffset now)
+    {
+        var location = Unsigned(body, "SessionLocation");
+        var reputation = Unsigned(body, "SessionRep");
+        var handling = AltHandling(body);
+        Lobby[] matches;
+        lock (_gate)
+        {
+            Expire(now);
+            // A fresh search abandons this client's previous advertisement.
+            if (owner is not null) _lobbies.Remove(owner);
+            matches = owner is null || !HasSearchFields(body) ? [] : _lobbies.Values
+                .Where(lobby => lobby.AltHandling == handling)
+                // Location/reputation are preferences, not isolated matchmaking pools.
+                .OrderBy(lobby => lobby.Location == location ? 0 : 1)
+                .ThenBy(lobby => Math.Abs((long)lobby.Reputation - reputation))
+                .ThenBy(lobby => lobby.CreatedAt)
+                .Take(MaxSearchResults)
+                .ToArray();
+        }
+        logger?.LogInformation("DiRT 4 Pro Tour search: location {Location}, reputation {Reputation}, gamer {Gamer}, candidates {Count}",
+            location, reputation, handling, matches.Length);
+        return EgoNetBinary.Dictionary(
+            EgoNetBinary.Ui32("SessionLocation", location),
+            EgoNetBinary.Ui32("SessionRep", reputation),
+            EgoNetBinary.Bool("IsAltHandling", handling),
+            EgoNetBinary.Vector("SessionList", matches.Select(lobby => EgoNetBinary.DictValue(
+                // dirt4.exe 0x140122c50: the list item differs from SubmitSession's response.
+                EgoNetBinary.Ui32("SessionDataLen", checked((uint)lobby.Data.Length)),
+                EgoNetBinary.Ui32("SessionLocation", lobby.Location),
+                EgoNetBinary.Ui32("HostReputation", lobby.Reputation),
+                // Only the host advertises; live membership is handled by the Steam lobby.
+                EgoNetBinary.Ui32("SessionPlayers", 1),
+                EgoNetBinary.Ui32("SessionTier", BaselineTier),
+                EgoNetBinary.Blob("SessionData", lobby.Data),
+                EgoNetBinary.Bool("isAltHandling", lobby.AltHandling))).ToArray()));
+    }
 
     internal static byte[] SessionConfig(DateTimeOffset now) => Dirt4CommunityEvents.BuildProTourConfig(now);
 
-    internal static byte[] SubmitSession(CapturedBody body)
+    internal byte[] SubmitSession(CapturedBody body, string? owner, DateTimeOffset now)
     {
         var data = SessionData(body);
+        var accepted = false;
+        lock (_gate)
+        {
+            Expire(now);
+            if (owner is not null && data.Length is > 0 and <= 1024 &&
+                EgoNetRequestParser.ReadTopLevelInteger(body, "SessionDataLen") == data.Length &&
+                HasSearchFields(body) &&
+                !_lobbies.Any(pair => pair.Key != owner && pair.Value.Data.AsSpan().SequenceEqual(data)))
+            {
+                var created = _lobbies.TryGetValue(owner, out var previous) && previous.Data.AsSpan().SequenceEqual(data)
+                    ? previous.CreatedAt : now;
+                _lobbies[owner] = new(data, Unsigned(body, "SessionLocation"), Unsigned(body, "SessionRep"),
+                    AltHandling(body), created, now);
+                accepted = true;
+            }
+        }
+        logger?.LogInformation("DiRT 4 Pro Tour advertise: accepted {Accepted}, data bytes {Bytes}, location {Location}, reputation {Reputation}, gamer {Gamer}",
+            accepted, data.Length, Unsigned(body, "SessionLocation"), Unsigned(body, "SessionRep"), AltHandling(body));
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Blob("SessionData", data),
             EgoNetBinary.Ui32("SessionDataLen", checked((uint)data.Length)),
@@ -23,9 +80,10 @@ internal static class Dirt4ProTour
             EgoNetBinary.Bool("IsAltHandling", AltHandling(body)));
     }
 
-    internal static byte[] SubmitSessionScores(CapturedBody body)
+    internal byte[] SubmitSessionScores(CapturedBody body, string? owner, DateTimeOffset now)
     {
         var data = SessionData(body);
+        Remove(owner, data, now, "scores");
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Blob("SessionData", data),
             EgoNetBinary.Ui32("SessionDataLen", checked((uint)data.Length)),
@@ -33,18 +91,20 @@ internal static class Dirt4ProTour
             EgoNetBinary.Bool("IsHost", EgoNetRequestParser.ReadTopLevelBoolean(body, "IsHost") ?? true));
     }
 
-    internal static byte[] SessionStart(CapturedBody body)
+    internal byte[] SessionStart(CapturedBody body, string? owner, DateTimeOffset now)
     {
         var data = SessionData(body);
+        Remove(owner, data, now, "start");
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Blob("SessionData", data),
             EgoNetBinary.Ui32("SessionDataLen", checked((uint)data.Length)),
             EgoNetBinary.Ui32("SessionPlayers", Unsigned(body, "SessionPlayers")));
     }
 
-    internal static byte[] QuitSession(CapturedBody body)
+    internal byte[] QuitSession(CapturedBody body, string? owner, DateTimeOffset now)
     {
         var data = SessionData(body);
+        Remove(owner, data, now, "quit");
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Blob("SessionData", data),
             EgoNetBinary.Ui32("SessionDataLen", checked((uint)data.Length)));
@@ -52,6 +112,44 @@ internal static class Dirt4ProTour
 
     internal static byte[] PenalisePlayer(CapturedBody body) => EgoNetBinary.Dictionary(
         EgoNetBinary.Bool("IsAltHandling", AltHandling(body)));
+
+    internal void Tick(string? owner, DateTimeOffset now)
+    {
+        lock (_gate)
+        {
+            Expire(now);
+            if (owner is not null && _lobbies.TryGetValue(owner, out var lobby))
+                _lobbies[owner] = lobby with { LastSeenAt = now };
+        }
+    }
+
+    private void Remove(string? owner, byte[] data, DateTimeOffset now, string reason)
+    {
+        var removed = false;
+        lock (_gate)
+        {
+            Expire(now);
+            // A guest quitting or a delayed request for an old room must not remove the host's room.
+            if (owner is not null && _lobbies.TryGetValue(owner, out var lobby) &&
+                lobby.Data.AsSpan().SequenceEqual(data)) removed = _lobbies.Remove(owner);
+        }
+        logger?.LogInformation("DiRT 4 Pro Tour {Reason}: removed own advertisement {Removed}", reason, removed);
+    }
+
+    private void Expire(DateTimeOffset now)
+    {
+        foreach (var owner in _lobbies.Where(pair => now - pair.Value.LastSeenAt >= SessionTimeout)
+                     .Select(pair => pair.Key).ToArray()) _lobbies.Remove(owner);
+    }
+
+    private static bool HasSearchFields(CapturedBody body) =>
+        EgoNetRequestParser.ReadTopLevelInteger(body, "SessionLocation") is >= 0 and <= uint.MaxValue &&
+        EgoNetRequestParser.ReadTopLevelInteger(body, "SessionRep") is >= 0 and <= uint.MaxValue &&
+        (EgoNetRequestParser.ReadTopLevelBoolean(body, "IsAltHandling") ??
+         EgoNetRequestParser.ReadTopLevelBoolean(body, "isAltHandling")) is not null;
+
+    private sealed record Lobby(byte[] Data, uint Location, uint Reputation, bool AltHandling,
+        DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt);
 
     private static byte[] SessionData(CapturedBody body) =>
         EgoNetRequestParser.ReadTopLevelBlob(body, "SessionData") ?? [];

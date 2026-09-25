@@ -40,7 +40,7 @@ The GUI installer project lives in `installer`. Operational developer scripts li
 - Event attempts, stage times, leaderboards, results and rewards persist across server restarts.
 - Daily completion, expiration, rewards and the next rotation were validated in-game.
 - Weekly and Monthly events use the same persisted multi-stage flow.
-- Pro Tour is experimental while real multiplayer scoring and promotion still need validation.
+- Pro Tour is experimental. Server-side lobby discovery is implemented, but in-game joining still needs multiplayer validation. Scoring and promotion remain placeholders, not persistent progression.
 - Jam Session uses Steam multiplayer independently of the EgoNet server.
 
 DiRT 4 support is published as public testing. The active development catalogue contains 84 Daily Live choices, 72 Owners Club choices, 36 choices per Weekly slot and 36 Monthly choices. These are 264 route/class/weather configurations, not newly recovered roads or historic events. Original full events remain reference-only.
@@ -50,6 +50,12 @@ Rally events rotate through H1 FWD, H2 FWD, H2 RWD, H3 RWD, R2, R5, Group A, Gro
 Weather presets and class/vehicle IDs come from the installed DiRT 4 catalogue. Tier times and payouts still use provisional capture-derived estimates, not calibrated times for each new car/weather combination. New combinations require in-game validation and feedback-driven tuning; automated checks do not prove gameplay or achievement compatibility.
 
 Community Event state uses the same configured database as the other server profiles. Each new round stores its complete event definition, so catalog updates and restarts cannot change an issued event. Existing rounds and pending rewards retain their original definitions.
+
+## Pro Tour Testing
+
+The server keeps waiting-room advertisements in memory, separated by Gamer/Simulation handling. Searches prefer matching location and nearby reputation without blocking players in other regions. Advertisements disappear when the host starts or quits, starts another search, or stops sending the existing login heartbeat for five minutes. A server restart clears waiting rooms, not saved Community Events or leaderboards.
+
+After a server update, cancel the old searches. For the first multiplayer test, let one player start searching, wait about ten seconds, then have the others search using the same handling mode. This checks discovery of an already advertised room before testing simultaneous searches. Steam still handles joining and live lobby membership; the server does not synthesize players or award Pro Tour progress from a search.
 
 ## Release Tags
 

@@ -14,9 +14,10 @@ internal static class Dirt4EgoNetPayloads
         CapturedBody body,
         RaceNetSessionInfo? session,
         IReadOnlyDictionary<string, string> headers,
-        Dirt4DailyStore daily)
+        Dirt4DailyStore daily,
+        Dirt4ProTour proTour)
     {
-        return Build(functionName, body, session, headers, daily);
+        return Build(functionName, body, session, headers, daily, proTour);
     }
 
     public static async Task<RaceNetResponse?> TryBuildAsync(
@@ -26,6 +27,7 @@ internal static class Dirt4EgoNetPayloads
         IReadOnlyDictionary<string, string> headers,
         IRaceNetStore store,
         int dailyTestSeconds,
+        Dirt4ProTour proTour,
         CancellationToken cancellationToken)
     {
         await StateLock.WaitAsync(cancellationToken);
@@ -33,7 +35,7 @@ internal static class Dirt4EgoNetPayloads
         {
             var originalState = await store.LoadDirt4CommunityStateAsync(cancellationToken);
             var daily = new Dirt4DailyStore(originalState, dailyTestSeconds);
-            var response = Build(functionName, body, session, headers, daily);
+            var response = Build(functionName, body, session, headers, daily, proTour);
             if (response is not null)
             {
                 var updatedState = daily.Export();
@@ -53,10 +55,13 @@ internal static class Dirt4EgoNetPayloads
         CapturedBody body,
         RaceNetSessionInfo? session,
         IReadOnlyDictionary<string, string> headers,
-        Dirt4DailyStore daily)
+        Dirt4DailyStore daily,
+        Dirt4ProTour proTour)
     {
         var player = session?.PlayerExternalId ?? "local-player";
         var now = DateTimeOffset.UtcNow;
+        var lobbyOwner = string.IsNullOrWhiteSpace(session?.SessionId) ? null : session.SessionId;
+        if (functionName == "LoginService.Tick") proTour.Tick(lobbyOwner, now);
 
         return functionName switch
         {
@@ -73,12 +78,12 @@ internal static class Dirt4EgoNetPayloads
             "DataMining.DataEvent" or "DataMining.StatsEvent" => EmptyWithRaceNet(headers),
             "GhostCar.Upload" => RecordGhostUpload(body, daily, player, session?.DisplayName, now, headers),
             "LiveLadder.DownloadPrincipalData" => Html(BuildLiveLadder(now), headers),
-            "LiveLadder.GetSessionList" => Html(Dirt4ProTour.GetSessionList(body), headers),
+            "LiveLadder.GetSessionList" => Html(proTour.GetSessionList(body, lobbyOwner, now), headers),
             "LiveLadder.SessionConfigDownload" => Html(Dirt4ProTour.SessionConfig(now), headers),
-            "LiveLadder.SubmitSession" => Html(Dirt4ProTour.SubmitSession(body), headers),
-            "LiveLadder.SubmitSessionScores" => Html(Dirt4ProTour.SubmitSessionScores(body), headers),
-            "LiveLadder.SessionStart" => Html(Dirt4ProTour.SessionStart(body), headers),
-            "LiveLadder.QuitSession" => Html(Dirt4ProTour.QuitSession(body), headers),
+            "LiveLadder.SubmitSession" => Html(proTour.SubmitSession(body, lobbyOwner, now), headers),
+            "LiveLadder.SubmitSessionScores" => Html(proTour.SubmitSessionScores(body, lobbyOwner, now), headers),
+            "LiveLadder.SessionStart" => Html(proTour.SessionStart(body, lobbyOwner, now), headers),
+            "LiveLadder.QuitSession" => Html(proTour.QuitSession(body, lobbyOwner, now), headers),
             "LiveLadder.PenalisePlayer" => Html(Dirt4ProTour.PenalisePlayer(body), headers),
             "Localisation.GetStrings" => Html(BuildLocalisation(body), headers),
             "Mailbox.GetPendingMessageCount" => Html(EgoNetBinary.Dictionary(EgoNetBinary.Si32("Count", 0)), headers),
@@ -138,7 +143,7 @@ internal static class Dirt4EgoNetPayloads
         var reset = DateTimeOffset.FromUnixTimeSeconds(Dirt4EventCalendar.Window(now, 1).End);
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Si32("Division", 3),
-            EgoNetBinary.Si32("Tier", 7),
+            EgoNetBinary.Si32("Tier", Dirt4ProTour.BaselineTier),
             EgoNetBinary.Si32("Points", 0),
             EgoNetBinary.Si32("PrevPoints", 0),
             EgoNetBinary.Si32("EventsDone", 0),
