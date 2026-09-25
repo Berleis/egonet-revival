@@ -38,13 +38,14 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
             EgoNetBinary.Ui32("SessionRep", reputation),
             EgoNetBinary.Bool("IsAltHandling", handling),
             EgoNetBinary.Vector("SessionList", matches.Select(lobby => EgoNetBinary.DictValue(
-                // dirt4.exe 0x140122c50: the list item differs from SubmitSession's response.
-                EgoNetBinary.Ui32("SessionDataLen", checked((uint)lobby.Data.Length)),
-                EgoNetBinary.Ui32("SessionLocation", lobby.Location),
-                EgoNetBinary.Ui32("HostReputation", lobby.Reputation),
+                // 0x140122c50 -> 0x140bcf1d0 -> 0x1403e7190 requires si32 exactly;
+                // unlike the top-level request fields, these are not ui32.
+                EgoNetBinary.Si32("SessionDataLen", lobby.Data.Length),
+                EgoNetBinary.Si32("SessionLocation", unchecked((int)lobby.Location)),
+                EgoNetBinary.Si32("HostReputation", unchecked((int)lobby.Reputation)),
                 // Only the host advertises; live membership is handled by the Steam lobby.
-                EgoNetBinary.Ui32("SessionPlayers", 1),
-                EgoNetBinary.Ui32("SessionTier", BaselineTier),
+                EgoNetBinary.Si32("SessionPlayers", 1),
+                EgoNetBinary.Si32("SessionTier", BaselineTier),
                 EgoNetBinary.Blob("SessionData", lobby.Data),
                 EgoNetBinary.Bool("isAltHandling", lobby.AltHandling))).ToArray()));
     }

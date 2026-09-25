@@ -24,11 +24,33 @@ public sealed class Dirt4ProTourTests
             Assert.Equal(EgoNetBinary.Dictionary(
                 EgoNetBinary.Ui32("SessionLocation", 44), EgoNetBinary.Ui32("SessionRep", 100),
                 EgoNetBinary.Bool("IsAltHandling", gamer), EgoNetBinary.Vector("SessionList",
-                    EgoNetBinary.DictValue(EgoNetBinary.Ui32("SessionDataLen", 8),
-                        EgoNetBinary.Ui32("SessionLocation", 44), EgoNetBinary.Ui32("HostReputation", 100),
-                        EgoNetBinary.Ui32("SessionPlayers", 1), EgoNetBinary.Ui32("SessionTier", 7),
+                    EgoNetBinary.DictValue(EgoNetBinary.Si32("SessionDataLen", 8),
+                        EgoNetBinary.Si32("SessionLocation", 44), EgoNetBinary.Si32("HostReputation", 100),
+                        EgoNetBinary.Si32("SessionPlayers", 1), EgoNetBinary.Si32("SessionTier", 7),
                         EgoNetBinary.Blob("SessionData", LobbyData), EgoNetBinary.Bool("isAltHandling", gamer)))), result);
             Assert.DoesNotContain("parse-stopped", Format(result));
+        }
+    }
+
+    [Theory]
+    [InlineData(1)] [InlineData(2)] [InlineData(20)]
+    public void NativeReaderRequiresSignedRoomFieldsButUnsignedSearchEnvelope(int rooms)
+    {
+        var tour = new Dirt4ProTour();
+        for (var i = 0; i < rooms; i++)
+            tour.SubmitSession(Advertisement(data: BitConverter.GetBytes((long)i + 1)), "host-" + i, Now);
+        var result = Format(tour.GetSessionList(Search(), "guest", Now));
+        var split = result.IndexOf("SessionList: vvtr", StringComparison.Ordinal);
+        Assert.True(split >= 0);
+        var envelope = result[..split];
+        var entries = result[split..];
+        Assert.Contains("SessionLocation: ui32 value=44", envelope);
+        Assert.Contains("SessionRep: ui32 value=100", envelope);
+        Assert.Contains($"SessionList: vvtr count={rooms}", entries);
+        foreach (var field in new[] { "SessionDataLen", "SessionLocation", "HostReputation", "SessionPlayers", "SessionTier" })
+        {
+            Assert.Equal(rooms, entries.Split(field + ": si32 value=", StringSplitOptions.None).Length - 1);
+            Assert.DoesNotContain(field + ": ui32", entries);
         }
     }
 
@@ -49,8 +71,8 @@ public sealed class Dirt4ProTourTests
         tour.SubmitSession(Advertisement(location: 55, reputation: 200), "host", Now.AddMinutes(1));
         var result = tour.GetSessionList(Search(), "guest", Now.AddMinutes(1));
         AssertOne(result);
-        Assert.Contains("HostReputation: ui32 value=200", Format(result));
-        Assert.Contains("SessionLocation: ui32 value=55", Format(result));
+        Assert.Contains("HostReputation: si32 value=200", Format(result));
+        Assert.Contains("SessionLocation: si32 value=55", Format(result));
     }
 
     [Fact]

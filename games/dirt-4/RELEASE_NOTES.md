@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed Pro Tour session-list entries using unsigned integer tags. The game's per-room reader requires signed `si32` for all five numeric fields, while the top-level search fields remain `ui32`.
 - Fixed Pro Tour returning an empty session list even after hosts advertised rooms. Waiting rooms are now shared between requests, separated by handling mode, and serialized using the client reader's fields and 20-entry limit.
 - Added host-owned removal on start/quit, duplicate protection, heartbeat expiry and matchmaking diagnostics without session tokens or raw connection blobs. Waiting rooms are intentionally not restored after a server restart.
 - Added matchmaking tests, including four independent HTTP clients using SQLite. Actual Steam lobby joining and simultaneous searches still require in-game testing. Scoring and promotion remain placeholders; Pro Tour is still experimental.
