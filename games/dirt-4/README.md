@@ -43,7 +43,11 @@ The GUI installer project lives in `installer`. Operational developer scripts li
 - Pro Tour is experimental while real multiplayer scoring and promotion still need validation.
 - Jam Session uses Steam multiplayer independently of the EgoNet server.
 
-DiRT 4 support is published as public testing. The active development catalogue contains 28 Daily Live choices, 24 Owners Club choices, two choices per Weekly slot and three Monthly choices. Original full events are temporarily excluded from new rounds; their data remains available for existing rounds and as source material for the new combinations. These are 59 slot choices, not 59 newly recovered roads or historic events. Tier times and payouts remain provisional for feedback-driven tuning, and the new combinations still require in-game validation before deployment.
+DiRT 4 support is published as public testing. The active development catalogue contains 84 Daily Live choices, 72 Owners Club choices, 36 choices per Weekly slot and 36 Monthly choices. These are 264 route/class/weather configurations, not newly recovered roads or historic events. Original full events remain reference-only.
+
+Rally events rotate through H1 FWD, H2 FWD, H2 RWD, H3 RWD, R2, R5, Group A, Group B RWD, Group B 4WD, NR4/R4, Up to 2000cc and F2 Kit Car. Rallycross Daily events include Supercars, Super1600 and RX Lites. Selection is calendar-based, not random: the Weekly slots have different classes, routes and weather profiles, and at least one of the two Dailies has clear daytime conditions each day. This applies to newly issued rounds; saved rounds keep their original conditions until expiry.
+
+Weather presets and class/vehicle IDs come from the installed DiRT 4 catalogue. Tier times and payouts still use provisional capture-derived estimates, not calibrated times for each new car/weather combination. New combinations require in-game validation and feedback-driven tuning; automated checks do not prove gameplay or achievement compatibility.
 
 Community Event state uses the same configured database as the other server profiles. Each new round stores its complete event definition, so catalog updates and restarts cannot change an issued event. Existing rounds and pending rewards retain their original definitions.
 

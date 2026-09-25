@@ -19,6 +19,21 @@ internal static partial class Dirt4CommunityEvents
     internal sealed record RotationEntry(string Id, EventDefinition Event);
     private readonly record struct StageSource(int Template, int Index);
 
+    private sealed record ClassChoice(string Key, int Id, int VehicleId);
+    // DiRT 4 base.ctpk vehicle_class IDs and one retail vehicle from each class.
+    private static readonly ClassChoice[] RallyClasses =
+    [
+        new("h1-fwd", 101, 468), new("r2", 99, 532),
+        new("h2-rwd", 97, 390), new("group-a", 72, 389),
+        new("h2-fwd", 100, 534), new("r5", 93, 529),
+        new("h3-rwd", 98, 396), new("nr4-r4", 96, 482),
+        new("group-b-rwd", 74, 480), new("up-to-2000cc", 94, 490),
+        new("f2-kit-car", 86, 483), new("group-b-4wd", 73, 537)
+    ];
+    private static readonly ClassChoice[] RallycrossClasses =
+        [new("rx-supercars", 78, 504), new("rx-super1600", 92, 513), new("rx-lites", 102, 541)];
+    private enum Conditions { Sunny, Cloudy, Rain }
+
     internal static IReadOnlyList<RotationEntry> RotationFor(int slot) => Rotation.Value[slot];
 
     internal static RotationEntry SelectRotation(int slot, long openedAt, long? testPeriod = null)
@@ -36,7 +51,7 @@ internal static partial class Dirt4CommunityEvents
 
     private static RotationEntry[][] BuildRotation()
     {
-        // Keep the complete captured seed/location/name/weather tuple together.
+        // Keep captured route seeds and generated-name parameters together.
         var rally = Enumerable.Range(0, 12).SelectMany(stage => new[] { 1, 2, 3, 4 }
             .Where(template => stage < Events[template].StageData.Stages.Length)
             .Select(template => new StageSource(template, stage))).ToArray();
@@ -81,11 +96,57 @@ internal static partial class Dirt4CommunityEvents
         result = result.Select(entries => entries.Where(e => !ReferenceOnlyRotations.Contains(e.Id)).ToArray()).ToArray();
         // The remaining weekly layouts are Michigan's two halves; keep the slots one week apart.
         Array.Reverse(result[3]);
+        result = result.Select((entries, slot) => ExpandConditionsAndClasses(entries, slot)).ToArray();
         for (var slot = 0; slot < result.Length; slot++)
             foreach (var entry in result[slot])
                 if (!ValidSnapshot(new(1_000_000, 0, 1, new Dictionary<string, Dirt4DailyRun>())
                     { TemplateIndex = slot, RotationId = entry.Id, Definition = entry.Event }))
                     throw new InvalidDataException($"Invalid DiRT 4 rotation {entry.Id}.");
+        return result;
+    }
+
+    private static RotationEntry[] ExpandConditionsAndClasses(RotationEntry[] routes, int slot)
+    {
+        var count = (slot < 2 ? routes.Length : RallyClasses.Length) * 3;
+        var result = new RotationEntry[count];
+        // Complementary four-day cycles guarantee a sunny Daily or Owners Club every day.
+        Conditions[] daily = [Conditions.Sunny, Conditions.Cloudy, Conditions.Sunny, Conditions.Rain];
+        Conditions[] owners = [Conditions.Rain, Conditions.Sunny, Conditions.Cloudy, Conditions.Sunny];
+        for (var index = 0; index < count; index++)
+        {
+            var cycle = index / (slot < 2 ? routes.Length : RallyClasses.Length);
+            var source = routes[(index + cycle) % routes.Length];
+            var classOffset = slot is 1 or 3 ? 5 : slot == 4 ? 9 : 0;
+            var carClass = source.Event.StageData.Stages[0].TrackModelId > 0
+                ? RallycrossClasses[cycle]
+                : RallyClasses[(index + (slot < 2 ? cycle * 2 : 0) + classOffset) % RallyClasses.Length];
+            var conditions = slot switch
+            {
+                0 => daily[index % daily.Length],
+                1 => owners[index % owners.Length],
+                _ => (Conditions)((index + cycle + (slot == 3 ? 1 : 0)) % 3)
+            };
+            uint[] weather = conditions switch
+            {
+                Conditions.Sunny => [1],
+                Conditions.Cloudy => [2, 3, 4],
+                _ => [5, 15, 7]
+            };
+            // WeatherId uses preset IDs (4F12F227), not weather-setting IDs (C09C7101).
+            // Presets 1/2/3/4 are clear/partly cloudy/cloudy/overcast; 5/15/7 are rain.
+            // Time IDs 3..6 are morning through late afternoon, keeping clear stages in daylight.
+            var stages = source.Event.StageData.Stages.Select((stage, i) => stage with
+                { WeatherId = weather[i % weather.Length], TimeOfDayId = (uint)(3 + i % 4) }).ToArray();
+            var restrictions = source.Event.Restrictions with
+            {
+                VehicleIds = slot < 2 ? [new(carClass.VehicleId)] : [],
+                VehicleClassIds = slot < 2 ? [] : [new(carClass.Id)]
+            };
+            // Times and payouts remain provisional capture-derived estimates for feedback tuning.
+            result[index] = new($"v2/{source.Id[3..]}/{carClass.Key}/{conditions.ToString().ToLowerInvariant()}",
+                source.Event with { Restrictions = restrictions,
+                    StageData = source.Event.StageData with { Stages = stages } });
+        }
         return result;
     }
 
