@@ -114,7 +114,7 @@ RequestCaptureLogger? captureLogger = raceNetOptions.CaptureRequests
         raceNetOptions.BodyPreviewBytes)
     : null;
 
-var responder = new RaceNetResponder(raceNetOptions);
+var responder = new RaceNetResponder(raceNetOptions, app.Services.GetRequiredService<ILogger<RaceNetResponder>>());
 
 app.MapMethods("/racenet-root-ca.cer", ["GET", "HEAD"], () =>
     Results.File(

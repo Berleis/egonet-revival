@@ -24,11 +24,13 @@ public sealed class RaceNetResponder
     private byte[]? _localLastUploadedGhostData;
     private long _localNextIssuedChallengeId = 10_000;
     private readonly Dirt4DailyStore _localDirt4DailyStore;
+    private readonly Dirt4ProTour _dirt4ProTour;
 
-    public RaceNetResponder(RaceNetOptions options)
+    public RaceNetResponder(RaceNetOptions options, ILogger<RaceNetResponder>? logger = null)
     {
         Options = options;
         _localDirt4DailyStore = new(dailyTestSeconds: options.Dirt4DailyTestSeconds);
+        _dirt4ProTour = new(logger);
     }
 
     private RaceNetOptions Options { get; }
@@ -280,7 +282,7 @@ public sealed class RaceNetResponder
         if (requestGame == RaceNetGame.Dirt4)
         {
             var dirt4Response = await Dirt4EgoNetPayloads.TryBuildAsync(normalized, body, session, headers,
-                store, Options.Dirt4DailyTestSeconds, cancellationToken);
+                store, Options.Dirt4DailyTestSeconds, _dirt4ProTour, cancellationToken);
             if (dirt4Response is not null)
             {
                 return dirt4Response;
@@ -372,7 +374,7 @@ public sealed class RaceNetResponder
 
         if (requestGame == RaceNetGame.Dirt4)
         {
-            var dirt4Response = Dirt4EgoNetPayloads.TryBuild(normalized, body, session, headers, _localDirt4DailyStore);
+            var dirt4Response = Dirt4EgoNetPayloads.TryBuild(normalized, body, session, headers, _localDirt4DailyStore, _dirt4ProTour);
             if (dirt4Response is not null)
             {
                 return dirt4Response;
