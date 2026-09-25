@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using RaceNetShowdown.Server.Data;
 using RaceNetShowdown.Server.Infrastructure;
@@ -22,8 +23,7 @@ public sealed class Dirt4ProTourTests
         {
             var result = tour.GetSessionList(Search(gamer), guest, Now);
             Assert.Equal(EgoNetBinary.Dictionary(
-                EgoNetBinary.Ui32("SessionLocation", 44), EgoNetBinary.Ui32("SessionRep", 100),
-                EgoNetBinary.Bool("IsAltHandling", gamer), EgoNetBinary.Vector("SessionList",
+                EgoNetBinary.Vector("SessionList",
                     EgoNetBinary.DictValue(EgoNetBinary.Si32("SessionDataLen", 8),
                         EgoNetBinary.Si32("SessionLocation", 44), EgoNetBinary.Si32("HostReputation", 100),
                         EgoNetBinary.Si32("SessionPlayers", 1), EgoNetBinary.Si32("SessionTier", 7),
@@ -33,19 +33,17 @@ public sealed class Dirt4ProTourTests
     }
 
     [Theory]
-    [InlineData(1)] [InlineData(2)] [InlineData(20)]
-    public void NativeReaderRequiresSignedRoomFieldsButUnsignedSearchEnvelope(int rooms)
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(20)]
+    public void NativeReaderRequiresOnlySessionListWithSignedRoomFields(int rooms)
     {
         var tour = new Dirt4ProTour();
         for (var i = 0; i < rooms; i++)
             tour.SubmitSession(Advertisement(data: BitConverter.GetBytes((long)i + 1)), "host-" + i, Now);
-        var result = Format(tour.GetSessionList(Search(), "guest", Now));
-        var split = result.IndexOf("SessionList: vvtr", StringComparison.Ordinal);
-        Assert.True(split >= 0);
-        var envelope = result[..split];
-        var entries = result[split..];
-        Assert.Contains("SessionLocation: ui32 value=44", envelope);
-        Assert.Contains("SessionRep: ui32 value=100", envelope);
+        var result = tour.GetSessionList(Search(), "guest", Now);
+        AssertSessionListEnvelope(result, rooms);
+        var entries = Format(result);
+        Assert.DoesNotContain("SessionRep:", entries);
+        Assert.DoesNotContain("IsAltHandling:", entries);
         Assert.Contains($"SessionList: vvtr count={rooms}", entries);
         foreach (var field in new[] { "SessionDataLen", "SessionLocation", "HostReputation", "SessionPlayers", "SessionTier" })
         {
@@ -248,6 +246,21 @@ public sealed class Dirt4ProTourTests
 
     internal static CapturedBody Body(byte[] bytes) => new(bytes.Length, "", "", false, bytes, bytes);
     internal static string Format(byte[] bytes) => EgoNetBinaryFormatter.Format(bytes);
-    internal static void AssertEmpty(byte[] result) => Assert.Contains("SessionList: vvtr count=0", Format(result));
-    internal static void AssertOne(byte[] result) => Assert.Contains("SessionList: vvtr count=1", Format(result));
+    internal static void AssertEmpty(byte[] result) => AssertSessionListEnvelope(result, 0);
+    internal static void AssertOne(byte[] result) => AssertSessionListEnvelope(result, 1);
+
+    internal static void AssertSessionListEnvelope(byte[] result, int rooms)
+    {
+        // 0x1401296e0 registers only SessionList for input from the server. The three
+        // search filters use the outbound map (0x140bcfeb0), not the response map.
+        // 0x140bcceb0 does not skip unknown values, so echoing filters loses the list.
+        using var reader = new BinaryReader(new MemoryStream(result), Encoding.ASCII);
+        Assert.Equal("vdic", Encoding.ASCII.GetString(reader.ReadBytes(4)));
+        Assert.Equal(1, reader.ReadInt32());
+        Assert.Equal("SessionList", Encoding.ASCII.GetString(reader.ReadBytes(reader.ReadByte())));
+        Assert.Equal("vvtr", Encoding.ASCII.GetString(reader.ReadBytes(4)));
+        Assert.Equal(rooms, reader.ReadInt32());
+        if (rooms == 0) Assert.Equal(reader.BaseStream.Length, reader.BaseStream.Position);
+        Assert.DoesNotContain("parse-stopped", Format(result));
+    }
 }

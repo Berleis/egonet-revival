@@ -33,13 +33,12 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
         }
         logger?.LogInformation("DiRT 4 Pro Tour search: location {Location}, reputation {Reputation}, gamer {Gamer}, candidates {Count}",
             location, reputation, handling, matches.Length);
+        // 0x1401296e0 registers the search filters as request-only fields. The native
+        // response reader (0x140bcceb0) cannot skip their values if we echo them here.
         return EgoNetBinary.Dictionary(
-            EgoNetBinary.Ui32("SessionLocation", location),
-            EgoNetBinary.Ui32("SessionRep", reputation),
-            EgoNetBinary.Bool("IsAltHandling", handling),
             EgoNetBinary.Vector("SessionList", matches.Select(lobby => EgoNetBinary.DictValue(
                 // 0x140122c50 -> 0x140bcf1d0 -> 0x1403e7190 requires si32 exactly;
-                // unlike the top-level request fields, these are not ui32.
+                // unlike the search request fields, these are not ui32.
                 EgoNetBinary.Si32("SessionDataLen", lobby.Data.Length),
                 EgoNetBinary.Si32("SessionLocation", unchecked((int)lobby.Location)),
                 EgoNetBinary.Si32("HostReputation", unchecked((int)lobby.Reputation)),
