@@ -30,6 +30,7 @@ public sealed class Dirt4ProTourHttpTests
                     "--contentRoot", root, "--RaceNet:StoreProvider", "Sqlite",
                     "--ConnectionStrings:RaceNet", $"Data Source={Path.Combine(root, "test.db")};Pooling=False",
                     "--RaceNet:HttpPort", http.ToString(), "--RaceNet:HttpsPort", https.ToString(),
+                    "--RaceNet:CaptureDirt4ProTourScores", "true",
                     "--RaceNet:UseSha1ServerCertificate", "false", "--Logging:LogLevel:Default", "Warning" })
                     info.ArgumentList.Add(argument);
                 using var server = Process.Start(info)!;
@@ -79,6 +80,10 @@ public sealed class Dirt4ProTourHttpTests
                     AssertOne((await Send(client, players[1], "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
                     await Send(client, host, "LiveLadder.SessionStart", Connection().BodyBytes);
                     AssertEmpty((await Send(client, players[1], "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
+                    var scores = Connection().BodyBytes;
+                    await Send(client, host, "LiveLadder.SubmitSessionScores", scores);
+                    var capture = Assert.Single(Directory.GetFiles(Path.Combine(root, "data", "protour-scores"), "*.bin"));
+                    Assert.Equal(scores, await File.ReadAllBytesAsync(capture));
                     await Send(client, host, "LiveLadder.SubmitSession", Advertisement().BodyBytes);
                     await Send(client, host, "LiveLadder.QuitSession", Connection().BodyBytes);
                     AssertEmpty((await Send(client, players[1], "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
