@@ -9,6 +9,7 @@ services:
     environment:
       RaceNet__ListenAnyIp: "true"
       RaceNet__CaptureRequests: "false"
+      RaceNet__CaptureDirt4ProTourScores: "true"
       RaceNet__RecordCalls: "false"
       RaceNet__StoreProvider: "Sqlite"
       RaceNet__UseSha1ServerCertificate: "false"

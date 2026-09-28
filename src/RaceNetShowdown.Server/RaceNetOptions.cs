@@ -33,6 +33,8 @@ public sealed class RaceNetOptions
 
     public bool CaptureRequests { get; init; }
 
+    public bool CaptureDirt4ProTourScores { get; init; }
+
     public bool RecordCalls { get; init; }
 
     public string StoreProvider { get; init; } = "Local";

@@ -113,6 +113,9 @@ RequestCaptureLogger? captureLogger = raceNetOptions.CaptureRequests
         Path.Combine(app.Environment.ContentRootPath, raceNetOptions.LogDirectory),
         raceNetOptions.BodyPreviewBytes)
     : null;
+var proTourScoreCapture = raceNetOptions.CaptureDirt4ProTourScores
+    ? new Dirt4ProTourScoreCapture(Path.Combine(app.Environment.ContentRootPath, "data", "protour-scores"))
+    : null;
 
 var responder = new RaceNetResponder(raceNetOptions, app.Services.GetRequiredService<ILogger<RaceNetResponder>>());
 
@@ -180,6 +183,21 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
     if (captureLogger is not null)
     {
         await captureLogger.WriteAsync(context, body, response);
+    }
+
+    if (proTourScoreCapture is not null && requestGameId == "dirt-4" &&
+        egoNetFunction == "LiveLadder.SubmitSessionScores" && response.StatusCode == 200)
+    {
+        try
+        {
+            var fileName = await proTourScoreCapture.WriteAsync(body.BodyBytes);
+            if (fileName is not null)
+                app.Logger.LogInformation("DiRT 4 Pro Tour score capture saved: {FileName}", fileName);
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Failed to capture DiRT 4 Pro Tour scores");
+        }
     }
 
     if (raceNetOptions.RecordCalls)
