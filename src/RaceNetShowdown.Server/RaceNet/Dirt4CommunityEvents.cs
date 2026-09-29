@@ -111,15 +111,15 @@ internal static partial class Dirt4CommunityEvents
     private static EventDefinition Progress(Dirt4DailyRound round, Dirt4DailyStore store, string player, bool omitScores)
     {
         var e = Definition(round);
-        var time = omitScores ? 0 : round.Time(player);
+        var time = round.Time(player);
         return e with {
             EventMeta = e.EventMeta with { EventId = round.EventId, LeaderboardId = round.LeaderboardId,
                 StartTime = checked((int)round.OpenedAt), AdvertStartTime = checked((int)round.OpenedAt - 86400),
                 RanLastEvent = store.RanPrevious(round, player),
                 ExpiryTime = checked((int)round.ExpiresAt), PersonalBest = time, EventStatus = time > 0 ? 3 : 0 },
             StageData = e.StageData with { Stages = e.StageData.Stages.Select((s, i) => s with {
-                LeaderboardId = round.StageLeaderboard(i), PlayerBest = omitScores ? 0 : round.StageTime(player, i),
-                PlayerOverall = omitScores ? 0 : round.Overall(player, i),
+                LeaderboardId = round.StageLeaderboard(i), PlayerBest = round.StageTime(player, i),
+                PlayerOverall = round.Overall(player, i),
                 PlayerRank = omitScores ? 0 : round.Rank(player, i),
                 Percentile = omitScores ? 0 : (int)round.Percent(player, i) }).ToArray() }
         };

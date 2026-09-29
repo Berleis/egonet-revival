@@ -42,8 +42,12 @@ public sealed class Dirt4RewardTests
         Assert.DoesNotContain($"EventId: si64 value={round.EventId}",
             Format(Dirt4CommunityEvents.Build(ended, store, Player, [])));
         Assert.Equal(first, Dirt4CommunityEvents.BuildResults(ended, store, Player, [round.EventId, round.EventId]));
-        Assert.Contains($"EventId: si64 value={round.EventId}",
-            Format(Dirt4CommunityEvents.Build(ended, store, Player, [round.EventId], omitScores: true)));
+        var refreshed = Format(Dirt4CommunityEvents.Build(ended, store, Player, [round.EventId], omitScores: true));
+        Assert.Contains($"EventId: si64 value={round.EventId}", refreshed);
+        Assert.Contains("EventStatus: si32 value=3", refreshed);
+        Assert.Contains("PersonalBest: si64 value=100000", refreshed);
+        Assert.Contains("PlayerBest: si64 value=100000", refreshed);
+        Assert.Contains("PlayerOverall: si64 value=100000", refreshed);
         Assert.Contains("Results: vvtr count=0", Format(Dirt4CommunityEvents.BuildResults(ended, store, Player, [])));
         Assert.True(store.Finish(round.StageLeaderboard(0), Player, 100_000, ended, Vehicle(round)));
         Assert.Empty(store.PendingResults(Player, ended));
