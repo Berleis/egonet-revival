@@ -85,6 +85,23 @@ public sealed class Dirt4RewardTests
     }
 
     [Fact]
+    public void ExpiredUnfinishedEventsAreNotReintroducedOnExplicitRefresh()
+    {
+        var (store, round) = CreateRound(Now);
+        var vehicle = Vehicle(round);
+        Assert.True(store.Start(round.StageLeaderboard(0), Player, Now, vehicle));
+        Finish(store, round, Now, "other-driver");
+        var ended = DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt);
+
+        var unfinished = Format(Dirt4CommunityEvents.Build(ended, store, Player, [round.EventId], omitScores: true));
+        Assert.Contains("EventDescs: vvtr count=0", unfinished);
+        Assert.DoesNotContain($"EventId: si64 value={round.EventId}", unfinished);
+
+        var completed = Format(Dirt4CommunityEvents.Build(ended, store, "other-driver", [round.EventId], omitScores: true));
+        Assert.Contains($"EventId: si64 value={round.EventId}", completed);
+    }
+
+    [Fact]
     public void LegacyHistoryIsNotAssumedUnpaidButExplicitResultsRemainAvailable()
     {
         var (store, round) = CreateRound(Now);

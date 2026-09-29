@@ -60,7 +60,8 @@ internal static partial class Dirt4CommunityEvents
         foreach (var id in ids.Distinct())
         {
             var round = store.Find(id);
-            if (round is not null) events.Add(Progress(round, store, player, omitScores));
+            if (round is not null && (round.ExpiresAt > now.ToUnixTimeSeconds() || round.Time(player) > 0))
+                events.Add(Progress(round, store, player, omitScores));
         }
         return Pack(now, events);
     }
