@@ -1,4 +1,4 @@
-namespace RaceNetShowdown.Server.RaceNet;
+﻿namespace RaceNetShowdown.Server.RaceNet;
 
 internal static partial class Dirt4CommunityEvents
 {
@@ -18,6 +18,7 @@ internal static partial class Dirt4CommunityEvents
 
     internal sealed record RotationEntry(string Id, EventDefinition Event);
     private readonly record struct StageSource(int Template, int Index);
+    private sealed record DeltaSlot(int OwnerIndex);
 
     private sealed record ClassChoice(string Key, int Id, int VehicleId);
     // DiRT 4 base.ctpk vehicle_class IDs and one retail vehicle from each class.
@@ -46,7 +47,77 @@ internal static partial class Dirt4CommunityEvents
             _ => (openedAt - 10 * 3600L) / 86400L
         };
         var entries = Rotation.Value[slot];
+        if (slot == 1)
+        {
+            var ownerIndex = (int)((period % 72 + 72) % 72);
+            var positions = DeltaSlots(entries);
+            var deltaIndex = Array.FindIndex(positions, position => position.OwnerIndex == ownerIndex);
+            if (deltaIndex < 0) return entries[ownerIndex];
+            var catalogue = Dirt4CareerDeltaCatalog.Entries;
+            var candidateIndex = (int)((((period / 72) * positions.Length + deltaIndex) % catalogue.Count +
+                catalogue.Count) % catalogue.Count);
+            return entries[72 + candidateIndex];
+        }
         return entries[(int)((period % entries.Length + entries.Length) % entries.Length)];
+    }
+
+    private static DeltaSlot[] DeltaSlots(IReadOnlyList<RotationEntry> owners)
+    {
+        var positions = owners.Take(72).Select((entry, index) => (entry, index))
+            .Where(item => item.entry.Event.StageData.Stages[0].WeatherId != 1)
+            .Where((_, index) => index % 3 == 0)
+            .Select(item => item.index).ToArray();
+        if (positions.Length != RallyClasses.Length)
+            throw new InvalidDataException("DiRT 4 Delta schedule must cover every rally class.");
+        return positions.Select(index => new DeltaSlot(index)).ToArray();
+    }
+
+    private static RotationEntry CareerDeltaRotation(Dirt4CareerDeltaEntry entry)
+    {
+        var source = Events[1];
+        var routeSource = entry.LocationId switch
+        {
+            14 => Events[1], 21 => Events[2], 3 => Events[3], 26 => Events[4],
+            16 => Events[1],
+            _ => throw new InvalidDataException($"Unsupported career Delta location {entry.LocationId}.")
+        };
+        var barrier = (long)Math.Round(entry.SeedTopTimesMs.Average(t => (decimal)t),
+            MidpointRounding.AwayFromZero);
+        var stage = routeSource.StageData.Stages[0] with
+        {
+            LeaderboardId = source.StageData.Stages[0].LeaderboardId,
+            LocationId = entry.LocationId,
+            TimeOfDayId = entry.TimeOfDayId,
+            WeatherId = entry.WeatherId,
+            GameOptions = 3,
+            CareerStageId = entry.CareerStageId,
+            TrackGenValue = 0,
+            TrackgenName = entry.TrackgenName,
+            TargetTime = routeSource.StageData.Stages[0].TargetTime with { OverallTime = barrier },
+            DeltaBest = barrier,
+            T1T2BarrierTime = barrier,
+            T2T3BarrierTime = barrier,
+            T3T4BarrierTime = barrier
+        };
+        return new($"v3/delta/career-{entry.CareerStageId}-{entry.VehicleId}", source with
+        {
+            EventMeta = source.EventMeta with
+            {
+                Name = "lng_dirt_delta_daily",
+                EventType = 3,
+                EventCompType = 1,
+                GameOptions = 200,
+                PersonalBest = 0,
+                EventStatus = 0,
+                RanLastEvent = false
+            },
+            StageData = new(entry.CountryDbId, 1, 1, [stage]),
+            Restrictions = source.Restrictions with
+            {
+                VehicleIds = [new(checked((int)entry.VehicleId))],
+                VehicleClassIds = []
+            }
+        });
     }
 
     private static RotationEntry[][] BuildRotation()
@@ -97,6 +168,8 @@ internal static partial class Dirt4CommunityEvents
         // The remaining weekly layouts are Michigan's two halves; keep the slots one week apart.
         Array.Reverse(result[3]);
         result = result.Select((entries, slot) => ExpandConditionsAndClasses(entries, slot)).ToArray();
+        _ = DeltaSlots(result[1]);
+        result[1] = [.. result[1], .. Dirt4CareerDeltaCatalog.Entries.Select(CareerDeltaRotation)];
         for (var slot = 0; slot < result.Length; slot++)
             foreach (var entry in result[slot])
                 if (!ValidSnapshot(new(1_000_000, 0, 1, new Dictionary<string, Dirt4DailyRun>())
@@ -223,14 +296,23 @@ internal static partial class Dirt4CommunityEvents
                 MftrCountryIds: not null, DriveTrainIds: not null, ManufacturerIds: not null } ||
             e.Rewards?.TierRewards is not { Length: 4 } rewards) return false;
         var baseline = Events[round.TemplateIndex];
-        if (meta.EventId != baseline.EventMeta.EventId || meta.EventType != baseline.EventMeta.EventType ||
-            meta.Name != baseline.EventMeta.Name || meta.SponsorIds is null ||
+        var liveDelta = round.TemplateIndex == 1 && round.RotationId.StartsWith("v3/delta/", StringComparison.Ordinal);
+        if (meta.EventId != baseline.EventMeta.EventId ||
+            meta.EventType != (liveDelta ? 3 : baseline.EventMeta.EventType) ||
+            meta.EventCompType != (liveDelta ? 1 : baseline.EventMeta.EventCompType) ||
+            meta.Name != (liveDelta ? "lng_dirt_delta_daily" : baseline.EventMeta.Name) ||
+            meta.SponsorIds is null ||
             e.StageData.TotalStages != stages.Length || e.StageData.AvailableStages != stages.Length ||
             stages.Length != (round.TemplateIndex < 2 ? 1 : round.TemplateIndex < 4 ? 6 : 12) ||
             stages.Any(s => s is null || s.TargetTime is null || s.TrackgenName is null) ||
             meta.LeaderboardId != stages[^1].LeaderboardId) return false;
         return !stages.Where((s, i) => s.StageId != i + 1 || s.LeaderboardId != StageId(baseline, i) ||
-            (s.TrackModelId == 0 && (s.TrackGenValue <= 0 || s.LocationId == 0)) ||
+            (s.TrackModelId == 0 && (s.TrackGenValue <= 0 || s.LocationId == 0) &&
+                !(liveDelta && s.TrackGenValue == 0 &&
+                    Dirt4CareerDeltaCatalog.Entries.Any(entry =>
+                        s.CareerStageId == entry.CareerStageId && s.LocationId == entry.LocationId &&
+                        s.WeatherId == entry.WeatherId && s.TimeOfDayId == entry.TimeOfDayId &&
+                        s.TrackgenName == entry.TrackgenName))) ||
             s.T1T2BarrierTime <= 0 || s.T2T3BarrierTime < s.T1T2BarrierTime ||
             s.T3T4BarrierTime < s.T2T3BarrierTime).Any() &&
             rewards.All(r => r is not null && r.MinCredits >= 0 && r.MaxCredits >= r.MinCredits) &&

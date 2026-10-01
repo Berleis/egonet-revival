@@ -111,6 +111,14 @@ DiRT 4 is in public testing. Community Events are functional with persistent
 Daily, Weekly and Monthly calendar rotations. Pro Tour remains experimental;
 Jam Session uses Steam multiplayer independently of the EgoNet server.
 
+Delta Daily is included in the second Daily slot on selected days. Its rotation
+contains 100 career stage/vehicle combinations matched unambiguously to production
+leaderboards. When a round opens, the server reads that career leaderboard,
+averages its three fastest compatible player times (or all available times while
+there are fewer than three), and freezes the target for the round. Eight unmatched
+leaderboards are deliberately excluded. Delta uses two reward tiers; Event Details
+still shows four prize ranges, matching the original client.
+
 Requirements:
 
 - Windows.

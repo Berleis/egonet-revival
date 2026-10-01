@@ -74,7 +74,10 @@ internal static partial class Dirt4CommunityEvents
             var e = Definition(round);
             var stage = e.StageData.Stages[^1];
             var time = round.Time(player);
-            var tier = time <= stage.T1T2BarrierTime ? 1 : time <= stage.T2T3BarrierTime ? 2 :
+            var delta = IsDelta(round);
+            var barrier = delta ? DeltaBarrier(round) : stage.T1T2BarrierTime;
+            var tier = delta ? (time <= barrier ? 1 : 2) :
+                time <= stage.T1T2BarrierTime ? 1 : time <= stage.T2T3BarrierTime ? 2 :
                 time <= stage.T3T4BarrierTime ? 3 : 4;
             var reward = e.Rewards.TierRewards.Single(r => r.TierId == tier);
             // Local policy: captured time barriers and the tier's minimum credit reward.
@@ -85,15 +88,29 @@ internal static partial class Dirt4CommunityEvents
                 EgoNetBinary.Fp32("TargetPercent", 0),
                 EgoNetBinary.Dict("TierResult", EgoNetBinary.Si32("ActCredReward", reward.MinCredits),
                     EgoNetBinary.Si32("TierId", tier)),
-                EgoNetBinary.Si64("T1T2BarrierTime", stage.T1T2BarrierTime),
+                EgoNetBinary.Si64("T1T2BarrierTime", barrier),
                 EgoNetBinary.Si64("T2T3BarrierTime", stage.T2T3BarrierTime),
                 EgoNetBinary.Si64("T3T4BarrierTime", stage.T3T4BarrierTime),
-                EgoNetBinary.Si64("EventTargetTime", stage.TargetTime.OverallTime),
+                EgoNetBinary.Si64("EventTargetTime", delta ? barrier : stage.TargetTime.OverallTime),
                 BuildRewards(e.Rewards));
         }).ToArray();
         var response = EgoNetBinary.Dictionary(EgoNetBinary.Dict("Results", EgoNetBinary.Vector("Results", results)));
         store.MarkResultsIssued(player, now, rounds.Select(r => r.EventId).ToArray());
         return response;
+    }
+
+    internal static bool IsDelta(Dirt4DailyRound round) =>
+        round.RotationId?.StartsWith("v3/delta/", StringComparison.Ordinal) == true;
+
+    private static long DeltaBarrier(Dirt4DailyRound round)
+    {
+        if (round.DeltaTarget is { } target) return target.TimeMs;
+        // Existing snapshots retain their original policy; new rounds freeze the reference at opening.
+        var times = round.Runs.Where(pair => pair.Value.TimeMs > 0)
+            .Select(pair => pair.Value.TimeMs!.Value).ToArray();
+        return times.Length < 2
+            ? Definition(round).StageData.Stages[^1].T1T2BarrierTime
+            : (long)Math.Round(times.Average(), MidpointRounding.AwayFromZero);
     }
 
     private static byte[] Pack(DateTimeOffset now, IEnumerable<EventDefinition> events) =>
@@ -113,6 +130,7 @@ internal static partial class Dirt4CommunityEvents
     {
         var e = Definition(round);
         var time = round.Time(player);
+        var deltaBarrier = IsDelta(round) ? DeltaBarrier(round) : 0;
         return e with {
             EventMeta = e.EventMeta with { EventId = round.EventId, LeaderboardId = round.LeaderboardId,
                 StartTime = checked((int)round.OpenedAt), AdvertStartTime = checked((int)round.OpenedAt - 86400),
@@ -122,7 +140,11 @@ internal static partial class Dirt4CommunityEvents
                 LeaderboardId = round.StageLeaderboard(i), PlayerBest = round.StageTime(player, i),
                 PlayerOverall = round.Overall(player, i),
                 PlayerRank = omitScores ? 0 : round.Rank(player, i),
-                Percentile = omitScores ? 0 : (int)round.Percent(player, i) }).ToArray() }
+                Percentile = omitScores ? 0 : (int)round.Percent(player, i),
+                DeltaBest = deltaBarrier > 0 ? deltaBarrier : s.DeltaBest,
+                T1T2BarrierTime = deltaBarrier > 0 ? deltaBarrier : s.T1T2BarrierTime,
+                TargetTime = deltaBarrier > 0
+                    ? s.TargetTime with { OverallTime = deltaBarrier } : s.TargetTime }).ToArray() }
         };
     }
 
