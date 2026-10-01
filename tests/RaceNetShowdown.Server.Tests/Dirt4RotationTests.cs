@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using RaceNetShowdown.Server.RaceNet;
 using Xunit;
 
@@ -14,7 +14,7 @@ public sealed class Dirt4RotationTests
     [Fact]
     public void CatalogHasDistinctOptionsAndOnlyFiveLiveSlots()
     {
-        Assert.Equal(new[] { 84, 72, 36, 36, 36 }, Enumerable.Range(0, 5)
+        Assert.Equal(new[] { 84, 172, 36, 36, 36 }, Enumerable.Range(0, 5)
             .Select(i => Dirt4CommunityEvents.RotationFor(i).Count));
         var store = new Dirt4DailyStore();
         var formatted = Format(Dirt4CommunityEvents.Build(Now, store, "driver", []));
@@ -27,9 +27,110 @@ public sealed class Dirt4RotationTests
             {
                 e.Event.Restrictions,
                 Stages = e.Event.StageData.Stages.Select(s => new
-                    { s.TrackModelId, s.TrackGenValue, s.LocationId, s.WeatherId, s.TimeOfDayId })
+                    { s.TrackModelId, s.TrackGenValue, s.CareerStageId, s.LocationId,
+                        s.WeatherId, s.TimeOfDayId })
             })).Distinct().Count());
         }
+    }
+
+    [Fact]
+    public void PublicDeltaRotatesMappedCareerLeaderboards()
+    {
+        var deltas = Dirt4CommunityEvents.RotationFor(1)
+            .Where(e => e.Id.StartsWith("v3/delta/", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(100, deltas.Length);
+        Assert.All(deltas, e =>
+        {
+            Assert.Equal(3, e.Event.EventMeta.EventType);
+            Assert.Equal(1, e.Event.EventMeta.EventCompType);
+            Assert.Equal(4, e.Event.Rewards.TierRewards.Length);
+            var stage = e.Event.StageData.Stages.Single();
+            var mapping = Assert.Single(Dirt4CareerDeltaCatalog.Entries,
+                item => item.CareerStageId == stage.CareerStageId &&
+                    item.VehicleId == e.Event.Restrictions.VehicleIds.Single().ID);
+            Assert.Equal(mapping.WeatherId, stage.WeatherId);
+            Assert.Equal(mapping.TimeOfDayId, stage.TimeOfDayId);
+            Assert.InRange(stage.DeltaBest, 1, int.MaxValue);
+        });
+        Assert.Equal(100, deltas.Select(e => e.Event.StageData.Stages[0].CareerStageId).Distinct().Count());
+
+        var selected = Enumerable.Range(0, 648).Select(day =>
+        {
+            var window = Dirt4EventCalendar.Window(Now.AddDays(day), 0);
+            return Dirt4CommunityEvents.SelectRotation(1, window.Start);
+        }).ToArray();
+        Assert.Contains(selected, e => e.Id.StartsWith("v3/delta/", StringComparison.Ordinal));
+        Assert.Contains(selected, e => e.Id.StartsWith("v2/owners-", StringComparison.Ordinal));
+        Assert.Equal(deltas.Select(e => e.Id).Order(),
+            selected.Where(e => e.Id.StartsWith("v3/delta/", StringComparison.Ordinal))
+                .Select(e => e.Id).Distinct().Order());
+        Assert.Equal(12, selected.Take(72).Where(e => e.Id.StartsWith("v3/delta/", StringComparison.Ordinal))
+            .Select(e => e.Event.StageData.Stages[0].CareerStageId).Distinct().Count());
+
+        Assert.Empty(Round(1, 72).Runs);
+    }
+
+
+    [Fact]
+    public void DeltaRejectsNameFromAnotherCareerRoute()
+    {
+        var round = Round(1, 84);
+        var definition = round.Definition!;
+        var wrongName = definition.StageData.Stages[0] with
+            { TrackgenName = new(383, 2, 2, false, 0) };
+        var invalid = round with { Definition = definition with
+            { StageData = definition.StageData with { Stages = [wrongName] } } };
+        Assert.Throws<InvalidDataException>(() =>
+            new Dirt4DailyStore(JsonSerializer.Serialize(new[] { invalid })));
+    }
+
+    [Fact]
+    public void DeltaCommunityAverageMatchesStandingsAndPayoutAfterReload()
+    {
+        var round = Round(1, 84);
+        var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { round }));
+        var vehicle = round.Definition!.Restrictions.VehicleIds.Single().ID;
+        foreach (var (player, time) in new[] { ("fast", 100_000L), ("slow", 300_000L), ("equal", 200_000L) })
+        {
+            Assert.True(store.Start(round.LeaderboardId, player, Now, vehicle));
+            Assert.True(store.Finish(round.LeaderboardId, player, time, Now.AddSeconds(1), vehicle));
+        }
+        Assert.True(store.Start(round.LeaderboardId, "retired", Now, vehicle));
+        store = new Dirt4DailyStore(store.Export());
+        var standings = Format(Dirt4CommunityEvents.Build(Now.AddSeconds(2), store, "slow", [round.EventId]));
+        Assert.Contains("DeltaBest: si64 value=200000", standings);
+        Assert.Contains("T1T2BarrierTime: si64 value=200000", standings);
+        var ended = DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt);
+        foreach (var (player, tier) in new[] { ("slow", 2), ("fast", 1), ("equal", 1) })
+        {
+            var result = Dirt4CommunityEvents.BuildResults(ended, store, player, [round.EventId]);
+            Assert.Contains("EventTargetTime: si64 value=200000", Format(result));
+            AssertTierResult(result, tier,
+                round.Definition.Rewards.TierRewards.Single(r => r.TierId == tier).MinCredits);
+        }
+        Assert.Empty(store.PendingResults("retired", ended));
+    }
+
+    [Theory]
+    [InlineData(-1, 1)]
+    [InlineData(1, 2)]
+    public void PublicDeltaPaysOnlyOneOfTwoTiersAfterExpiry(long offset, int expectedTier)
+    {
+        var round = Round(1, 72);
+        var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { round }));
+        var stage = round.Definition!.StageData.Stages[0];
+        var vehicle = round.Definition.Restrictions.VehicleIds.Single().ID;
+        Assert.True(store.Start(round.LeaderboardId, "driver", Now, vehicle));
+        Assert.True(store.Finish(round.LeaderboardId, "driver", stage.T1T2BarrierTime + offset,
+            Now.AddSeconds(1), vehicle));
+        store = new Dirt4DailyStore(store.Export());
+        var ended = DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt);
+        var bytes = Dirt4CommunityEvents.BuildResults(ended, store, "driver", [round.EventId]);
+        var result = Format(bytes);
+        var reward = round.Definition.Rewards.TierRewards.Single(r => r.TierId == expectedTier);
+        AssertTierResult(bytes, expectedTier, reward.MinCredits);
+        Assert.Contains("TierRewards: vvtr count=4", result);
+        Assert.Empty(store.PendingResults("driver", ended));
     }
 
     [Theory]
@@ -202,7 +303,8 @@ public sealed class Dirt4RotationTests
     public void EachRallySlotIncludesTwelveClassesAndAllConditionProfiles(int slot)
     {
         var entries = Dirt4CommunityEvents.RotationFor(slot)
-            .Where(e => e.Event.StageData.Stages[0].TrackModelId == 0).ToArray();
+            .Where(e => e.Event.StageData.Stages[0].TrackModelId == 0)
+            .Where(e => !e.Id.StartsWith("v3/delta/", StringComparison.Ordinal)).ToArray();
         int[] expected = [72, 73, 74, 86, 93, 94, 96, 97, 98, 99, 100, 101];
         int ClassOf(Dirt4CommunityEvents.EventDefinition e) => slot >= 2
             ? Assert.Single(e.Restrictions.VehicleClassIds).ID
@@ -213,7 +315,8 @@ public sealed class Dirt4RotationTests
                 _ => throw new InvalidDataException()
             };
         Assert.Equal(expected, entries.Select(e => ClassOf(e.Event)).Distinct().Order());
-        Assert.Equal(new uint[] { 1, 2, 5 }, entries.Select(e => e.Event.StageData.Stages[0].WeatherId).Distinct().Order());
+        Assert.Equal(new uint[] { 1, 2, 5 },
+            entries.Select(e => e.Event.StageData.Stages[0].WeatherId).Distinct().Order());
         if (slot >= 2)
             foreach (var group in entries.GroupBy(e => ClassOf(e.Event)))
                 Assert.Equal(new uint[] { 1, 2, 5 }, group.Select(e => e.Event.StageData.Stages[0].WeatherId).Order());
@@ -354,6 +457,15 @@ public sealed class Dirt4RotationTests
             EventLeaderboardId = template.LeaderboardId + shift,
             StageLeaderboardIds = template.StageLeaderboards.Select(lb => lb + shift).ToArray()
         };
+    }
+
+    private static void AssertTierResult(byte[] bytes, int tier, int credits)
+    {
+        var expected = EgoNetBinary.Dictionary(EgoNetBinary.Dict("TierResult",
+            EgoNetBinary.Si32("ActCredReward", credits), EgoNetBinary.Si32("TierId", tier)));
+        // Compare the complete field, excluding the outer dictionary tag and count.
+        Assert.True(bytes.AsSpan().IndexOf(expected.AsSpan(8)) >= 0,
+            $"Expected TierResult {tier} with {credits} credits.");
     }
 
     private static string Format(byte[] bytes)

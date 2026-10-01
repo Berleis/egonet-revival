@@ -1,4 +1,4 @@
-# DiRT 4
+﻿# DiRT 4
 
 This package restores discontinued RaceNet functionality for DiRT 4 on Steam/PC.
 
@@ -43,11 +43,17 @@ The GUI installer project lives in `installer`. Operational developer scripts li
 - Pro Tour is experimental. Server-side lobby discovery is implemented, but in-game joining still needs multiplayer validation. Scoring and promotion remain placeholders, not persistent progression.
 - Jam Session uses Steam multiplayer independently of the EgoNet server.
 
-DiRT 4 support is published as public testing. The active development catalogue contains 84 Daily Live choices, 72 Owners Club choices, 36 choices per Weekly slot and 36 Monthly choices. These are 264 route/class/weather configurations, not newly recovered roads or historic events. Original full events remain reference-only.
+DiRT 4 support is published as public testing. The active development catalogue contains 84 Daily Live choices, 72 Owners Club choices, 100 Delta Daily choices, 36 choices per Weekly slot and 36 Monthly choices. These are 364 route/vehicle/weather configurations. Original full events remain reference-only.
+
+Delta Daily replaces the Owners Club on 12 dates of its 72-day cycle, keeping five active event slots. The 100 mapped career stage/vehicle combinations are consumed across successive cycles; every entry appears within nine 72-day cycles.
+
+All 100 production mappings include an exact `TrackgenName` tuple validated in-game. Every production Delta Daily is a single-stage event.
+
+Delta Standings uses two tiers: at or below the target is Tier 1; above it is Tier 2. Event Details still displays four prize ranges, as the original game does. At round opening the server reads the mapped career leaderboard, filters it to the event vehicle, orders one best result per player, takes at most the three fastest results and freezes their rounded mean with its source and sample count. With fewer than three players it averages the available results. Imported times are used only as a fallback if a mapped board is unexpectedly empty. One hundred of 108 production boards were matched uniquely through the profile's stage history; the eight ambiguous or missing matches are excluded. Older snapshots without a frozen target retain their previous policy. Rewards use the minimum credit value of the earned tier after expiration. Public rounds never include synthetic benchmark players or the 10-second development target.
 
 Rally events rotate through H1 FWD, H2 FWD, H2 RWD, H3 RWD, R2, R5, Group A, Group B RWD, Group B 4WD, NR4/R4, Up to 2000cc and F2 Kit Car. Rallycross Daily events include Supercars, Super1600 and RX Lites. Selection is calendar-based, not random: the Weekly slots have different classes, routes and weather profiles, and at least one of the two Dailies has clear daytime conditions each day. This applies to newly issued rounds; saved rounds keep their original conditions until expiry.
 
-Weather presets and class/vehicle IDs come from the installed DiRT 4 catalogue. Tier times and payouts still use provisional capture-derived estimates, not calibrated times for each new car/weather combination. New combinations require in-game validation and feedback-driven tuning; automated checks do not prove gameplay or achievement compatibility.
+Weather presets and vehicle IDs come from the installed DiRT 4 catalogue. Non-Delta tier times and payouts still use provisional capture-derived estimates. New combinations require in-game validation and feedback-driven tuning; automated checks do not prove gameplay or achievement compatibility.
 
 Community Event state uses the same configured database as the other server profiles. Each new round stores its complete event definition, so catalog updates and restarts cannot change an issued event. Existing rounds and pending rewards retain their original definitions.
 

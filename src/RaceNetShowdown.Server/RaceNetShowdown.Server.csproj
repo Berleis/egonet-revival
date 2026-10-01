@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="RaceNet/dirt4-community-events.json" />
+    <EmbeddedResource Include="RaceNet/dirt4-career-delta.json" />
     <InternalsVisibleTo Include="RaceNetShowdown.Server.Tests" />
   </ItemGroup>
 

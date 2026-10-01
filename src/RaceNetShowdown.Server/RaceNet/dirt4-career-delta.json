@@ -1,0 +1,1906 @@
+[
+  {
+    "CareerStageId": 965,
+    "CareerLeaderboardId": 9570187,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 1,
+    "TimeOfDayId": 8,
+    "LengthMeters": 15583,
+    "SeedTopTimesMs": [
+      612620
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 97,
+    "NameFlavourId": 2,
+    "NameStyleId": 2,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 966,
+    "CareerLeaderboardId": 9570189,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 26,
+    "TimeOfDayId": 9,
+    "LengthMeters": 8670,
+    "SeedTopTimesMs": [
+      359802
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 142,
+    "NameFlavourId": 2,
+    "NameStyleId": 12,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 967,
+    "CareerLeaderboardId": 9570191,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 27,
+    "TimeOfDayId": 9,
+    "LengthMeters": 6400,
+    "SeedTopTimesMs": [
+      253403
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 139,
+    "NameFlavourId": 2,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 962,
+    "CareerLeaderboardId": 9570181,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 20,
+    "TimeOfDayId": 1,
+    "LengthMeters": 7945,
+    "SeedTopTimesMs": [
+      296963
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 284,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 963,
+    "CareerLeaderboardId": 9570183,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 4,
+    "TimeOfDayId": 2,
+    "LengthMeters": 14112,
+    "SeedTopTimesMs": [
+      542755
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 275,
+    "NameFlavourId": 2,
+    "NameStyleId": 6,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 964,
+    "CareerLeaderboardId": 9570185,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 39,
+    "TimeOfDayId": 3,
+    "LengthMeters": 14185,
+    "SeedTopTimesMs": [
+      566609
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 275,
+    "NameFlavourId": 6,
+    "NameStyleId": 18,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 971,
+    "CareerLeaderboardId": 9570199,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 23,
+    "TimeOfDayId": 2,
+    "LengthMeters": 4854,
+    "SeedTopTimesMs": [
+      188040
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 154,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 972,
+    "CareerLeaderboardId": 9570201,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 9,
+    "TimeOfDayId": 3,
+    "LengthMeters": 6427,
+    "SeedTopTimesMs": [
+      300559
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 231,
+    "NameFlavourId": 17,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 973,
+    "CareerLeaderboardId": 9570203,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 7,
+    "TimeOfDayId": 4,
+    "LengthMeters": 15312,
+    "SeedTopTimesMs": [
+      674878
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 195,
+    "NameFlavourId": 17,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 968,
+    "CareerLeaderboardId": 9570193,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 26,
+    "TimeOfDayId": 9,
+    "LengthMeters": 6015,
+    "SeedTopTimesMs": [
+      219837
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 106,
+    "NameFlavourId": 6,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 969,
+    "CareerLeaderboardId": 9570195,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 27,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4829,
+    "SeedTopTimesMs": [
+      202689
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 116,
+    "NameFlavourId": 6,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 970,
+    "CareerLeaderboardId": 9570197,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 4,
+    "TimeOfDayId": 10,
+    "LengthMeters": 16005,
+    "SeedTopTimesMs": [
+      646988
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 87,
+    "NameFlavourId": 6,
+    "NameStyleId": 2,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 961,
+    "CareerLeaderboardId": 9570179,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 19,
+    "TimeOfDayId": 10,
+    "LengthMeters": 6174,
+    "SeedTopTimesMs": [
+      235818
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 272,
+    "NameFlavourId": 2,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 725,
+    "CareerLeaderboardId": 9569707,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 3,
+    "TimeOfDayId": 6,
+    "LengthMeters": 7838,
+    "SeedTopTimesMs": [
+      287271
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 274,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 726,
+    "CareerLeaderboardId": 9569709,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 17,
+    "TimeOfDayId": 7,
+    "LengthMeters": 6122,
+    "SeedTopTimesMs": [
+      210787
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 287,
+    "NameFlavourId": 6,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 727,
+    "CareerLeaderboardId": 9569711,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 19,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4481,
+    "SeedTopTimesMs": [
+      154512
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 252,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 722,
+    "CareerLeaderboardId": 9569701,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 7,
+    "TimeOfDayId": 4,
+    "LengthMeters": 8871,
+    "SeedTopTimesMs": [
+      352793
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 78,
+    "NameFlavourId": 7,
+    "NameStyleId": 20,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 723,
+    "CareerLeaderboardId": 9569703,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 15,
+    "TimeOfDayId": 5,
+    "LengthMeters": 10428,
+    "SeedTopTimesMs": [
+      435297
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 105,
+    "NameFlavourId": 6,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 724,
+    "CareerLeaderboardId": 9569705,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 2,
+    "TimeOfDayId": 5,
+    "LengthMeters": 10027,
+    "SeedTopTimesMs": [
+      388512
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 275,
+    "NameFlavourId": 6,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 731,
+    "CareerLeaderboardId": 9569719,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 1,
+    "TimeOfDayId": 2,
+    "LengthMeters": 6135,
+    "SeedTopTimesMs": [
+      220609
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 299,
+    "NameFlavourId": 2,
+    "NameStyleId": 24,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 959,
+    "CareerLeaderboardId": 9570175,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 34,
+    "TimeOfDayId": 8,
+    "LengthMeters": 4482,
+    "SeedTopTimesMs": [
+      181656
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 249,
+    "NameFlavourId": 2,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 960,
+    "CareerLeaderboardId": 9570177,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 33,
+    "TimeOfDayId": 9,
+    "LengthMeters": 5998,
+    "SeedTopTimesMs": [
+      221207
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 309,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 728,
+    "CareerLeaderboardId": 9569713,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 39,
+    "TimeOfDayId": 9,
+    "LengthMeters": 5997,
+    "SeedTopTimesMs": [
+      230696
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 257,
+    "NameFlavourId": 6,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 729,
+    "CareerLeaderboardId": 9569715,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 3,
+    "TimeOfDayId": 10,
+    "LengthMeters": 4548,
+    "SeedTopTimesMs": [
+      154346
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 266,
+    "NameFlavourId": 2,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 730,
+    "CareerLeaderboardId": 9569717,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 2,
+    "TimeOfDayId": 1,
+    "LengthMeters": 4268,
+    "SeedTopTimesMs": [
+      167472
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 274,
+    "NameFlavourId": 28,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 907,
+    "CareerLeaderboardId": 12584727,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 14,
+    "TimeOfDayId": 9,
+    "LengthMeters": 14193,
+    "SeedTopTimesMs": [
+      470473
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 370,
+    "NameFlavourId": 2,
+    "NameStyleId": 20,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 910,
+    "CareerLeaderboardId": 12584733,
+    "VehicleId": 482,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 1,
+    "TimeOfDayId": 9,
+    "LengthMeters": 13785,
+    "SeedTopTimesMs": [
+      531392,
+      535912,
+      537764
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 63,
+    "NameFlavourId": 11,
+    "NameStyleId": 12,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 911,
+    "CareerLeaderboardId": 12584735,
+    "VehicleId": 482,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 2,
+    "TimeOfDayId": 9,
+    "LengthMeters": 9700,
+    "SeedTopTimesMs": [
+      406060,
+      407061,
+      408979
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 35,
+    "NameFlavourId": 11,
+    "NameStyleId": 12,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 904,
+    "CareerLeaderboardId": 12584721,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 3,
+    "TimeOfDayId": 6,
+    "LengthMeters": 14270,
+    "SeedTopTimesMs": [
+      464983
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 369,
+    "NameFlavourId": 4,
+    "NameStyleId": 18,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 905,
+    "CareerLeaderboardId": 12584723,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 2,
+    "TimeOfDayId": 8,
+    "LengthMeters": 10025,
+    "SeedTopTimesMs": [
+      345356
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 371,
+    "NameFlavourId": 2,
+    "NameStyleId": 18,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 906,
+    "CareerLeaderboardId": 12584725,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 4,
+    "TimeOfDayId": 9,
+    "LengthMeters": 14113,
+    "SeedTopTimesMs": [
+      466333
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 340,
+    "NameFlavourId": 32,
+    "NameStyleId": 12,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 573,
+    "CareerLeaderboardId": 12846202,
+    "VehicleId": 394,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 2,
+    "TimeOfDayId": 3,
+    "LengthMeters": 4597,
+    "SeedTopTimesMs": [
+      192969
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 107,
+    "NameFlavourId": 5,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 574,
+    "CareerLeaderboardId": 12846204,
+    "VehicleId": 394,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 1,
+    "TimeOfDayId": 4,
+    "LengthMeters": 4536,
+    "SeedTopTimesMs": [
+      178799
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 71,
+    "NameFlavourId": 7,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 1035,
+    "CareerLeaderboardId": 12847126,
+    "VehicleId": 394,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 2,
+    "TimeOfDayId": 5,
+    "LengthMeters": 6063,
+    "SeedTopTimesMs": [
+      232899
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 104,
+    "NameFlavourId": 2,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 570,
+    "CareerLeaderboardId": 12846196,
+    "VehicleId": 394,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 1,
+    "TimeOfDayId": 9,
+    "LengthMeters": 10494,
+    "SeedTopTimesMs": [
+      444173
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 105,
+    "NameFlavourId": 7,
+    "NameStyleId": 6,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 571,
+    "CareerLeaderboardId": 12846198,
+    "VehicleId": 394,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 23,
+    "TimeOfDayId": 10,
+    "LengthMeters": 6311,
+    "SeedTopTimesMs": [
+      264111
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 102,
+    "NameFlavourId": 7,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 572,
+    "CareerLeaderboardId": 12846200,
+    "VehicleId": 394,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 24,
+    "TimeOfDayId": 2,
+    "LengthMeters": 5651,
+    "SeedTopTimesMs": [
+      210976
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 144,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 903,
+    "CareerLeaderboardId": 12584719,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 4,
+    "TimeOfDayId": 5,
+    "LengthMeters": 9970,
+    "SeedTopTimesMs": [
+      332425
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 373,
+    "NameFlavourId": 2,
+    "NameStyleId": 12,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 977,
+    "CareerLeaderboardId": 9570211,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 12,
+    "TimeOfDayId": 9,
+    "LengthMeters": 14248,
+    "SeedTopTimesMs": [
+      578477
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 12,
+    "NameFlavourId": 4,
+    "NameStyleId": 12,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 978,
+    "CareerLeaderboardId": 9570213,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 7,
+    "TimeOfDayId": 10,
+    "LengthMeters": 5795,
+    "SeedTopTimesMs": [
+      207159
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 49,
+    "NameFlavourId": 9,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 979,
+    "CareerLeaderboardId": 9570215,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 2,
+    "TimeOfDayId": 1,
+    "LengthMeters": 12084,
+    "SeedTopTimesMs": [
+      470415
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 28,
+    "NameFlavourId": 4,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 974,
+    "CareerLeaderboardId": 9570205,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 3,
+    "TimeOfDayId": 5,
+    "LengthMeters": 16246,
+    "SeedTopTimesMs": [
+      611545
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 207,
+    "NameFlavourId": 17,
+    "NameStyleId": 6,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 975,
+    "CareerLeaderboardId": 9570207,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 12,
+    "TimeOfDayId": 6,
+    "LengthMeters": 9417,
+    "SeedTopTimesMs": [
+      386374
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 197,
+    "NameFlavourId": 17,
+    "NameStyleId": 20,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 976,
+    "CareerLeaderboardId": 9570209,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 2,
+    "TimeOfDayId": 7,
+    "LengthMeters": 6904,
+    "SeedTopTimesMs": [
+      261296
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 158,
+    "NameFlavourId": 17,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 900,
+    "CareerLeaderboardId": 12584713,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 2,
+    "TimeOfDayId": 9,
+    "LengthMeters": 5985,
+    "SeedTopTimesMs": [
+      196670
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 373,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 901,
+    "CareerLeaderboardId": 12584715,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 3,
+    "TimeOfDayId": 2,
+    "LengthMeters": 7865,
+    "SeedTopTimesMs": [
+      264993
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 332,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 902,
+    "CareerLeaderboardId": 12584717,
+    "VehicleId": 482,
+    "LocationId": 26,
+    "CountryDbId": 8,
+    "WeatherId": 13,
+    "TimeOfDayId": 4,
+    "LengthMeters": 7696,
+    "SeedTopTimesMs": [
+      254660
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 377,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 980,
+    "CareerLeaderboardId": 9570217,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 3,
+    "TimeOfDayId": 2,
+    "LengthMeters": 5930,
+    "SeedTopTimesMs": [
+      226925
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 29,
+    "NameFlavourId": 11,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 981,
+    "CareerLeaderboardId": 9570219,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 4,
+    "TimeOfDayId": 3,
+    "LengthMeters": 4523,
+    "SeedTopTimesMs": [
+      162168
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 54,
+    "NameFlavourId": 11,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 982,
+    "CareerLeaderboardId": 9570221,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 12,
+    "TimeOfDayId": 4,
+    "LengthMeters": 7254,
+    "SeedTopTimesMs": [
+      269210
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 26,
+    "NameFlavourId": 9,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 688,
+    "CareerLeaderboardId": 9569632,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 4,
+    "TimeOfDayId": 4,
+    "LengthMeters": 5806,
+    "SeedTopTimesMs": [
+      264298
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 273,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 689,
+    "CareerLeaderboardId": 9569634,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 20,
+    "TimeOfDayId": 5,
+    "LengthMeters": 4525,
+    "SeedTopTimesMs": [
+      174789
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 284,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 690,
+    "CareerLeaderboardId": 9569636,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 23,
+    "TimeOfDayId": 4,
+    "LengthMeters": 8510,
+    "SeedTopTimesMs": [
+      344346
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 110,
+    "NameFlavourId": 7,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 685,
+    "CareerLeaderboardId": 9569626,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 18,
+    "TimeOfDayId": 2,
+    "LengthMeters": 4537,
+    "SeedTopTimesMs": [
+      178002
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 291,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 686,
+    "CareerLeaderboardId": 9569628,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 4,
+    "TimeOfDayId": 3,
+    "LengthMeters": 9982,
+    "SeedTopTimesMs": [
+      408608
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 313,
+    "NameFlavourId": 6,
+    "NameStyleId": 6,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 687,
+    "CareerLeaderboardId": 9569630,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 3,
+    "TimeOfDayId": 4,
+    "LengthMeters": 4522,
+    "SeedTopTimesMs": [
+      205468
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 312,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 694,
+    "CareerLeaderboardId": 9569644,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 3,
+    "TimeOfDayId": 9,
+    "LengthMeters": 11139,
+    "SeedTopTimesMs": [
+      461214
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 95,
+    "NameFlavourId": 6,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 695,
+    "CareerLeaderboardId": 9569646,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 2,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4902,
+    "SeedTopTimesMs": [
+      200453
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 103,
+    "NameFlavourId": 7,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 696,
+    "CareerLeaderboardId": 9569648,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 16,
+    "TimeOfDayId": 3,
+    "LengthMeters": 9392,
+    "SeedTopTimesMs": [
+      376523
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 20,
+    "NameFlavourId": 4,
+    "NameStyleId": 2,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 691,
+    "CareerLeaderboardId": 9569638,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 24,
+    "TimeOfDayId": 5,
+    "LengthMeters": 4673,
+    "SeedTopTimesMs": [
+      230955
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 139,
+    "NameFlavourId": 8,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 692,
+    "CareerLeaderboardId": 9569640,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 1,
+    "TimeOfDayId": 6,
+    "LengthMeters": 4669,
+    "SeedTopTimesMs": [
+      169697
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 138,
+    "NameFlavourId": 8,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 693,
+    "CareerLeaderboardId": 9569642,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 2,
+    "TimeOfDayId": 8,
+    "LengthMeters": 10869,
+    "SeedTopTimesMs": [
+      444542
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 85,
+    "NameFlavourId": 6,
+    "NameStyleId": 6,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 684,
+    "CareerLeaderboardId": 9569624,
+    "VehicleId": 537,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 20,
+    "TimeOfDayId": 1,
+    "LengthMeters": 5986,
+    "SeedTopTimesMs": [
+      267100
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 254,
+    "NameFlavourId": 6,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 674,
+    "CareerLeaderboardId": 9569604,
+    "VehicleId": 479,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 3,
+    "TimeOfDayId": 2,
+    "LengthMeters": 4403,
+    "SeedTopTimesMs": [
+      164804
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 20,
+    "NameFlavourId": 9,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 675,
+    "CareerLeaderboardId": 9569606,
+    "VehicleId": 479,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 4,
+    "TimeOfDayId": 3,
+    "LengthMeters": 9284,
+    "SeedTopTimesMs": [
+      385393
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 1,
+    "NameFlavourId": 2,
+    "NameStyleId": 2,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 676,
+    "CareerLeaderboardId": 9569608,
+    "VehicleId": 479,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 16,
+    "TimeOfDayId": 4,
+    "LengthMeters": 10062,
+    "SeedTopTimesMs": [
+      371463
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 6,
+    "NameFlavourId": 4,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 671,
+    "CareerLeaderboardId": 9569598,
+    "VehicleId": 479,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 3,
+    "TimeOfDayId": 2,
+    "LengthMeters": 8867,
+    "SeedTopTimesMs": [
+      386270
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 133,
+    "NameFlavourId": 2,
+    "NameStyleId": 6,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 672,
+    "CareerLeaderboardId": 9569600,
+    "VehicleId": 479,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 4,
+    "TimeOfDayId": 3,
+    "LengthMeters": 4606,
+    "SeedTopTimesMs": [
+      177616
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 77,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 673,
+    "CareerLeaderboardId": 9569602,
+    "VehicleId": 479,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 3,
+    "TimeOfDayId": 4,
+    "LengthMeters": 10823,
+    "SeedTopTimesMs": [
+      418977
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 100,
+    "NameFlavourId": 7,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 680,
+    "CareerLeaderboardId": 9569616,
+    "VehicleId": 479,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 2,
+    "TimeOfDayId": 7,
+    "LengthMeters": 4533,
+    "SeedTopTimesMs": [
+      173403
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 297,
+    "NameFlavourId": 6,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 681,
+    "CareerLeaderboardId": 9569618,
+    "VehicleId": 479,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 3,
+    "TimeOfDayId": 9,
+    "LengthMeters": 7888,
+    "SeedTopTimesMs": [
+      315001
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 241,
+    "NameFlavourId": 6,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 682,
+    "CareerLeaderboardId": 9569620,
+    "VehicleId": 479,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 2,
+    "TimeOfDayId": 9,
+    "LengthMeters": 10306,
+    "SeedTopTimesMs": [
+      403324
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 270,
+    "NameFlavourId": 2,
+    "NameStyleId": 2,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 677,
+    "CareerLeaderboardId": 9569610,
+    "VehicleId": 479,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 2,
+    "TimeOfDayId": 5,
+    "LengthMeters": 7404,
+    "SeedTopTimesMs": [
+      282271
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 35,
+    "NameFlavourId": 9,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 678,
+    "CareerLeaderboardId": 9569612,
+    "VehicleId": 479,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 3,
+    "TimeOfDayId": 6,
+    "LengthMeters": 4276,
+    "SeedTopTimesMs": [
+      163423
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 57,
+    "NameFlavourId": 11,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 679,
+    "CareerLeaderboardId": 9569614,
+    "VehicleId": 479,
+    "LocationId": 14,
+    "CountryDbId": 13,
+    "WeatherId": 1,
+    "TimeOfDayId": 6,
+    "LengthMeters": 4403,
+    "SeedTopTimesMs": [
+      173069
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 248,
+    "NameFlavourId": 6,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 713,
+    "CareerLeaderboardId": 9569683,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 12,
+    "TimeOfDayId": 4,
+    "LengthMeters": 5602,
+    "SeedTopTimesMs": [
+      213140
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 23,
+    "NameFlavourId": 10,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 714,
+    "CareerLeaderboardId": 9569685,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 13,
+    "TimeOfDayId": 5,
+    "LengthMeters": 10130,
+    "SeedTopTimesMs": [
+      325399
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 10,
+    "NameFlavourId": 4,
+    "NameStyleId": 18,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 715,
+    "CareerLeaderboardId": 9569687,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 2,
+    "TimeOfDayId": 6,
+    "LengthMeters": 4275,
+    "SeedTopTimesMs": [
+      147129
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 52,
+    "NameFlavourId": 9,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 710,
+    "CareerLeaderboardId": 9569677,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 7,
+    "TimeOfDayId": 1,
+    "LengthMeters": 7242,
+    "SeedTopTimesMs": [
+      284541
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 30,
+    "NameFlavourId": 9,
+    "NameStyleId": 22,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 711,
+    "CareerLeaderboardId": 9569679,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 3,
+    "TimeOfDayId": 2,
+    "LengthMeters": 5521,
+    "SeedTopTimesMs": [
+      215284
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 52,
+    "NameFlavourId": 9,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 712,
+    "CareerLeaderboardId": 9569681,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 4,
+    "TimeOfDayId": 3,
+    "LengthMeters": 4369,
+    "SeedTopTimesMs": [
+      159455
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 31,
+    "NameFlavourId": 4,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 719,
+    "CareerLeaderboardId": 9569695,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 4,
+    "TimeOfDayId": 10,
+    "LengthMeters": 6562,
+    "SeedTopTimesMs": [
+      250505
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 89,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 720,
+    "CareerLeaderboardId": 9569697,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 14,
+    "TimeOfDayId": 2,
+    "LengthMeters": 6470,
+    "SeedTopTimesMs": [
+      248439
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 84,
+    "NameFlavourId": 6,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 721,
+    "CareerLeaderboardId": 9569699,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 3,
+    "TimeOfDayId": 3,
+    "LengthMeters": 6488,
+    "SeedTopTimesMs": [
+      239422
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 79,
+    "NameFlavourId": 2,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 716,
+    "CareerLeaderboardId": 9569689,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 23,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4718,
+    "SeedTopTimesMs": [
+      161954
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 138,
+    "NameFlavourId": 8,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 717,
+    "CareerLeaderboardId": 9569691,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 2,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4620,
+    "SeedTopTimesMs": [
+      170242
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 84,
+    "NameFlavourId": 5,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 718,
+    "CareerLeaderboardId": 9569693,
+    "VehicleId": 537,
+    "LocationId": 3,
+    "CountryDbId": 4,
+    "WeatherId": 3,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4862,
+    "SeedTopTimesMs": [
+      191709
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 107,
+    "NameFlavourId": 7,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 709,
+    "CareerLeaderboardId": 9569675,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 12,
+    "TimeOfDayId": 10,
+    "LengthMeters": 5649,
+    "SeedTopTimesMs": [
+      236022
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 28,
+    "NameFlavourId": 4,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 700,
+    "CareerLeaderboardId": 9569656,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 2,
+    "TimeOfDayId": 7,
+    "LengthMeters": 4273,
+    "SeedTopTimesMs": [
+      166838
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 11,
+    "NameFlavourId": 12,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 701,
+    "CareerLeaderboardId": 9569658,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 1,
+    "TimeOfDayId": 8,
+    "LengthMeters": 5881,
+    "SeedTopTimesMs": [
+      222894
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 9,
+    "NameFlavourId": 10,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 702,
+    "CareerLeaderboardId": 9569660,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 3,
+    "TimeOfDayId": 8,
+    "LengthMeters": 6993,
+    "SeedTopTimesMs": [
+      298925
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 198,
+    "NameFlavourId": 17,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 697,
+    "CareerLeaderboardId": 9569650,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 15,
+    "TimeOfDayId": 4,
+    "LengthMeters": 4428,
+    "SeedTopTimesMs": [
+      187122
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 19,
+    "NameFlavourId": 11,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 698,
+    "CareerLeaderboardId": 9569652,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 2,
+    "TimeOfDayId": 5,
+    "LengthMeters": 4246,
+    "SeedTopTimesMs": [
+      165537
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 59,
+    "NameFlavourId": 11,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 699,
+    "CareerLeaderboardId": 9569654,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 3,
+    "TimeOfDayId": 6,
+    "LengthMeters": 5958,
+    "SeedTopTimesMs": [
+      220311
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 63,
+    "NameFlavourId": 2,
+    "NameStyleId": 3,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 706,
+    "CareerLeaderboardId": 9569668,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 2,
+    "TimeOfDayId": 10,
+    "LengthMeters": 6499,
+    "SeedTopTimesMs": [
+      251585
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 166,
+    "NameFlavourId": 17,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 707,
+    "CareerLeaderboardId": 9569670,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 1,
+    "TimeOfDayId": 1,
+    "LengthMeters": 4863,
+    "SeedTopTimesMs": [
+      187895
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 226,
+    "NameFlavourId": 17,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 708,
+    "CareerLeaderboardId": 9569673,
+    "VehicleId": 537,
+    "LocationId": 16,
+    "CountryDbId": 15,
+    "WeatherId": 23,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4135,
+    "SeedTopTimesMs": [
+      161161
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 13,
+    "NameFlavourId": 2,
+    "NameStyleId": 24,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 703,
+    "CareerLeaderboardId": 9569662,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 4,
+    "TimeOfDayId": 9,
+    "LengthMeters": 11828,
+    "SeedTopTimesMs": [
+      509865
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 194,
+    "NameFlavourId": 23,
+    "NameStyleId": 8,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 704,
+    "CareerLeaderboardId": 9569664,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 16,
+    "TimeOfDayId": 9,
+    "LengthMeters": 4894,
+    "SeedTopTimesMs": [
+      203015
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 221,
+    "NameFlavourId": 2,
+    "NameStyleId": 0,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  },
+  {
+    "CareerStageId": 705,
+    "CareerLeaderboardId": 9569666,
+    "VehicleId": 537,
+    "LocationId": 21,
+    "CountryDbId": 19,
+    "WeatherId": 3,
+    "TimeOfDayId": 9,
+    "LengthMeters": 5048,
+    "SeedTopTimesMs": [
+      216249
+    ],
+    "Provenance": "ProductionLeaderboard+ProfileHistory",
+    "NameRegionId": 184,
+    "NameFlavourId": 8,
+    "NameStyleId": 4,
+    "NameIsReversed": false,
+    "NameStageIndex": 0
+  }
+]

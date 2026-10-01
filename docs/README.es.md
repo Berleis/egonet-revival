@@ -111,6 +111,15 @@ persistentes Daily, Weekly y Monthly basadas en el calendario. Pro Tour sigue
 siendo experimental; Jam Session usa el multiplayer de Steam sin depender del
 servidor EgoNet.
 
+Delta Daily aparece en el segundo slot diario en días seleccionados. Su rotación
+contiene 100 combinaciones de etapa y vehículo de carrera asociadas de forma
+inequívoca a los leaderboards de producción. Cuando se abre una ronda, el servidor
+lee el leaderboard correspondiente, calcula la media de los tres mejores tiempos
+compatibles (o de todos los disponibles mientras haya menos de tres) y fija ese
+objetivo durante la ronda. Ocho leaderboards sin correspondencia segura quedan
+excluidos. Usa dos niveles de premio; Event Details sigue mostrando cuatro rangos,
+como en el cliente original.
+
 Requisitos:
 
 - Windows.

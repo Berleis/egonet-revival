@@ -13,6 +13,7 @@ internal sealed class Dirt4DailyStore
     private List<Dirt4DailyRound> _rounds;
     private List<Dirt4StandaloneLeaderboard> _leaderboards;
     private Dictionary<string, Dirt4LeaderboardPresence> _presences;
+    private readonly IReadOnlyList<Dirt4DeltaCareerReference> _deltaReferences;
 
     internal Dirt4DailyStore(string? stateJson = null, int dailyTestSeconds = 0)
     {
@@ -20,6 +21,11 @@ internal sealed class Dirt4DailyStore
             throw new ArgumentOutOfRangeException(nameof(dailyTestSeconds));
         _dailyTestSeconds = dailyTestSeconds;
         (_rounds, _leaderboards, _presences) = Load(stateJson);
+        _deltaReferences = Dirt4CareerDeltaCatalog.References
+            .Concat(Dirt4DeltaTargets.ReadReferences(stateJson))
+            .GroupBy(r => (r.CareerStageId, r.VehicleId, r.WeatherId, r.TimeOfDayId,
+                r.StageGameOptions, r.EventGameOptions))
+            .Select(group => group.Last()).ToArray();
         if (_rounds.Select(r => r.EventId).Distinct().Count() != _rounds.Count || _rounds.Any(r => !Valid(r)))
             throw new InvalidDataException("Invalid DiRT 4 community state; the existing file was not reset.");
         if (_leaderboards.Select(l => l.LeaderboardId).Distinct().Count() != _leaderboards.Count ||
@@ -53,6 +59,7 @@ internal sealed class Dirt4DailyStore
             round.TemplateIndex < 0 || round.TemplateIndex >= Dirt4CommunityEvents.TemplateCount || round.Runs is null)
             return false;
         if (!Dirt4CommunityEvents.ValidSnapshot(round)) return false;
+        if (!Dirt4DeltaTargets.Valid(round.DeltaTarget)) return false;
         var template = Dirt4CommunityEvents.Template(round);
         if (round.StageLeaderboardIds is null)
         {
@@ -110,6 +117,7 @@ internal sealed class Dirt4DailyStore
             {
                 TemplateIndex = templateIndex, CalendarAligned = !testing,
                 RotationId = selection.Id, Definition = selection.Event,
+                DeltaTarget = Dirt4DeltaTargets.Resolve(selection.Event, _deltaReferences, _leaderboards),
                 EventLeaderboardId = template.LeaderboardId + shift,
                 StageLeaderboardIds = template.StageLeaderboards.Select(lb => lb + shift).ToArray()
             };
@@ -371,14 +379,15 @@ internal sealed class Dirt4DailyStore
     internal string Export()
     {
         lock (_gate) return JsonSerializer.Serialize(
-            new Dirt4PersistentState(_rounds, _leaderboards, _presences), JsonOptions);
+            new Dirt4PersistentState(_rounds, _leaderboards, _presences, _deltaReferences), JsonOptions);
     }
 }
 
 internal sealed record Dirt4PersistentState(
     List<Dirt4DailyRound>? CommunityEvents,
     List<Dirt4StandaloneLeaderboard>? StandaloneLeaderboards,
-    Dictionary<string, Dirt4LeaderboardPresence>? Presences);
+    Dictionary<string, Dirt4LeaderboardPresence>? Presences,
+    IReadOnlyList<Dirt4DeltaCareerReference>? DeltaCareerReferences = null);
 internal sealed record Dirt4StandaloneLeaderboard(long LeaderboardId,
     IReadOnlyDictionary<string, Dirt4StandaloneRun> Runs);
 internal sealed record Dirt4StandaloneRun(long TimeMs, uint VehicleId, uint Nationality, long SubmittedAt);
@@ -415,6 +424,7 @@ internal sealed record Dirt4DailyRound(long EventId, long OpenedAt, long Expires
     public int TemplateIndex { get; init; }
     public string? RotationId { get; init; }
     public Dirt4CommunityEvents.EventDefinition? Definition { get; init; }
+    public Dirt4DeltaTarget? DeltaTarget { get; init; }
     public bool CalendarAligned { get; init; }
     public long? EventLeaderboardId { get; init; }
     public long[]? StageLeaderboardIds { get; init; }

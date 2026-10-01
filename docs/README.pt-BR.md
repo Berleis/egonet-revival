@@ -111,6 +111,15 @@ persistentes de Daily, Weekly e Monthly baseadas no calendário. O Pro Tour
 continua experimental; a Jam Session usa o multiplayer da Steam sem depender
 do servidor EgoNet.
 
+O Delta Daily aparece no segundo slot diário em dias selecionados. Sua rotação
+contém 100 combinações de etapa e veículo da carreira associadas de forma
+inequívoca aos leaderboards de produção. Quando uma rodada abre, o servidor lê o
+leaderboard correspondente, calcula a média dos três melhores tempos compatíveis
+(ou de todos os disponíveis enquanto houver menos de três) e congela esse alvo
+durante a rodada. Oito leaderboards sem correspondência segura ficam de fora. São
+dois tiers de prêmio; Event Details continua mostrando quatro faixas, como no
+cliente original.
+
 Requisitos:
 
 - Windows.
