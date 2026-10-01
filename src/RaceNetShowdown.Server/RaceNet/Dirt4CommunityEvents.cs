@@ -60,7 +60,8 @@ internal static partial class Dirt4CommunityEvents
         foreach (var id in ids.Distinct())
         {
             var round = store.Find(id);
-            if (round is not null) events.Add(Progress(round, store, player, omitScores));
+            if (round is not null && (round.ExpiresAt > now.ToUnixTimeSeconds() || round.Time(player) > 0))
+                events.Add(Progress(round, store, player, omitScores));
         }
         return Pack(now, events);
     }
@@ -128,7 +129,7 @@ internal static partial class Dirt4CommunityEvents
     private static EventDefinition Progress(Dirt4DailyRound round, Dirt4DailyStore store, string player, bool omitScores)
     {
         var e = Definition(round);
-        var time = omitScores ? 0 : round.Time(player);
+        var time = round.Time(player);
         var deltaBarrier = IsDelta(round) ? DeltaBarrier(round) : 0;
         return e with {
             EventMeta = e.EventMeta with { EventId = round.EventId, LeaderboardId = round.LeaderboardId,
@@ -136,8 +137,8 @@ internal static partial class Dirt4CommunityEvents
                 RanLastEvent = store.RanPrevious(round, player),
                 ExpiryTime = checked((int)round.ExpiresAt), PersonalBest = time, EventStatus = time > 0 ? 3 : 0 },
             StageData = e.StageData with { Stages = e.StageData.Stages.Select((s, i) => s with {
-                LeaderboardId = round.StageLeaderboard(i), PlayerBest = omitScores ? 0 : round.StageTime(player, i),
-                PlayerOverall = omitScores ? 0 : round.Overall(player, i),
+                LeaderboardId = round.StageLeaderboard(i), PlayerBest = round.StageTime(player, i),
+                PlayerOverall = round.Overall(player, i),
                 PlayerRank = omitScores ? 0 : round.Rank(player, i),
                 Percentile = omitScores ? 0 : (int)round.Percent(player, i),
                 DeltaBest = deltaBarrier > 0 ? deltaBarrier : s.DeltaBest,
