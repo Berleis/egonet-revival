@@ -422,13 +422,39 @@ public sealed class Dirt4RotationTests
     }
 
     [Fact]
-    public void ProTourStillUsesTheOriginalReferenceConfiguration()
+    public void ProTourRotatesCapturedTwoStageRoutesAndClassesDaily()
     {
+        var current = Dirt4CommunityEvents.ProTourEvent(Now);
+        var sameWindow = Dirt4CommunityEvents.ProTourEvent(
+            DateTimeOffset.FromUnixTimeSeconds(current.EventMeta.ExpiryTime).AddSeconds(-1));
+        var next = Dirt4CommunityEvents.ProTourEvent(
+            DateTimeOffset.FromUnixTimeSeconds(current.EventMeta.ExpiryTime));
+
+        Assert.Equal(3, current.EventMeta.EventType);
+        Assert.Equal(2U, current.StageData.TotalStages);
+        Assert.Equal(2U, current.StageData.AvailableStages);
+        Assert.Equal(2, current.StageData.Stages.Length);
+        Assert.All(current.StageData.Stages, stage => Assert.True(stage.TrackGenValue > 0));
+        Assert.Empty(current.Restrictions.VehicleIds);
+        Assert.Single(current.Restrictions.VehicleClassIds);
+        Assert.Equal(current.StageData.Stages.Select(stage => stage.TrackGenValue),
+            sameWindow.StageData.Stages.Select(stage => stage.TrackGenValue));
+        Assert.Equal(current.Restrictions.VehicleClassIds.Single().ID,
+            sameWindow.Restrictions.VehicleClassIds.Single().ID);
+        Assert.False(current.StageData.Stages.Select(stage => stage.TrackGenValue)
+            .SequenceEqual(next.StageData.Stages.Select(stage => stage.TrackGenValue)));
+
+        var combinations = Enumerable.Range(0, 144).Select(day =>
+        {
+            var e = Dirt4CommunityEvents.ProTourEvent(Now.AddDays(day));
+            return string.Join(",", e.StageData.Stages.Select(stage => stage.TrackGenValue)) +
+                "/" + e.Restrictions.VehicleClassIds.Single().ID;
+        }).ToArray();
+        Assert.Equal(144, combinations.Distinct(StringComparer.Ordinal).Count());
+
         var text = Format(Dirt4CommunityEvents.BuildProTourConfig(Now));
         Assert.Contains("EventType: si32 value=3", text);
-        Assert.Contains("TrackGenValue: si64 value=96702706731492361", text);
-        Assert.Contains("ID: si32 value=74", text);
-        Assert.Contains("TotalStages: ui32 value=1", text);
+        Assert.Contains("TotalStages: ui32 value=2", text);
     }
 
     [Theory]

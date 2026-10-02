@@ -60,7 +60,7 @@ Still being improved:
 - Admin/dashboard tooling.
 - Cleaner shared profiles for future games.
 - GRID 2 Rival progression validation with more real multiplayer sessions.
-- DiRT 4 Pro Tour scoring and promotion validation with real multiplayer sessions.
+- DiRT 4 Pro Tour higher-tier progression validation with more real multiplayer sessions.
 - More per-game package polish as new Codemasters restorations are added.
 
 ## Install the DiRT Showdown Mod
@@ -108,8 +108,9 @@ To undo the executable patch, use Steam's `Verify integrity of game files` optio
 ## Install the DiRT 4 Mod
 
 DiRT 4 is in public testing. Community Events are functional with persistent
-Daily, Weekly and Monthly calendar rotations. Pro Tour remains experimental;
-Jam Session uses Steam multiplayer independently of the EgoNet server.
+Daily, Weekly and Monthly calendar rotations. Pro Tour matchmaking and initial
+persistent progression work but remain experimental; Jam Session uses Steam
+multiplayer independently of the EgoNet server.
 
 Delta Daily is included in the second Daily slot on selected days. Its rotation
 contains 100 career stage/vehicle combinations matched unambiguously to production

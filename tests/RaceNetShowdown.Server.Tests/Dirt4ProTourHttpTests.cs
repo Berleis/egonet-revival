@@ -62,6 +62,9 @@ public sealed class Dirt4ProTourHttpTests
                         players.Add(login.Session);
                     }
                     var host = players[0];
+                    var initialProgress = (await Send(client, host, "LiveLadder.DownloadPrincipalData",
+                        EgoNetBinary.Dictionary())).Bytes;
+                    Assert.Contains($"Points: si32 value={(run == 0 ? 0 : 3)}", Format(initialProgress));
                     AssertEmpty((await Send(client, players[1], "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
                     if (run != 0) continue;
 
@@ -80,9 +83,17 @@ public sealed class Dirt4ProTourHttpTests
                     AssertOne((await Send(client, players[1], "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
                     await Send(client, host, "LiveLadder.SessionStart", Connection().BodyBytes);
                     AssertEmpty((await Send(client, players[1], "LiveLadder.GetSessionList", Search().BodyBytes)).Bytes);
-                    var scores = Connection().BodyBytes;
+                    var scores = Dirt4ProTourProgressTests.Scores([
+                        ("ProTourHost", 101UL, 100000UL),
+                        ("ProTourGuest1", 202UL, 200000UL),
+                        ("ProTourGuest2", 303UL, 300000UL),
+                        ("ProTourGuest3", 404UL, 400000UL)]).BodyBytes;
                     await Send(client, host, "LiveLadder.SubmitSessionScores", scores);
-                    var capture = Assert.Single(Directory.GetFiles(Path.Combine(root, "data", "protour-scores"), "*.bin"));
+                    var updatedProgress = (await Send(client, host, "LiveLadder.DownloadPrincipalData",
+                        EgoNetBinary.Dictionary())).Bytes;
+                    Assert.Contains("Points: si32 value=3", Format(updatedProgress));
+                    var capture = Assert.Single(Directory.GetFiles(Path.Combine(root, "data", "protour-scores"),
+                        "*SubmitSessionScores*.bin"));
                     Assert.Equal(scores, await File.ReadAllBytesAsync(capture));
                     await Send(client, host, "LiveLadder.SubmitSession", Advertisement().BodyBytes);
                     await Send(client, host, "LiveLadder.QuitSession", Connection().BodyBytes);

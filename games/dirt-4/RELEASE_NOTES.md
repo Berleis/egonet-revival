@@ -5,7 +5,12 @@
 - Fixed Pro Tour session-list entries using unsigned integer tags. The game's per-room reader requires signed `si32` for all five numeric fields, while the top-level search fields remain `ui32`.
 - Fixed Pro Tour returning an empty session list even after hosts advertised rooms. Waiting rooms are now shared between requests, separated by handling mode, and serialized using the client reader's fields and 20-entry limit.
 - Added host-owned removal on start/quit, duplicate protection, heartbeat expiry and matchmaking diagnostics without session tokens or raw connection blobs. Waiting rooms are intentionally not restored after a server restart.
-- Added matchmaking tests, including four independent HTTP clients using SQLite. Actual Steam lobby joining and simultaneous searches still require in-game testing. Scoring and promotion remain placeholders; Pro Tour is still experimental.
+- Validated matchmaking, Steam lobby joining and score submission with four real players. The captured `SessionScores` schema is now parsed and ranked by `ScoreMS`.
+- Added persistent Pro Tour points, event counts and duplicate-session protection. Recovered progression promotes Tier 7 to Tier 6 at `7`, Tier 6 to Tier 5 at `12`, demotes Tier 6 at `-16`, and carries points beyond promotion thresholds.
+- Added the complete 4-8 player scoring matrix. Awards use the number recorded at `SessionStart`, so classified survivors retain the original table if a later disconnect removes a submitted score.
+- Expanded bounded Pro Tour captures to label `SessionStart`, `SubmitSessionScores`, `QuitSession`, and `PenalisePlayer`; retire representation and disconnect penalties still require real validation.
+- Restored a daily Pro Tour event rotation at 10:00 UTC. Ranked events now use two captured Your Stage routes, rotate all 12 rally classes across 12 route pairs over 144 days, and vary valid time-of-day and weather presets without modifying player progression.
+- Added unit and four-client HTTP/SQLite restart tests covering host ownership, score parsing, rank order, duplicate rejection, promotion and persistence.
 - Fixed friend-filter requests borrowing another player's name and Steam ID. Career and Community leaderboards now use the player's matched identity across filter changes and restarts; legacy associations are rebuilt instead of trusting the first friend in the list.
 - Added a deterministic expanded Community Event rotation using captured rally stages and circuit IDs verified in the local DiRT 4 catalogue.
 - Expanded the active rotation to 84 Daily Live, 72 Owners Club, 36 choices per Weekly slot and 36 Monthly choices, across 12 rally classes and three rallycross classes. These reuse existing routes with different vehicles and conditions, not 264 different roads.
@@ -29,4 +34,4 @@
 Known limitations:
 
 - Community Event templates currently repeat the captured original events at each calendar rotation.
-- Pro Tour matchmaking can reach the host flow, but scoring, promotion and its achievements are not yet production-supported.
+- Pro Tour matchmaking and progression through Tier 5 are implemented. Retire/disconnect behavior and progression above Tier 5 still need real multiplayer validation.
