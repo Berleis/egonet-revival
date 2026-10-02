@@ -186,17 +186,20 @@ app.MapMethods("/{**path}", RaceNetOptions.AllowedMethods, async context =>
     }
 
     if (proTourScoreCapture is not null && requestGameId == "dirt-4" &&
-        egoNetFunction == "LiveLadder.SubmitSessionScores" && response.StatusCode == 200)
+        egoNetFunction is "LiveLadder.SessionStart" or "LiveLadder.SubmitSessionScores" or
+            "LiveLadder.QuitSession" or "LiveLadder.PenalisePlayer" &&
+        response.StatusCode == 200 && body.BodyBytes.Length > 0)
     {
         try
         {
-            var fileName = await proTourScoreCapture.WriteAsync(body.BodyBytes);
+            var kind = egoNetFunction["LiveLadder.".Length..];
+            var fileName = await proTourScoreCapture.WriteAsync(kind, body.BodyBytes);
             if (fileName is not null)
-                app.Logger.LogInformation("DiRT 4 Pro Tour score capture saved: {FileName}", fileName);
+                app.Logger.LogInformation("DiRT 4 Pro Tour capture saved: {FileName}", fileName);
         }
         catch (Exception ex)
         {
-            app.Logger.LogWarning(ex, "Failed to capture DiRT 4 Pro Tour scores");
+            app.Logger.LogWarning(ex, "Failed to capture DiRT 4 Pro Tour call");
         }
     }
 

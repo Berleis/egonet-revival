@@ -21,32 +21,8 @@ internal static partial class Dirt4CommunityEvents
     }
     internal static byte[] BuildReference(DateTimeOffset now) => Pack(now, Events.Select(e => Schedule(e, now)));
 
-    internal static byte[] BuildProTourConfig(DateTimeOffset now)
-    {
-        var source = Events[2];
-        var (start, end) = Dirt4EventCalendar.Window(now, 1);
-        var stage = source.StageData.Stages[0];
-        var configured = source with
-        {
-            EventMeta = source.EventMeta with
-            {
-                LeaderboardId = stage.LeaderboardId,
-                StartTime = checked((int)start),
-                AdvertStartTime = checked((int)start),
-                ExpiryTime = checked((int)end),
-                EventType = 3,
-                PersonalBest = 0,
-                EventStatus = 0
-            },
-            StageData = source.StageData with { TotalStages = 1, AvailableStages = 1, Stages = [stage] },
-            Restrictions = source.Restrictions with
-            {
-                VehicleIds = [],
-                VehicleClassIds = [new IdEntry(74)]
-            }
-        };
-        return EgoNetBinary.Dictionary(new EgoNetField("EventConfig", BuildEvent(configured)));
-    }
+    internal static byte[] BuildProTourConfig(DateTimeOffset now) =>
+        EgoNetBinary.Dictionary(new EgoNetField("EventConfig", BuildEvent(ProTourEvent(now))));
 
     internal static byte[] Build(DateTimeOffset now, Dirt4DailyStore store, string player,
         IReadOnlyList<long> ids, bool omitScores = false)

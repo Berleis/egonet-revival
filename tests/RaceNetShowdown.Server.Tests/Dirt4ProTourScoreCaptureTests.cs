@@ -39,4 +39,22 @@ public sealed class Dirt4ProTourScoreCaptureTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => capture.WriteAsync(new byte[size]));
         Assert.False(Directory.Exists(directory));
     }
+
+    [Fact]
+    public async Task LabelsCapturedProTourCallKinds()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "egonet-protour-scores-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var capture = new Dirt4ProTourScoreCapture(directory);
+            var fileName = await capture.WriteAsync("QuitSession", [1, 2, 3]);
+
+            Assert.Contains("-QuitSession-", fileName);
+            await Assert.ThrowsAsync<ArgumentException>(() => capture.WriteAsync("../invalid", [1]));
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
 }

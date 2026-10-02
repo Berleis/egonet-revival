@@ -77,11 +77,11 @@ internal static class Dirt4EgoNetPayloads
             "AsyncChallenge.StartStage" => RecordStart(body, daily, player, now, headers),
             "DataMining.DataEvent" or "DataMining.StatsEvent" => EmptyWithRaceNet(headers),
             "GhostCar.Upload" => RecordGhostUpload(body, daily, player, session?.DisplayName, now, headers),
-            "LiveLadder.DownloadPrincipalData" => Html(BuildLiveLadder(now), headers),
+            "LiveLadder.DownloadPrincipalData" => Html(BuildLiveLadder(now, daily.ProTourProgress(session?.DisplayName ?? player)), headers),
             "LiveLadder.GetSessionList" => Html(proTour.GetSessionList(body, lobbyOwner, now), headers),
             "LiveLadder.SessionConfigDownload" => Html(Dirt4ProTour.SessionConfig(now), headers),
             "LiveLadder.SubmitSession" => Html(proTour.SubmitSession(body, lobbyOwner, now), headers),
-            "LiveLadder.SubmitSessionScores" => Html(proTour.SubmitSessionScores(body, lobbyOwner, now), headers),
+            "LiveLadder.SubmitSessionScores" => Html(proTour.SubmitSessionScores(body, lobbyOwner, now, daily), headers),
             "LiveLadder.SessionStart" => Html(proTour.SessionStart(body, lobbyOwner, now), headers),
             "LiveLadder.QuitSession" => Html(proTour.QuitSession(body, lobbyOwner, now), headers),
             "LiveLadder.PenalisePlayer" => Html(Dirt4ProTour.PenalisePlayer(body), headers),
@@ -137,19 +137,20 @@ internal static class Dirt4EgoNetPayloads
             EgoNetBinary.Ui64("Flags", 0));
     }
 
-    internal static byte[] BuildLiveLadder(DateTimeOffset now)
+    internal static byte[] BuildLiveLadder(DateTimeOffset now, Dirt4ProTourProgress? progress = null)
     {
-        // Match the captured baseline. Telemetry is not proof of a completed Pro Tour session.
-        var reset = DateTimeOffset.FromUnixTimeSeconds(Dirt4EventCalendar.Window(now, 1).End);
+        progress ??= new(3, Dirt4ProTour.BaselineTier, 0, 0, 0, 0, "EgoNetPlayer");
+        var reset = DateTimeOffset.FromUnixTimeSeconds(Dirt4EventCalendar.Window(now, 3).End);
         return EgoNetBinary.Dictionary(
-            EgoNetBinary.Si32("Division", 3),
-            EgoNetBinary.Si32("Tier", Dirt4ProTour.BaselineTier),
-            EgoNetBinary.Si32("Points", 0),
-            EgoNetBinary.Si32("PrevPoints", 0),
-            EgoNetBinary.Si32("EventsDone", 0),
-            EgoNetBinary.Si32("PromotionPoints", 7),
-            EgoNetBinary.Si32("DemotionPoints", 0),
-            EgoNetBinary.Ui32("CurrentVehClass", 74),
+            EgoNetBinary.Si32("Division", progress.Division),
+            EgoNetBinary.Si32("Tier", progress.Tier),
+            EgoNetBinary.Si32("Points", progress.Points),
+            EgoNetBinary.Si32("PrevPoints", progress.PreviousPoints),
+            EgoNetBinary.Si32("EventsDone", progress.EventsDone),
+            EgoNetBinary.Si32("PromotionPoints", progress.PromotionPoints),
+            EgoNetBinary.Si32("DemotionPoints", progress.DemotionPoints),
+            EgoNetBinary.Ui32("CurrentVehClass",
+                checked((uint)Dirt4CommunityEvents.ProTourVehicleClass(now))),
             EgoNetBinary.Tutc("VehClassReset", reset));
     }
 

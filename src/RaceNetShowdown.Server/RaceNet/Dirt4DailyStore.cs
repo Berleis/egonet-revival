@@ -13,6 +13,8 @@ internal sealed class Dirt4DailyStore
     private List<Dirt4DailyRound> _rounds;
     private List<Dirt4StandaloneLeaderboard> _leaderboards;
     private Dictionary<string, Dirt4LeaderboardPresence> _presences;
+    private Dictionary<string, Dirt4ProTourProgress> _proTourPlayers;
+    private List<Dirt4ProTourProcessedSession> _proTourSessions;
     private readonly IReadOnlyList<Dirt4DeltaCareerReference> _deltaReferences;
 
     internal Dirt4DailyStore(string? stateJson = null, int dailyTestSeconds = 0)
@@ -20,7 +22,7 @@ internal sealed class Dirt4DailyStore
         if (dailyTestSeconds is < 0 or > 86400)
             throw new ArgumentOutOfRangeException(nameof(dailyTestSeconds));
         _dailyTestSeconds = dailyTestSeconds;
-        (_rounds, _leaderboards, _presences) = Load(stateJson);
+        (_rounds, _leaderboards, _presences, _proTourPlayers, _proTourSessions) = Load(stateJson);
         _deltaReferences = Dirt4CareerDeltaCatalog.References
             .Concat(Dirt4DeltaTargets.ReadReferences(stateJson))
             .GroupBy(r => (r.CareerStageId, r.VehicleId, r.WeatherId, r.TimeOfDayId,
@@ -33,24 +35,32 @@ internal sealed class Dirt4DailyStore
                 string.IsNullOrWhiteSpace(run.Key) || run.Value is null || run.Value.TimeMs is <= 0 or > uint.MaxValue ||
                 run.Value.VehicleId <= 0 || run.Value.SubmittedAt <= 0)))
             throw new InvalidDataException("Invalid DiRT 4 standalone leaderboard state.");
+        if (_proTourPlayers.Any(pair => pair.Key != ProTourKey(pair.Value.DisplayName) || !Valid(pair.Value)) ||
+            _proTourSessions.Any(value => value is null || value.SessionData.Length is < 2 or > 2048 ||
+                value.SubmittedAt <= 0 || value.Players is < 4 or > 8) ||
+            _proTourSessions.Select(value => value.SessionData).Distinct(StringComparer.Ordinal).Count() != _proTourSessions.Count)
+            throw new InvalidDataException("Invalid DiRT 4 Pro Tour state.");
     }
 
     private static (List<Dirt4DailyRound> Rounds, List<Dirt4StandaloneLeaderboard> Leaderboards,
-        Dictionary<string, Dirt4LeaderboardPresence> Presences) Load(string? stateJson)
+        Dictionary<string, Dirt4LeaderboardPresence> Presences,
+        Dictionary<string, Dirt4ProTourProgress> ProTourPlayers,
+        List<Dirt4ProTourProcessedSession> ProTourSessions) Load(string? stateJson)
     {
-        if (string.IsNullOrWhiteSpace(stateJson)) return ([], [], []);
+        if (string.IsNullOrWhiteSpace(stateJson)) return ([], [], [], [], []);
 
         using var json = JsonDocument.Parse(stateJson);
         if (json.RootElement.ValueKind == JsonValueKind.Array)
         {
             var legacy = JsonSerializer.Deserialize<List<Dirt4DailyRound>>(stateJson)
                 ?? throw new InvalidDataException("Empty DiRT 4 community state.");
-            return (legacy, [], []);
+            return (legacy, [], [], [], []);
         }
 
         var state = JsonSerializer.Deserialize<Dirt4PersistentState>(stateJson)
             ?? throw new InvalidDataException("Empty DiRT 4 state.");
-        return (state.CommunityEvents ?? [], state.StandaloneLeaderboards ?? [], state.Presences ?? []);
+        return (state.CommunityEvents ?? [], state.StandaloneLeaderboards ?? [], state.Presences ?? [],
+            state.ProTourPlayers ?? [], state.ProTourSessions ?? []);
     }
 
     private static bool Valid(Dirt4DailyRound round)
@@ -368,6 +378,92 @@ internal sealed class Dirt4DailyStore
         return vehicleId > 0 && (allowed.Length == 0 || allowed.Contains(vehicleId));
     }
 
+    internal Dirt4ProTourProgress ProTourProgress(string displayName)
+    {
+        lock (_gate)
+        {
+            return _proTourPlayers.TryGetValue(ProTourKey(displayName), out var progress)
+                ? progress : NewProTourProgress(displayName, 0);
+        }
+    }
+
+    internal bool RecordProTourScores(byte[] sessionData, int startedPlayers,
+        IReadOnlyList<Dirt4ProTourScore> scores, DateTimeOffset now)
+    {
+        lock (_gate)
+        {
+            if (sessionData.Length is < 1 or > 1024 || startedPlayers is < 4 or > 8 ||
+                scores.Count is < 1 or > 8 || scores.Count > startedPlayers ||
+                scores.Any(score => score.ScoreMs is 0 or > uint.MaxValue ||
+                    score.Presence.NetworkId == 0 || string.IsNullOrWhiteSpace(score.Presence.Name) ||
+                    score.Presence.Name.Trim().Length > 64) ||
+                scores.Select(score => score.Presence.NetworkId).Distinct().Count() != scores.Count ||
+                scores.Select(score => ProTourKey(score.Presence.Name)).Distinct(StringComparer.Ordinal).Count() != scores.Count)
+                return false;
+
+            var sessionKey = Convert.ToHexString(sessionData);
+            if (_proTourSessions.Any(value => value.SessionData == sessionKey)) return false;
+            foreach (var score in scores)
+            {
+                var key = ProTourKey(score.Presence.Name);
+                if (_proTourPlayers.TryGetValue(key, out var existing) && existing.NetworkId != 0 &&
+                    existing.NetworkId != score.Presence.NetworkId) return false;
+            }
+
+            var ranked = scores.OrderBy(score => score.ScoreMs).ThenBy(score => score.Presence.NetworkId).ToArray();
+            for (var index = 0; index < ranked.Length; index++)
+            {
+                var score = ranked[index];
+                var key = ProTourKey(score.Presence.Name);
+                var progress = _proTourPlayers.TryGetValue(key, out var existing)
+                    ? existing : NewProTourProgress(score.Presence.Name, score.Presence.NetworkId);
+                var previous = progress.Points;
+                // The original service based the table on racers who started, even when
+                // a later disconnect meant fewer classified scores were submitted.
+                var points = checked(previous + startedPlayers + 1 - 2 * (index + 1));
+                var tier = progress.Tier;
+                if (tier == 7 && points >= 7)
+                {
+                    tier = 6;
+                    points -= 7;
+                }
+                else if (tier == 6 && points >= 12)
+                {
+                    tier = 5;
+                    points -= 12;
+                }
+                else if (tier == 6 && points <= -16)
+                {
+                    tier = 7;
+                    points = 0;
+                }
+                _proTourPlayers[key] = progress with
+                {
+                    Tier = tier,
+                    Points = points,
+                    PreviousPoints = previous,
+                    EventsDone = checked(progress.EventsDone + 1),
+                    NetworkId = score.Presence.NetworkId,
+                    DisplayName = score.Presence.Name.Trim()
+                };
+            }
+
+            _proTourSessions.Add(new(sessionKey, now.ToUnixTimeSeconds(), startedPlayers));
+            if (_proTourSessions.Count > 256)
+                _proTourSessions.RemoveRange(0, _proTourSessions.Count - 256);
+            return true;
+        }
+    }
+
+    private static Dirt4ProTourProgress NewProTourProgress(string displayName, ulong networkId) =>
+        new(3, 7, 0, 0, 0, networkId, displayName.Trim());
+
+    private static string ProTourKey(string displayName) => displayName.Trim().ToUpperInvariant();
+
+    private static bool Valid(Dirt4ProTourProgress progress) =>
+        progress.Division == 3 && progress.Tier is 5 or 6 or 7 && progress.EventsDone >= 0 &&
+        progress.Points is >= -1000 and <= 1000 && progress.PreviousPoints is >= -1000 and <= 1000 &&
+        !string.IsNullOrWhiteSpace(progress.DisplayName) && progress.DisplayName.Trim().Length <= 64;
     private void Replace(Dirt4DailyRound round) =>
         Commit(_rounds.Select(r => r.EventId == round.EventId ? round : r).ToList());
 
@@ -379,7 +475,8 @@ internal sealed class Dirt4DailyStore
     internal string Export()
     {
         lock (_gate) return JsonSerializer.Serialize(
-            new Dirt4PersistentState(_rounds, _leaderboards, _presences, _deltaReferences), JsonOptions);
+            new Dirt4PersistentState(_rounds, _leaderboards, _presences, _deltaReferences,
+                _proTourPlayers, _proTourSessions), JsonOptions);
     }
 }
 
@@ -387,7 +484,19 @@ internal sealed record Dirt4PersistentState(
     List<Dirt4DailyRound>? CommunityEvents,
     List<Dirt4StandaloneLeaderboard>? StandaloneLeaderboards,
     Dictionary<string, Dirt4LeaderboardPresence>? Presences,
-    IReadOnlyList<Dirt4DeltaCareerReference>? DeltaCareerReferences = null);
+    IReadOnlyList<Dirt4DeltaCareerReference>? DeltaCareerReferences = null,
+    Dictionary<string, Dirt4ProTourProgress>? ProTourPlayers = null,
+    List<Dirt4ProTourProcessedSession>? ProTourSessions = null);
+internal sealed record Dirt4ProTourProgress(int Division, int Tier, int Points, int PreviousPoints, int EventsDone,
+    ulong NetworkId, string DisplayName)
+{
+    // Tier 5's next thresholds were not recoverable. Retaining the last known pair
+    // keeps the native payload structurally valid while progression above Tier 5
+    // remains disabled until a real capture confirms it.
+    [JsonIgnore] public int PromotionPoints => Tier == 7 ? 7 : 12;
+    [JsonIgnore] public int DemotionPoints => Tier == 7 ? 0 : -16;
+}
+internal sealed record Dirt4ProTourProcessedSession(string SessionData, long SubmittedAt, int Players);
 internal sealed record Dirt4StandaloneLeaderboard(long LeaderboardId,
     IReadOnlyDictionary<string, Dirt4StandaloneRun> Runs);
 internal sealed record Dirt4StandaloneRun(long TimeMs, uint VehicleId, uint Nationality, long SubmittedAt);

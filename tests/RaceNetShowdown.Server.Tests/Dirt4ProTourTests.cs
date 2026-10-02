@@ -86,7 +86,7 @@ public sealed class Dirt4ProTourTests
     }
 
     [Theory]
-    [InlineData("quit")] [InlineData("start")] [InlineData("scores")]
+    [InlineData("quit")] [InlineData("start")]
     public void OnlyTheOwnerCanRemoveTheMatchingAdvertisement(string action)
     {
         var tour = new Dirt4ProTour();
@@ -219,10 +219,10 @@ public sealed class Dirt4ProTourTests
             EgoNetBinary.Bool(lowercase ? "isAltHandling" : "IsAltHandling", gamer)));
     }
 
-    internal static CapturedBody Connection(byte[]? data = null) => Body(EgoNetBinary.Dictionary(
+    internal static CapturedBody Connection(byte[]? data = null, uint players = 4) => Body(EgoNetBinary.Dictionary(
         EgoNetBinary.Blob("SessionData", data ?? LobbyData),
         EgoNetBinary.Ui32("SessionDataLen", checked((uint)(data ?? LobbyData).Length)),
-        EgoNetBinary.Ui32("SessionPlayers", 4)));
+        EgoNetBinary.Ui32("SessionPlayers", players)));
 
     private static void Close(Dirt4ProTour tour, string action, string owner, CapturedBody body)
     {
@@ -230,7 +230,7 @@ public sealed class Dirt4ProTourTests
         {
             "quit" => tour.QuitSession(body, owner, Now),
             "start" => tour.SessionStart(body, owner, Now),
-            _ => tour.SubmitSessionScores(body, owner, Now)
+            _ => tour.SubmitSessionScores(body, owner, Now, new Dirt4DailyStore())
         };
         Assert.DoesNotContain("parse-stopped", Format(response));
     }

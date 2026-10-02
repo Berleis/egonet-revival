@@ -224,6 +224,8 @@ public sealed record EgoNetSubmittedChallengeResult(
     long Result,
     int Attempts);
 
+internal sealed record Dirt4ProTourScore(Dirt4LeaderboardPresence Presence, ulong ScoreMs);
+
 internal static class EgoNetRequestParser
 {
     public static IReadOnlyList<RaceNetPrincipal> ReadPrincipals(CapturedBody body)
@@ -252,6 +254,55 @@ internal static class EgoNetRequestParser
         return [];
     }
 
+    public static IReadOnlyList<Dirt4ProTourScore> ReadDirt4ProTourScores(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0) return [];
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic") return [];
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "SessionScores" && tag == "vvtr") return ReadDirt4ProTourScoreVector(reader);
+                SkipValue(reader, tag);
+            }
+        }
+        catch { }
+        return [];
+    }
+
+    private static IReadOnlyList<Dirt4ProTourScore> ReadDirt4ProTourScoreVector(BinaryReader reader)
+    {
+        var count = reader.ReadInt32();
+        if (count is < 1 or > 8) throw new InvalidDataException("Invalid Pro Tour score count.");
+        var result = new List<Dirt4ProTourScore>(count);
+        for (var i = 0; i < count; i++)
+        {
+            if (ReadTag(reader) != "vdic") throw new InvalidDataException("Invalid Pro Tour score.");
+            Dirt4LeaderboardPresence? presence = null;
+            ulong? score = null;
+            var fields = reader.ReadInt32();
+            for (var field = 0; field < fields; field++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "Presence" && tag == "vdic")
+                {
+                    reader.BaseStream.Position -= 4;
+                    presence = ReadLeaderboardPresence(reader);
+                }
+                else if (name == "ScoreMS" && tag == "ui64") score = reader.ReadUInt64();
+                else SkipValue(reader, tag);
+            }
+            if (presence is null || score is null) throw new InvalidDataException("Incomplete Pro Tour score.");
+            result.Add(new(presence, score.Value));
+        }
+        return result;
+    }
     private static IReadOnlyList<Dirt4LeaderboardPresence> ReadLeaderboardPresenceVector(BinaryReader reader)
     {
         var result = new List<Dirt4LeaderboardPresence>();

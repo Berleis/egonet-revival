@@ -10,6 +10,7 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
     internal const int MaxSearchResults = 20;
     private readonly object _gate = new();
     private readonly Dictionary<string, Lobby> _lobbies = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, StartedSession> _startedSessions = new(StringComparer.Ordinal);
 
     internal byte[] GetSessionList(CapturedBody body, string? owner, DateTimeOffset now)
     {
@@ -80,10 +81,17 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
             EgoNetBinary.Bool("IsAltHandling", AltHandling(body)));
     }
 
-    internal byte[] SubmitSessionScores(CapturedBody body, string? owner, DateTimeOffset now)
+    internal byte[] SubmitSessionScores(CapturedBody body, string? owner, DateTimeOffset now,
+        Dirt4DailyStore daily)
     {
         var data = SessionData(body);
-        Remove(owner, data, now, "scores");
+        var scores = EgoNetRequestParser.ReadDirt4ProTourScores(body);
+        var startedPlayers = EgoNetRequestParser.ReadTopLevelBoolean(body, "IsHost") == true
+            ? Complete(owner, data, now) : 0;
+        var accepted = startedPlayers is >= 4 and <= 8;
+        var recorded = accepted && daily.RecordProTourScores(data, startedPlayers, scores, now);
+        logger?.LogInformation("DiRT 4 Pro Tour scores: accepted {Accepted}, recorded {Recorded}, started {StartedPlayers}, submitted {SubmittedPlayers}",
+            accepted, recorded, startedPlayers, scores.Count);
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Blob("SessionData", data),
             EgoNetBinary.Ui32("SessionDataLen", checked((uint)data.Length)),
@@ -94,7 +102,7 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
     internal byte[] SessionStart(CapturedBody body, string? owner, DateTimeOffset now)
     {
         var data = SessionData(body);
-        Remove(owner, data, now, "start");
+        Start(owner, data, checked((int)Unsigned(body, "SessionPlayers")), now);
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Blob("SessionData", data),
             EgoNetBinary.Ui32("SessionDataLen", checked((uint)data.Length)),
@@ -120,9 +128,42 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
             Expire(now);
             if (owner is not null && _lobbies.TryGetValue(owner, out var lobby))
                 _lobbies[owner] = lobby with { LastSeenAt = now };
+            if (owner is not null)
+                foreach (var key in _startedSessions.Where(pair => pair.Value.Owner == owner)
+                             .Select(pair => pair.Key).ToArray())
+                    _startedSessions[key] = _startedSessions[key] with { LastSeenAt = now };
         }
     }
 
+    private void Start(string? owner, byte[] data, int players, DateTimeOffset now)
+    {
+        var started = false;
+        lock (_gate)
+        {
+            Expire(now);
+            if (owner is not null && _lobbies.TryGetValue(owner, out var lobby) &&
+                lobby.Data.AsSpan().SequenceEqual(data) && players is >= 4 and <= 8)
+            {
+                _lobbies.Remove(owner);
+                _startedSessions[Convert.ToHexString(data)] = new(owner, players, now, now);
+                started = true;
+            }
+        }
+        logger?.LogInformation("DiRT 4 Pro Tour start: accepted {Accepted}, players {Players}", started, players);
+    }
+
+    private int Complete(string? owner, byte[] data, DateTimeOffset now)
+    {
+        lock (_gate)
+        {
+            Expire(now);
+            var key = Convert.ToHexString(data);
+            if (owner is null || !_startedSessions.TryGetValue(key, out var started) || started.Owner != owner)
+                return 0;
+            _startedSessions.Remove(key);
+            return started.Players;
+        }
+    }
     private void Remove(string? owner, byte[] data, DateTimeOffset now, string reason)
     {
         var removed = false;
@@ -132,6 +173,9 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
             // A guest quitting or a delayed request for an old room must not remove the host's room.
             if (owner is not null && _lobbies.TryGetValue(owner, out var lobby) &&
                 lobby.Data.AsSpan().SequenceEqual(data)) removed = _lobbies.Remove(owner);
+            var key = Convert.ToHexString(data);
+            if (owner is not null && _startedSessions.TryGetValue(key, out var started) && started.Owner == owner)
+                removed |= _startedSessions.Remove(key);
         }
         logger?.LogInformation("DiRT 4 Pro Tour {Reason}: removed own advertisement {Removed}", reason, removed);
     }
@@ -140,6 +184,8 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
     {
         foreach (var owner in _lobbies.Where(pair => now - pair.Value.LastSeenAt >= SessionTimeout)
                      .Select(pair => pair.Key).ToArray()) _lobbies.Remove(owner);
+        foreach (var key in _startedSessions.Where(pair => now - pair.Value.LastSeenAt >= SessionTimeout)
+                     .Select(pair => pair.Key).ToArray()) _startedSessions.Remove(key);
     }
 
     private static bool HasSearchFields(CapturedBody body) =>
@@ -150,6 +196,7 @@ internal sealed class Dirt4ProTour(ILogger? logger = null)
 
     private sealed record Lobby(byte[] Data, uint Location, uint Reputation, bool AltHandling,
         DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt);
+    private sealed record StartedSession(string Owner, int Players, DateTimeOffset StartedAt, DateTimeOffset LastSeenAt);
 
     private static byte[] SessionData(CapturedBody body) =>
         EgoNetRequestParser.ReadTopLevelBlob(body, "SessionData") ?? [];

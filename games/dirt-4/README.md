@@ -40,7 +40,7 @@ The GUI installer project lives in `installer`. Operational developer scripts li
 - Event attempts, stage times, leaderboards, results and rewards persist across server restarts.
 - Daily completion, expiration, rewards and the next rotation were validated in-game.
 - Weekly and Monthly events use the same persisted multi-stage flow.
-- Pro Tour is experimental. Server-side lobby discovery is implemented, but in-game joining still needs multiplayer validation. Scoring and promotion remain placeholders, not persistent progression.
+- Pro Tour remains experimental, but real four-player matchmaking and score submission have been validated in-game. Completed host sessions award persistent rank points, promote Tier 7 to Tier 6 at 7, promote Tier 6 to Tier 5 at 12, and demote Tier 6 at -16. Progression above Tier 5 still needs real captures.
 - Jam Session uses Steam multiplayer independently of the EgoNet server.
 
 DiRT 4 support is published as public testing. The active development catalogue contains 84 Daily Live choices, 72 Owners Club choices, 100 Delta Daily choices, 36 choices per Weekly slot and 36 Monthly choices. These are 364 route/vehicle/weather configurations. Original full events remain reference-only.
@@ -61,7 +61,13 @@ Community Event state uses the same configured database as the other server prof
 
 The server keeps waiting-room advertisements in memory, separated by Gamer/Simulation handling. Searches prefer matching location and nearby reputation without blocking players in other regions. Advertisements disappear when the host starts or quits, starts another search, or stops sending the existing login heartbeat for five minutes. A server restart clears waiting rooms, not saved Community Events or leaderboards.
 
-After a server update, cancel the old searches. For the first multiplayer test, let one player start searching, wait about ten seconds, then have the others search using the same handling mode. This checks discovery of an already advertised room before testing simultaneous searches. Steam still handles joining and live lobby membership; the server does not synthesize players or award Pro Tour progress from a search.
+Pro Tour uses a deterministic daily rotation that resets at 10:00 UTC. Each ranked event contains two captured Your Stage routes and one rally vehicle class. Twelve two-stage route pairs are crossed with all 12 rally classes over a 144-day cycle, while time of day and clear, cloudy or rain conditions also vary. Every server instance returns the same configuration for the entire daily window. Player points and tiers are never changed by rotation selection.
+
+After a server update, cancel the old searches. For the first multiplayer test, let one player start searching, wait about ten seconds, then have the others search using the same handling mode. This checks discovery of an already advertised room before testing simultaneous searches. Steam still handles joining and live lobby membership; the server does not synthesize players or award progress from a search alone.
+
+A completed host session is accepted only after the matching advertised room started with 4-8 players. Players are ranked by `ScoreMS`; the recovered table is derived from the number that started, from `+3, +1, -1, -3` for four racers through `+7, +5, +3, +1, -1, -3, -5, -7` for eight. Fewer classified scores may be accepted after a disconnect without shrinking the survivors' table, but the disconnected player's penalty still awaits a real capture. Processed session data is retained for replay protection. Progress, event count, threshold crossing and remainder points persist in the configured database.
+
+Set `RaceNet:CaptureDirt4ProTourScores` to `true` during the remaining validation. Despite the legacy option name, bounded raw captures are written for `SessionStart`, `SubmitSessionScores`, `QuitSession`, and `PenalisePlayer`, with the call kind in each filename. Retire representation, disconnect identity/penalty, and progression above Tier 5 remain unverified.
 
 ## Release Tags
 
