@@ -104,7 +104,9 @@ internal static partial class Dirt4CommunityEvents
             EventMeta = source.EventMeta with
             {
                 Name = "lng_dirt_delta_daily",
-                EventType = 3,
+                // A Delta uses the second Daily slot's event type. Type 3 is Pro Tour and
+                // skips the game's Daily completion statistics (including Delta Force).
+                EventType = source.EventMeta.EventType,
                 EventCompType = 1,
                 GameOptions = 200,
                 PersonalBest = 0,
@@ -298,7 +300,8 @@ internal static partial class Dirt4CommunityEvents
         var baseline = Events[round.TemplateIndex];
         var liveDelta = round.TemplateIndex == 1 && round.RotationId.StartsWith("v3/delta/", StringComparison.Ordinal);
         if (meta.EventId != baseline.EventMeta.EventId ||
-            meta.EventType != (liveDelta ? 3 : baseline.EventMeta.EventType) ||
+            // Preserve previously published Delta snapshots with the old Pro Tour type.
+            (meta.EventType != baseline.EventMeta.EventType && !(liveDelta && meta.EventType == 3)) ||
             meta.EventCompType != (liveDelta ? 1 : baseline.EventMeta.EventCompType) ||
             meta.Name != (liveDelta ? "lng_dirt_delta_daily" : baseline.EventMeta.Name) ||
             meta.SponsorIds is null ||

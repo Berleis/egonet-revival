@@ -5,6 +5,7 @@ namespace RaceNetShowdown.Server.RaceNet;
 
 internal static partial class Dirt4CommunityEvents
 {
+    private const int DeltaTargetPercentile = 50;
     private static readonly EventDefinition[] Events = LoadCatalog();
     internal static int TemplateCount => Events.Length;
     internal static Dirt4EventTemplate Template(int index)
@@ -85,9 +86,10 @@ internal static partial class Dirt4CommunityEvents
                 EgoNetBinary.Si64("EventId", round.EventId),
                 EgoNetBinary.Si64("OverallTime", time),
                 EgoNetBinary.Fp32("Percent", round.Percent(player)),
-                EgoNetBinary.Fp32("TargetPercent", 0),
+                EgoNetBinary.Fp32("TargetPercent", delta ? DeltaTargetPercentile : 0),
                 EgoNetBinary.Dict("TierResult", EgoNetBinary.Si32("ActCredReward", reward.MinCredits),
-                    EgoNetBinary.Si32("TierId", tier)),
+                    // Reward definitions are one-based, but the result screen expects a zero-based tier index.
+                    EgoNetBinary.Si32("TierId", tier - 1)),
                 EgoNetBinary.Si64("T1T2BarrierTime", barrier),
                 EgoNetBinary.Si64("T2T3BarrierTime", stage.T2T3BarrierTime),
                 EgoNetBinary.Si64("T3T4BarrierTime", stage.T3T4BarrierTime),
@@ -142,6 +144,7 @@ internal static partial class Dirt4CommunityEvents
                 PlayerRank = omitScores ? 0 : round.Rank(player, i),
                 Percentile = omitScores ? 0 : (int)round.Percent(player, i),
                 DeltaBest = deltaBarrier > 0 ? deltaBarrier : s.DeltaBest,
+                DeltaPercentile = deltaBarrier > 0 ? DeltaTargetPercentile : s.DeltaPercentile,
                 T1T2BarrierTime = deltaBarrier > 0 ? deltaBarrier : s.T1T2BarrierTime,
                 TargetTime = deltaBarrier > 0
                     ? s.TargetTime with { OverallTime = deltaBarrier } : s.TargetTime }).ToArray() }

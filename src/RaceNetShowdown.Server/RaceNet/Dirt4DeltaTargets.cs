@@ -37,7 +37,7 @@ internal static class Dirt4DeltaTargets
         IReadOnlyList<Dirt4DeltaCareerReference> references,
         IReadOnlyList<Dirt4StandaloneLeaderboard> boards)
     {
-        if (definition.EventMeta.EventType != 3 || definition.EventMeta.EventCompType != 1) return null;
+        if (definition.EventMeta.EventType != 4 || definition.EventMeta.EventCompType != 1) return null;
         var stage = definition.StageData.Stages.Single();
         var vehicle = definition.Restrictions.VehicleIds.Single().ID;
         var reference = references.SingleOrDefault(r => r.CareerStageId == stage.CareerStageId &&
