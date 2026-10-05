@@ -134,6 +134,38 @@ public sealed class Dirt4RotationTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void ResultScreenUsesZeroBasedTierIndexWhileRewardLookupRemainsOneBased(int tier)
+    {
+        var round = Round(0, 0);
+        var definition = round.Definition!;
+        var stage = definition.StageData.Stages[0];
+        round = round with { Definition = definition with
+        {
+            StageData = definition.StageData with { TotalStages = 1, AvailableStages = 1, Stages = [stage] }
+        } };
+        var time = tier switch
+        {
+            1 => stage.T1T2BarrierTime,
+            2 => stage.T1T2BarrierTime + 1,
+            3 => stage.T2T3BarrierTime + 1,
+            _ => stage.T3T4BarrierTime + 1
+        };
+        var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { round }));
+        Assert.True(store.Start(round.LeaderboardId, "driver", Now, 504));
+        Assert.True(store.Finish(round.LeaderboardId, "driver", time, Now.AddSeconds(1), 504));
+
+        var reward = definition.Rewards.TierRewards.Single(r => r.TierId == tier);
+        var result = Dirt4CommunityEvents.BuildResults(
+            DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt), store, "driver", [round.EventId]);
+
+        AssertTierResult(result, tier, reward.MinCredits);
+    }
+
+    [Theory]
     [MemberData(nameof(Variants))]
     public void EveryVariantPersistsCompletesAndPaysFromItsSnapshot(int slot, int index)
     {
@@ -462,10 +494,10 @@ public sealed class Dirt4RotationTests
     private static void AssertTierResult(byte[] bytes, int tier, int credits)
     {
         var expected = EgoNetBinary.Dictionary(EgoNetBinary.Dict("TierResult",
-            EgoNetBinary.Si32("ActCredReward", credits), EgoNetBinary.Si32("TierId", tier)));
+            EgoNetBinary.Si32("ActCredReward", credits), EgoNetBinary.Si32("TierId", tier - 1)));
         // Compare the complete field, excluding the outer dictionary tag and count.
         Assert.True(bytes.AsSpan().IndexOf(expected.AsSpan(8)) >= 0,
-            $"Expected TierResult {tier} with {credits} credits.");
+            $"Expected reward tier {tier}, result index {tier - 1}, with {credits} credits.");
     }
 
     private static string Format(byte[] bytes)
