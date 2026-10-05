@@ -41,7 +41,7 @@ public sealed class Dirt4RotationTests
         Assert.Equal(100, deltas.Length);
         Assert.All(deltas, e =>
         {
-            Assert.Equal(3, e.Event.EventMeta.EventType);
+            Assert.Equal(4, e.Event.EventMeta.EventType);
             Assert.Equal(1, e.Event.EventMeta.EventCompType);
             Assert.Equal(4, e.Event.Rewards.TierRewards.Length);
             var stage = e.Event.StageData.Stages.Single();
@@ -53,6 +53,12 @@ public sealed class Dirt4RotationTests
             Assert.InRange(stage.DeltaBest, 1, int.MaxValue);
         });
         Assert.Equal(100, deltas.Select(e => e.Event.StageData.Stages[0].CareerStageId).Distinct().Count());
+
+        var currentDelta = Round(1, 84);
+        var payload = Format(Dirt4CommunityEvents.Build(Now,
+            new Dirt4DailyStore(JsonSerializer.Serialize(new[] { currentDelta })), "driver", [currentDelta.EventId]));
+        Assert.Contains("EventType: si32 value=4", payload);
+        Assert.Contains("EventCompType: si16 value=1", payload);
 
         var selected = Enumerable.Range(0, 648).Select(day =>
         {
@@ -85,6 +91,19 @@ public sealed class Dirt4RotationTests
     }
 
     [Fact]
+    public void PreviouslyPublishedDeltaWithProTourTypeRemainsLoadable()
+    {
+        var round = Round(1, 84);
+        var legacy = round with { Definition = round.Definition! with
+        { EventMeta = round.Definition.EventMeta with { EventType = 3 } } };
+        var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { legacy }));
+
+        Assert.Equal(3, store.Current(Now, 1).Definition!.EventMeta.EventType);
+        Assert.Contains("EventType: si32 value=3",
+            Format(Dirt4CommunityEvents.Build(Now, store, "driver", [legacy.EventId])));
+    }
+
+    [Fact]
     public void DeltaCommunityAverageMatchesStandingsAndPayoutAfterReload()
     {
         var round = Round(1, 84);
@@ -99,12 +118,14 @@ public sealed class Dirt4RotationTests
         store = new Dirt4DailyStore(store.Export());
         var standings = Format(Dirt4CommunityEvents.Build(Now.AddSeconds(2), store, "slow", [round.EventId]));
         Assert.Contains("DeltaBest: si64 value=200000", standings);
+        Assert.Contains("DeltaPercentile: si32 value=50", standings);
         Assert.Contains("T1T2BarrierTime: si64 value=200000", standings);
         var ended = DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt);
         foreach (var (player, tier) in new[] { ("slow", 2), ("fast", 1), ("equal", 1) })
         {
             var result = Dirt4CommunityEvents.BuildResults(ended, store, player, [round.EventId]);
             Assert.Contains("EventTargetTime: si64 value=200000", Format(result));
+            Assert.Contains("TargetPercent: fp32 value=50", Format(result));
             AssertTierResult(result, tier,
                 round.Definition.Rewards.TierRewards.Single(r => r.TierId == tier).MinCredits);
         }
