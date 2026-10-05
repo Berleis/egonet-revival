@@ -155,6 +155,38 @@ public sealed class Dirt4RotationTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void ResultScreenUsesZeroBasedTierIndexWhileRewardLookupRemainsOneBased(int tier)
+    {
+        var round = Round(0, 0);
+        var definition = round.Definition!;
+        var stage = definition.StageData.Stages[0];
+        round = round with { Definition = definition with
+        {
+            StageData = definition.StageData with { TotalStages = 1, AvailableStages = 1, Stages = [stage] }
+        } };
+        var time = tier switch
+        {
+            1 => stage.T1T2BarrierTime,
+            2 => stage.T1T2BarrierTime + 1,
+            3 => stage.T2T3BarrierTime + 1,
+            _ => stage.T3T4BarrierTime + 1
+        };
+        var store = new Dirt4DailyStore(JsonSerializer.Serialize(new[] { round }));
+        Assert.True(store.Start(round.LeaderboardId, "driver", Now, 504));
+        Assert.True(store.Finish(round.LeaderboardId, "driver", time, Now.AddSeconds(1), 504));
+
+        var reward = definition.Rewards.TierRewards.Single(r => r.TierId == tier);
+        var result = Dirt4CommunityEvents.BuildResults(
+            DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt), store, "driver", [round.EventId]);
+
+        AssertTierResult(result, tier, reward.MinCredits);
+    }
+
+    [Theory]
     [MemberData(nameof(Variants))]
     public void EveryVariantPersistsCompletesAndPaysFromItsSnapshot(int slot, int index)
     {
@@ -443,13 +475,39 @@ public sealed class Dirt4RotationTests
     }
 
     [Fact]
-    public void ProTourStillUsesTheOriginalReferenceConfiguration()
+    public void ProTourRotatesCapturedTwoStageRoutesAndClassesDaily()
     {
+        var current = Dirt4CommunityEvents.ProTourEvent(Now);
+        var sameWindow = Dirt4CommunityEvents.ProTourEvent(
+            DateTimeOffset.FromUnixTimeSeconds(current.EventMeta.ExpiryTime).AddSeconds(-1));
+        var next = Dirt4CommunityEvents.ProTourEvent(
+            DateTimeOffset.FromUnixTimeSeconds(current.EventMeta.ExpiryTime));
+
+        Assert.Equal(3, current.EventMeta.EventType);
+        Assert.Equal(2U, current.StageData.TotalStages);
+        Assert.Equal(2U, current.StageData.AvailableStages);
+        Assert.Equal(2, current.StageData.Stages.Length);
+        Assert.All(current.StageData.Stages, stage => Assert.True(stage.TrackGenValue > 0));
+        Assert.Empty(current.Restrictions.VehicleIds);
+        Assert.Single(current.Restrictions.VehicleClassIds);
+        Assert.Equal(current.StageData.Stages.Select(stage => stage.TrackGenValue),
+            sameWindow.StageData.Stages.Select(stage => stage.TrackGenValue));
+        Assert.Equal(current.Restrictions.VehicleClassIds.Single().ID,
+            sameWindow.Restrictions.VehicleClassIds.Single().ID);
+        Assert.False(current.StageData.Stages.Select(stage => stage.TrackGenValue)
+            .SequenceEqual(next.StageData.Stages.Select(stage => stage.TrackGenValue)));
+
+        var combinations = Enumerable.Range(0, 144).Select(day =>
+        {
+            var e = Dirt4CommunityEvents.ProTourEvent(Now.AddDays(day));
+            return string.Join(",", e.StageData.Stages.Select(stage => stage.TrackGenValue)) +
+                "/" + e.Restrictions.VehicleClassIds.Single().ID;
+        }).ToArray();
+        Assert.Equal(144, combinations.Distinct(StringComparer.Ordinal).Count());
+
         var text = Format(Dirt4CommunityEvents.BuildProTourConfig(Now));
         Assert.Contains("EventType: si32 value=3", text);
-        Assert.Contains("TrackGenValue: si64 value=96702706731492361", text);
-        Assert.Contains("ID: si32 value=74", text);
-        Assert.Contains("TotalStages: ui32 value=1", text);
+        Assert.Contains("TotalStages: ui32 value=2", text);
     }
 
     [Theory]
@@ -486,7 +544,7 @@ public sealed class Dirt4RotationTests
             EgoNetBinary.Si32("ActCredReward", credits), EgoNetBinary.Si32("TierId", tier - 1)));
         // Compare the complete field, excluding the outer dictionary tag and count.
         Assert.True(bytes.AsSpan().IndexOf(expected.AsSpan(8)) >= 0,
-            $"Expected TierResult {tier} with {credits} credits.");
+            $"Expected reward tier {tier}, result index {tier - 1}, with {credits} credits.");
     }
 
     private static string Format(byte[] bytes)

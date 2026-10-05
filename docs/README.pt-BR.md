@@ -60,7 +60,7 @@ Ainda em melhoria:
 - Painel/admin.
 - Perfis compartilhados mais limpos para jogos futuros.
 - Validação pública do fluxo de Rivais do GRID 2 com mais corridas multiplayer reais.
-- Validação de pontuação e promoção do Pro Tour do DiRT 4 com sessões multiplayer reais.
+- Validação dos tiers superiores do Pro Tour do DiRT 4 com mais sessões multiplayer reais.
 
 ## Instalar o Mod do DiRT Showdown
 
@@ -107,9 +107,9 @@ Para desfazer o patch dos executáveis, use a opção `Verificar integridade dos
 ## Instalar o Mod do DiRT 4
 
 O DiRT 4 está em teste público. Os Community Events funcionam com rotações
-persistentes de Daily, Weekly e Monthly baseadas no calendário. O Pro Tour
-continua experimental; a Jam Session usa o multiplayer da Steam sem depender
-do servidor EgoNet.
+persistentes de Daily, Weekly e Monthly baseadas no calendário. O matchmaking e
+a progressão persistente inicial do Pro Tour funcionam, mas continuam
+experimentais; a Jam Session usa o multiplayer da Steam sem depender do servidor EgoNet.
 
 O Delta Daily aparece no segundo slot diário em dias selecionados. Sua rotação
 contém 100 combinações de etapa e veículo da carreira associadas de forma

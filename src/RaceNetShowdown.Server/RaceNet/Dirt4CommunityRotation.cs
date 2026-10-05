@@ -3,6 +3,14 @@
 internal static partial class Dirt4CommunityEvents
 {
     private static readonly Lazy<RotationEntry[][]> Rotation = new(BuildRotation);
+    private static readonly Lazy<StageSource[][]> ProTourRoutes = new(() =>
+        new[] { 2, 3, 4 }.SelectMany(template =>
+            Enumerable.Range(0, Events[template].StageData.Stages.Length / 2)
+                .Select(pair => new[]
+                {
+                    new StageSource(template, pair * 2),
+                    new StageSource(template, pair * 2 + 1)
+                })).ToArray());
     // Original full events remain available as source data and for old snapshots, not for new rounds.
     private static readonly HashSet<string> ReferenceOnlyRotations = new(StringComparer.Ordinal)
     {
@@ -60,6 +68,62 @@ internal static partial class Dirt4CommunityEvents
         }
         return entries[(int)((period % entries.Length + entries.Length) % entries.Length)];
     }
+
+    internal static EventDefinition ProTourEvent(DateTimeOffset now)
+    {
+        var (start, end) = Dirt4EventCalendar.Window(now, 3);
+        var routes = ProTourRoutes.Value;
+        var day = Math.DivRem(start, 86400, out _);
+        var routeIndex = (int)((day % routes.Length + routes.Length) % routes.Length);
+        var routeCycle = Math.DivRem(day, routes.Length, out _);
+        // Across 144 days every captured two-stage route is paired once with every
+        // rally class. Multiplying the route by five avoids obvious adjacent repeats.
+        var classIndex = (int)((routeCycle + routeIndex * 5) % RallyClasses.Length);
+        if (classIndex < 0) classIndex += RallyClasses.Length;
+        var carClass = RallyClasses[classIndex];
+        var condition = (Conditions)((day + routeCycle) % 3);
+        if (condition < 0) condition += 3;
+        uint[] weather = condition switch
+        {
+            Conditions.Sunny => [1],
+            Conditions.Cloudy => [2, 3, 4],
+            _ => [5, 15, 7]
+        };
+        var source = Compose(2, $"pro-tour-{routeIndex}", routes[routeIndex]).Event;
+        var stages = source.StageData.Stages.Select((stage, index) => stage with
+        {
+            WeatherId = weather[index % weather.Length],
+            TimeOfDayId = (uint)(3 + (day + index) % 4)
+        }).ToArray();
+        return source with
+        {
+            EventMeta = source.EventMeta with
+            {
+                LeaderboardId = stages[^1].LeaderboardId,
+                StartTime = checked((int)start),
+                AdvertStartTime = checked((int)start),
+                ExpiryTime = checked((int)end),
+                EventType = 3,
+                PersonalBest = 0,
+                EventStatus = 0,
+                RanLastEvent = false
+            },
+            StageData = source.StageData with
+            {
+                TotalStages = (uint)stages.Length,
+                AvailableStages = (uint)stages.Length,
+                Stages = stages
+            },
+            Restrictions = source.Restrictions with
+            {
+                VehicleIds = [],
+                VehicleClassIds = [new IdEntry(carClass.Id)]
+            }
+        };
+    }
+
+    internal static int ProTourVehicleClass(DateTimeOffset now) =>
+        ProTourEvent(now).Restrictions.VehicleClassIds.Single().ID;
 
     private static DeltaSlot[] DeltaSlots(IReadOnlyList<RotationEntry> owners)
     {
