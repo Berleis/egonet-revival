@@ -140,7 +140,7 @@ public sealed class Dirt4DeltaTargetTests
         Assert.Contains("EventTargetTime: si64 value=300000", EgoNetBinaryFormatter.Format(result));
         var expected = EgoNetBinary.Dictionary(EgoNetBinary.Dict("TierResult",
             EgoNetBinary.Si32("ActCredReward", round.Definition!.Rewards.TierRewards.Single(t => t.TierId == 2).MinCredits),
-            EgoNetBinary.Si32("TierId", 2)));
+            EgoNetBinary.Si32("TierId", 1)));
         Assert.True(result.AsSpan().IndexOf(expected.AsSpan(8)) >= 0);
     }
 }

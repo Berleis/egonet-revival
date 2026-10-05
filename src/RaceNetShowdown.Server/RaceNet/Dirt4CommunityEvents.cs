@@ -63,7 +63,8 @@ internal static partial class Dirt4CommunityEvents
                 EgoNetBinary.Fp32("Percent", round.Percent(player)),
                 EgoNetBinary.Fp32("TargetPercent", 0),
                 EgoNetBinary.Dict("TierResult", EgoNetBinary.Si32("ActCredReward", reward.MinCredits),
-                    EgoNetBinary.Si32("TierId", tier)),
+                    // Reward definitions are one-based, but the result screen expects a zero-based tier index.
+                    EgoNetBinary.Si32("TierId", tier - 1)),
                 EgoNetBinary.Si64("T1T2BarrierTime", barrier),
                 EgoNetBinary.Si64("T2T3BarrierTime", stage.T2T3BarrierTime),
                 EgoNetBinary.Si64("T3T4BarrierTime", stage.T3T4BarrierTime),
