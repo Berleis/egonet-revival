@@ -126,7 +126,7 @@ public sealed class Dirt4RotationTests
             var result = Dirt4CommunityEvents.BuildResults(ended, store, player, [round.EventId]);
             Assert.Contains("EventTargetTime: si64 value=200000", Format(result));
             Assert.Contains("TargetPercent: fp32 value=50", Format(result));
-            AssertTierResult(result, tier,
+            AssertTierResult(result, tier - 1,
                 round.Definition.Rewards.TierRewards.Single(r => r.TierId == tier).MinCredits);
         }
         Assert.Empty(store.PendingResults("retired", ended));
@@ -149,7 +149,7 @@ public sealed class Dirt4RotationTests
         var bytes = Dirt4CommunityEvents.BuildResults(ended, store, "driver", [round.EventId]);
         var result = Format(bytes);
         var reward = round.Definition.Rewards.TierRewards.Single(r => r.TierId == expectedTier);
-        AssertTierResult(bytes, expectedTier, reward.MinCredits);
+        AssertTierResult(bytes, expectedTier - 1, reward.MinCredits);
         Assert.Contains("TierRewards: vvtr count=4", result);
         Assert.Empty(store.PendingResults("driver", ended));
     }
@@ -159,7 +159,7 @@ public sealed class Dirt4RotationTests
     [InlineData(2)]
     [InlineData(3)]
     [InlineData(4)]
-    public void ResultScreenUsesZeroBasedTierIndexWhileRewardLookupRemainsOneBased(int tier)
+    public void StandardResultUsesOneBasedRewardTierId(int tier)
     {
         var round = Round(0, 0);
         var definition = round.Definition!;
@@ -538,13 +538,13 @@ public sealed class Dirt4RotationTests
         };
     }
 
-    private static void AssertTierResult(byte[] bytes, int tier, int credits)
+    private static void AssertTierResult(byte[] bytes, int resultTierId, int credits)
     {
         var expected = EgoNetBinary.Dictionary(EgoNetBinary.Dict("TierResult",
-            EgoNetBinary.Si32("ActCredReward", credits), EgoNetBinary.Si32("TierId", tier - 1)));
+            EgoNetBinary.Si32("ActCredReward", credits), EgoNetBinary.Si32("TierId", resultTierId)));
         // Compare the complete field, excluding the outer dictionary tag and count.
         Assert.True(bytes.AsSpan().IndexOf(expected.AsSpan(8)) >= 0,
-            $"Expected reward tier {tier}, result index {tier - 1}, with {credits} credits.");
+            $"Expected result tier {resultTierId} with {credits} credits.");
     }
 
     private static string Format(byte[] bytes)
