@@ -672,13 +672,82 @@ public sealed class EntityFrameworkRaceNetStore(
 
     public async Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        long? requestedEventId = null)
     {
         await EnsureGrid2GlobalEventRotationAsync(cancellationToken);
-        var previousEvent = await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
-        return previousEvent is null
+        var previousEvent = requestedEventId.HasValue
+            ? await dbContext.Grid2GlobalEvents.AsNoTracking()
+                .Include(value => value.Races)
+                .SingleOrDefaultAsync(value => value.RaceNetEventId == requestedEventId.Value &&
+                    (value.Status == Grid2GlobalEventStatusPrevious || value.Status == Grid2GlobalEventStatusArchived),
+                    cancellationToken)
+            : await LoadGrid2GlobalEventByStatusAsync(Grid2GlobalEventStatusPrevious, cancellationToken);
+        return previousEvent is null || previousEvent.ExpiresAt > DateTimeOffset.UtcNow
             ? null
             : await ToGrid2GlobalEventSnapshotAsync(previousEvent, session, cancellationToken);
+    }
+
+    public async Task<RaceNetPrincipal?> ObserveGrid2PresencesAsync(
+        RaceNetSessionInfo session,
+        IReadOnlyList<RaceNetPrincipal> presences,
+        CancellationToken cancellationToken)
+    {
+        if (session.PlayerProfileId <= 0 || presences.Count == 0) return null;
+
+        // Presence is an observation from the client, not authority to rename or merge profiles.
+        // Keep every existing profile ID and its results; resolve name-only identities for this response.
+        var profiles = await dbContext.PlayerProfiles.AsNoTracking().ToListAsync(cancellationToken);
+        var ownProfile = profiles.SingleOrDefault(value => value.Id == session.PlayerProfileId);
+        if (ownProfile is null) return null;
+        var currentSession = session with { PlayerExternalId = ownProfile.ExternalId, DisplayName = ownProfile.DisplayName };
+        var self = Grid2PresenceResolver.ResolveSelf(currentSession, presences);
+        if (self is not null && ParseSteamExternalId(ownProfile.ExternalId) == 0 &&
+            profiles.Any(value => value.Id != ownProfile.Id &&
+                (ParseSteamExternalId(value.ExternalId) == self.SteamId ||
+                 string.Equals(value.DisplayName.Trim(), ownProfile.DisplayName.Trim(), StringComparison.OrdinalIgnoreCase))))
+        {
+            self = null;
+        }
+
+        // With an unresolved self, a name-only match might be the local player; do not create friendships.
+        if (self is null) return null;
+        var friends = await dbContext.PlayerFriends
+            .Where(value => value.PlayerProfileId == session.PlayerProfileId).ToListAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        foreach (var group in presences.Where(value => value.SteamId > 0)
+                     .GroupBy(value => value.SteamId))
+        {
+            if (group.Key == self.SteamId) continue;
+            var principal = group.First();
+            if (!IsGrid2RivalNameAllowed(principal.Name) ||
+                group.Any(value => !string.Equals(value.Name.Trim(), principal.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
+                continue;
+            var profile = profiles.SingleOrDefault(value => ParseSteamExternalId(value.ExternalId) == principal.SteamId);
+            if (profile is null)
+            {
+                var namesakes = profiles.Where(value => string.Equals(value.DisplayName.Trim(), principal.Name.Trim(),
+                    StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (namesakes.Length != 1 || ParseSteamExternalId(namesakes[0].ExternalId) != 0 ||
+                    presences.Where(value => string.Equals(value.Name.Trim(), principal.Name.Trim(), StringComparison.OrdinalIgnoreCase))
+                        .Select(value => value.SteamId).Distinct().Count() != 1) continue;
+                profile = namesakes[0];
+            }
+            if (profile.Id == session.PlayerProfileId) continue;
+            var steamId = principal.SteamId.ToString(CultureInfo.InvariantCulture);
+            var friend = friends.SingleOrDefault(value => value.SteamId == steamId);
+            if (friend is null)
+            {
+                friend = new PlayerFriend { PlayerProfileId = session.PlayerProfileId, SteamId = steamId };
+                dbContext.PlayerFriends.Add(friend);
+                friends.Add(friend);
+            }
+            friend.FriendPlayerProfileId = profile.Id;
+            friend.DisplayName = principal.Name;
+            friend.LastSeenAt = now;
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return self;
     }
 
     public async Task SaveGrid2MultiplayerEventAsync(
@@ -860,13 +929,33 @@ public sealed class EntityFrameworkRaceNetStore(
                 value.ExpiresAt == expiresAt)
             .ToListAsync(cancellationToken);
 
+        var friendSteamIds = await LoadGrid2FriendSteamIdsAsync(playerProfileId, cancellationToken);
+
         return assignments
             .Where(value =>
                 value.RivalPlayerProfile is not null &&
                 IsGrid2RivalNameAllowed(value.RivalPlayerProfile.DisplayName))
             .OrderBy(value => GetGrid2RivalTypeSortOrder(value.Type))
-            .Select(ToGrid2RivalSnapshot)
+            .Select(value => ToGrid2RivalSnapshot(value, friendSteamIds.GetValueOrDefault(value.RivalPlayerProfileId)))
             .ToArray();
+    }
+
+    private async Task<Dictionary<long, ulong>> LoadGrid2FriendSteamIdsAsync(
+        long playerProfileId,
+        CancellationToken cancellationToken)
+    {
+        var friends = await dbContext.PlayerFriends.AsNoTracking()
+            .Where(value => value.PlayerProfileId == playerProfileId).ToListAsync(cancellationToken);
+        return friends.GroupBy(value => value.FriendPlayerProfileId)
+            .Select(group => new
+            {
+                ProfileId = group.Key,
+                SteamIds = group.Select(value => ulong.TryParse(value.SteamId, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var steamId) ? steamId : 0UL)
+                    .Where(value => value > 0).Distinct().ToArray()
+            })
+            .Where(value => value.SteamIds.Length == 1)
+            .ToDictionary(value => value.ProfileId, value => value.SteamIds[0]);
     }
 
     private async Task<IReadOnlyList<Grid2RivalSnapshot>> SelectGrid2RivalsAsync(
@@ -948,12 +1037,13 @@ public sealed class EntityFrameworkRaceNetStore(
         return rivals;
     }
 
-    private static Grid2RivalSnapshot ToGrid2RivalSnapshot(Grid2RivalAssignmentRecord assignment)
+    private static Grid2RivalSnapshot ToGrid2RivalSnapshot(Grid2RivalAssignmentRecord assignment, ulong observedSteamId = 0)
     {
         var profile = assignment.RivalPlayerProfile
             ?? throw new InvalidOperationException("GRID 2 rival assignment profile is missing.");
         return new Grid2RivalSnapshot(
-            ResolveGrid2SteamId(profile),
+            ParseSteamExternalId(profile.ExternalId) is var knownSteamId && knownSteamId > 0
+                ? knownSteamId : observedSteamId > 0 ? observedSteamId : ResolveGrid2SteamId(profile),
             profile.DisplayName.Trim(),
             profile.Id,
             assignment.Type);
@@ -1064,7 +1154,7 @@ public sealed class EntityFrameworkRaceNetStore(
     private static bool IsGrid2RivalNameAllowed(string displayName)
     {
         var name = displayName.Trim();
-        return name.Length is >= 3 and <= 15 && name.All(value => char.IsLetterOrDigit(value) || value == '_');
+        return name.Length is >= 1 and <= 128 && !name.Any(char.IsControl);
     }
 
     private static Grid2RivalCandidate? SelectGrid2SocialRival(
@@ -1072,7 +1162,7 @@ public sealed class EntityFrameworkRaceNetStore(
         IReadOnlySet<long> selectedProfileIds)
     {
         var eligibleCandidates = candidates
-            .Where(value => !selectedProfileIds.Contains(value.Profile.Id))
+            .Where(value => value.HasGrid2Signal && !selectedProfileIds.Contains(value.Profile.Id))
             .ToArray();
 
         return OrderGrid2RivalCandidates(eligibleCandidates.Where(value => value.IsKnownFriend))
@@ -1223,6 +1313,7 @@ public sealed class EntityFrameworkRaceNetStore(
             eventRecord.RaceNetEventId,
             races.Select(value => value.RaceNetRaceId).ToArray(),
             leaderboardProfileIds,
+            session,
             cancellationToken);
 
         return new Grid2GlobalEventSnapshot(
@@ -1248,7 +1339,7 @@ public sealed class EntityFrameworkRaceNetStore(
             session,
             eventRecord.StartsAt,
             eventRecord.ExpiresAt,
-            createIfMissing: eventRecord.Status is Grid2GlobalEventStatusActive or Grid2GlobalEventStatusPrevious,
+            createIfMissing: eventRecord.Status == Grid2GlobalEventStatusActive,
             cancellationToken);
         foreach (var rival in rivals)
         {
@@ -1265,6 +1356,7 @@ public sealed class EntityFrameworkRaceNetStore(
         long raceNetEventId,
         IReadOnlyCollection<long> raceNetRaceIds,
         IReadOnlyCollection<long> playerProfileIds,
+        RaceNetSessionInfo? session,
         CancellationToken cancellationToken)
     {
         var raceIds = raceNetRaceIds.Distinct().ToArray();
@@ -1285,6 +1377,8 @@ public sealed class EntityFrameworkRaceNetStore(
                 raceIds.Contains(value.RaceNetRaceId) &&
                 profileIds.Contains(value.PlayerProfileId))
             .ToListAsync(cancellationToken);
+        var friendSteamIds = session is null ? new Dictionary<long, ulong>()
+            : await LoadGrid2FriendSteamIdsAsync(session.PlayerProfileId, cancellationToken);
 
         return scores
             .Where(value => value.PlayerProfile is not null)
@@ -1292,7 +1386,8 @@ public sealed class EntityFrameworkRaceNetStore(
                 value.RaceNetEventId,
                 value.RaceNetRaceId,
                 new RaceNetPrincipal(
-                    ParseSteamExternalId(value.PlayerProfile!.ExternalId),
+                    ParseSteamExternalId(value.PlayerProfile!.ExternalId) is var knownSteamId && knownSteamId > 0
+                        ? knownSteamId : friendSteamIds.GetValueOrDefault(value.PlayerProfileId),
                     value.PlayerProfile.DisplayName),
                 value.PlayerProfileId,
                 value.Score,

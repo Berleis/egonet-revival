@@ -220,9 +220,18 @@ public sealed class LocalRaceNetStore : IRaceNetStore
 
     public Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        long? requestedEventId = null)
     {
         return Task.FromResult<Grid2GlobalEventSnapshot?>(null);
+    }
+
+    public Task<RaceNetPrincipal?> ObserveGrid2PresencesAsync(
+        RaceNetSessionInfo session,
+        IReadOnlyList<RaceNetPrincipal> presences,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Grid2PresenceResolver.ResolveSelf(session, presences));
     }
 
     public Task SaveGrid2MultiplayerEventAsync(

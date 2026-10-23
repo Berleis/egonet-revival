@@ -41,9 +41,13 @@ The GUI installer project lives in `installer`. Developer helper scripts live in
 - Rivals loads weekly, custom, and social slots from persisted weekly assignments.
 - Multiplayer race results are recorded from the game's normal `DataMining.EndEvent` payload.
 - Recent multiplayer opponents and known friends are used as priority Rival candidates.
+- Global Challenge requests supply Steam presences used to recognize existing player profiles and discover friends with GRID 2 activity. Ambiguous names do not change account identities or saved scores.
+- Previous Global Challenge results follow the event ID requested by the game, including older completed weeks.
 - Rival session data upload/download is stored for follow-up testing.
 
 GRID 2 support is still in early public testing. Global Challenge and Rivals use the same Friday 10:00 UTC RaceNet cycle, so the in-game countdown and server allocation expire together. Rival progression still needs more real multiplayer validation.
+
+Existing Rival assignments remain fixed until the next weekly reset. Discovering a friend later in the week makes them a candidate for the next allocation; both players need recorded GRID 2 activity. `Keep Your Friends Close...` requires beating a Rival in a multiplayer race, while `Global Domination` requires winning a week of Global Challenge. Achievement delivery still needs in-game validation; a working leaderboard alone does not establish that either achievement unlocks.
 
 ## Release Tags
 

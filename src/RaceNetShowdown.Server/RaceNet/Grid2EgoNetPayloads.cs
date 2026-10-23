@@ -48,16 +48,25 @@ internal static class Grid2EgoNetPayloads
             return Empty(headers);
         }
 
-        if (functionName == "RaceNetGlobalDomination.GetEvent")
+        if (functionName is "RaceNetGlobalDomination.GetEvent" or "RaceNetGlobalDomination.GetPreviousEvent")
         {
-            var activeEvent = await store.GetGrid2CurrentGlobalEventAsync(session, cancellationToken);
-            return Html(BuildCurrentGlobalDomination(activeEvent), headers);
-        }
-
-        if (functionName == "RaceNetGlobalDomination.GetPreviousEvent")
-        {
-            var previousEvent = await store.GetGrid2PreviousGlobalEventAsync(session, cancellationToken);
-            return Html(BuildPreviousGlobalDomination(previousEvent), headers);
+            var presences = EgoNetRequestParser.ReadGrid2Presences(body);
+            var self = session is null ? null
+                : await store.ObserveGrid2PresencesAsync(session, presences, cancellationToken);
+            var previous = functionName == "RaceNetGlobalDomination.GetPreviousEvent";
+            var globalEvent = previous
+                ? await store.GetGrid2PreviousGlobalEventAsync(session, cancellationToken,
+                    EgoNetRequestParser.ReadTopLevelInteger(body, "RaceNetEventId"))
+                : await store.GetGrid2CurrentGlobalEventAsync(session, cancellationToken);
+            if (globalEvent is not null && session is not null && self is not null)
+            {
+                globalEvent = globalEvent with
+                {
+                    LeaderboardEntries = globalEvent.LeaderboardEntries.Select(entry =>
+                        entry.EgonetId == session.PlayerProfileId ? entry with { Presence = self } : entry).ToArray()
+                };
+            }
+            return Html(previous ? BuildPreviousGlobalDomination(globalEvent) : BuildCurrentGlobalDomination(globalEvent), headers);
         }
 
         if (functionName == "RaceNetRivals.GetRivals")
@@ -158,7 +167,8 @@ internal static class Grid2EgoNetPayloads
     private static byte[] BuildLogin(CapturedBody body, RaceNetSessionInfo? session)
     {
         var name = ReadAccountName(body, session);
-        var steamId = BuildStableSteamId(name);
+        var steamId = session is null ? 0 : Grid2PresenceResolver.ResolveKnownSteamId(session);
+        if (steamId == 0) steamId = BuildStableSteamId(name);
         var principalId = session?.PlayerProfileId > 0
             ? session.PlayerProfileId
             : 752_828;
@@ -174,7 +184,8 @@ internal static class Grid2EgoNetPayloads
     private static byte[] BuildAccountProfile(CapturedBody body, RaceNetSessionInfo? session)
     {
         var name = ReadAccountName(body, session);
-        var steamId = BuildStableSteamId(name);
+        var steamId = session is null ? 0 : Grid2PresenceResolver.ResolveKnownSteamId(session);
+        if (steamId == 0) steamId = BuildStableSteamId(name);
         var principalId = session?.PlayerProfileId > 0
             ? session.PlayerProfileId
             : 752_828;
