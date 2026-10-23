@@ -74,6 +74,12 @@ public interface IRaceNetStore
 
     Task<Grid2GlobalEventSnapshot?> GetGrid2PreviousGlobalEventAsync(
         RaceNetSessionInfo? session,
+        CancellationToken cancellationToken,
+        long? requestedEventId = null);
+
+    Task<RaceNetPrincipal?> ObserveGrid2PresencesAsync(
+        RaceNetSessionInfo session,
+        IReadOnlyList<RaceNetPrincipal> presences,
         CancellationToken cancellationToken);
 
     Task SaveGrid2MultiplayerEventAsync(

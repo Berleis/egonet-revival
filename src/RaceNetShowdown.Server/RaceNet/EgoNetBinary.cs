@@ -233,6 +233,54 @@ internal static class EgoNetRequestParser
         return ReadChallengeContext(body).Principals;
     }
 
+    public static IReadOnlyList<RaceNetPrincipal> ReadGrid2Presences(CapturedBody body)
+    {
+        if (body.BodyBytes.Length == 0) return [];
+        try
+        {
+            using var stream = new MemoryStream(body.BodyBytes, writable: false);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+            if (ReadTag(reader) != "vdic") return [];
+
+            // Validate the whole request before reading identities: ReadString permits short reads.
+            SkipValue(reader, "vdic", validateBounds: true);
+            if (stream.Position != stream.Length) return [];
+            stream.Position = 4;
+
+            IReadOnlyList<RaceNetPrincipal>? presences = null;
+            var fields = reader.ReadInt32();
+            for (var i = 0; i < fields; i++)
+            {
+                var name = ReadName(reader);
+                var tag = ReadTag(reader);
+                if (name == "Presence")
+                {
+                    if (tag != "vvtr" || presences is not null) return [];
+                    var count = reader.ReadInt32();
+                    stream.Position -= sizeof(int);
+                    presences = ReadPrincipalVector(reader);
+                    if (presences.Count != count) return [];
+                }
+                else
+                {
+                    SkipValue(reader, tag);
+                }
+            }
+
+            // Presence lists also contain the caller; this parser does not infer which entry is self.
+            return (presences ?? [])
+                .Where(value => value.SteamId > 0)
+                .GroupBy(value => value.SteamId)
+                .Where(group => group.Select(value => value.Name).Distinct(StringComparer.Ordinal).Count() == 1)
+                .Select(group => group.First())
+                .ToArray();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     public static IReadOnlyList<Dirt4LeaderboardPresence> ReadLeaderboardPresences(CapturedBody body)
     {
         if (body.BodyBytes.Length == 0) return [];
@@ -1299,24 +1347,31 @@ internal static class EgoNetRequestParser
         return reader.ReadBytes(length);
     }
 
-    private static void SkipValue(BinaryReader reader, string tag)
+    private static void SkipValue(BinaryReader reader, string tag, bool validateBounds = false, int depth = 0)
     {
+        if (validateBounds && depth > 64)
+            throw new InvalidDataException("EgoNet value nesting is too deep.");
+
         switch (tag)
         {
             case "vdic":
                 var fieldCount = reader.ReadInt32();
+                if (validateBounds && (fieldCount < 0 || fieldCount > (reader.BaseStream.Length - reader.BaseStream.Position) / 5))
+                    throw new InvalidDataException("Invalid EgoNet dictionary field count.");
                 for (var i = 0; i < fieldCount; i++)
                 {
                     _ = ReadName(reader);
-                    SkipValue(reader, ReadTag(reader));
+                    SkipValue(reader, ReadTag(reader), validateBounds, depth + 1);
                 }
                 break;
 
             case "vvtr":
                 var itemCount = reader.ReadInt32();
+                if (validateBounds && (itemCount < 0 || itemCount > (reader.BaseStream.Length - reader.BaseStream.Position) / 4))
+                    throw new InvalidDataException("Invalid EgoNet vector item count.");
                 for (var i = 0; i < itemCount; i++)
                 {
-                    SkipValue(reader, ReadTag(reader));
+                    SkipValue(reader, ReadTag(reader), validateBounds, depth + 1);
                 }
                 break;
 
@@ -1364,5 +1419,8 @@ internal static class EgoNetRequestParser
             default:
                 throw new InvalidDataException($"Unknown EgoNet value type: {tag}");
         }
+
+        if (validateBounds && reader.BaseStream.Position > reader.BaseStream.Length)
+            throw new EndOfStreamException("Truncated EgoNet field.");
     }
 }
