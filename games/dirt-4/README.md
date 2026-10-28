@@ -24,6 +24,21 @@ The release also includes `install-dirt-4-mod.cmd` as a command-line fallback. I
 .\install-dirt-4-mod.cmd 142.93.206.37 "D:\SteamLibrary\steamapps\common\DiRT 4"
 ```
 
+## Linux Install
+
+`install-dirt-4-mod.sh` patches the native Linux port (`bin/Dirt4`) and, if present, `dirt4.exe` for Proton. It needs `curl`, `openssl`, `python3` and `sudo`.
+
+```sh
+./install-dirt-4-mod.sh
+./install-dirt-4-mod.sh 142.93.206.37 "/path/to/SteamLibrary/steamapps/common/DiRT 4"
+```
+
+Without arguments it uses the public server and searches the Steam libraries listed in `libraryfolders.vdf`, including Flatpak Steam. Run it with DiRT 4 closed.
+
+The script swaps the embedded root certificate the same way as the Windows installer, writes `<executable>.racenet-original.bak` before the first change, and adds an `# EgoNet Revival DiRT 4` block to `/etc/hosts` through `sudo`. No system certificate store change is needed because the game only trusts the certificate in its executable.
+
+To undo, run `./uninstall-dirt-4-mod.sh "/path/to/steamapps/common/DiRT 4"`, or verify the game files in Steam and remove the hosts block by hand.
+
 ## Included Assets
 
 - `EgoNet Revival - DiRT 4 Installer.exe`: recommended GUI installer for players.
