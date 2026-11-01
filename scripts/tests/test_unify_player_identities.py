@@ -41,10 +41,10 @@ class IdentityRepairTests(unittest.TestCase):
         self.db.execute('INSERT OR REPLACE INTO Dirt4CommunityState VALUES (1, ?, ?)', (json.dumps(self.state), 'before'))
         self.db.commit()
 
-    def apply(self):
+    def apply(self, **options):
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            result = repair.unify(self.db, 1, 2)
+            result = repair.unify(self.db, 1, 2, **options)
             self.db.commit()
             return result
         except Exception:
@@ -133,6 +133,65 @@ class IdentityRepairTests(unittest.TestCase):
         self.assertEqual('steam:456', self.db.execute('SELECT p.ExternalId FROM PlayerProfiles p JOIN PlayerFriends f ON p.Id=f.FriendPlayerProfileId').fetchone()[0])
         self.assertEqual((1, 42), self.db.execute('SELECT PlayerProfileId,Score FROM Grid2GlobalScores').fetchone())
         self.assertEqual(0, repair.repair_friend_links(self.db)['repaired_friend_links'])
+
+    def grid2_history(self):
+        self.db.executescript('''
+            INSERT INTO PlayerProfiles VALUES (3, 'steam:456', 'Rival');
+            CREATE TABLE Grid2RivalSessionData (Id INTEGER PRIMARY KEY,
+                PlayerProfileId INTEGER UNIQUE REFERENCES PlayerProfiles(Id), SessionData BLOB, UpdatedAt TEXT);
+            INSERT INTO Grid2RivalSessionData VALUES
+                (1,1,X'0102','2020-01-01T00:00:00+00:00'), (2,2,X'0304','2020-01-02T00:00:00+00:00');
+            CREATE TABLE Grid2RivalAssignments (Id INTEGER PRIMARY KEY,
+                PlayerProfileId INTEGER REFERENCES PlayerProfiles(Id),
+                RivalPlayerProfileId INTEGER REFERENCES PlayerProfiles(Id), Type INTEGER,
+                StartsAt TEXT, ExpiresAt TEXT, CreatedAt TEXT, UNIQUE(PlayerProfileId,StartsAt,Type));
+            INSERT INTO Grid2RivalAssignments VALUES
+                (1,1,3,0,'2020-01-01','2020-01-08T00:00:00+00:00','2020-01-01T00:00:00+00:00'),
+                (2,2,1,0,'2020-01-01','2020-01-08T00:00:00+00:00','2020-01-02T00:00:00+00:00'),
+                (3,1,3,1,'2020-01-01','2020-01-08T00:00:00+00:00','2020-01-01T00:00:00+00:00'),
+                (4,2,3,1,'2020-01-01','2020-01-08T00:00:00+00:00','2020-01-02T00:00:00+00:00');
+        ''')
+
+    def test_grid2_history_archives_originals_and_keeps_latest_session(self):
+        self.grid2_history()
+        report = self.apply(reconcile_grid2_history=True)
+        self.assertEqual(3, report['archived_grid2_records'])
+        self.assertEqual([(2, b'\x03\x04')], self.db.execute('SELECT PlayerProfileId,SessionData FROM Grid2RivalSessionData').fetchall())
+        archived = json.loads(self.db.execute("SELECT RowJson FROM PlayerIdentityRepairArchive WHERE TableName='Grid2RivalSessionData'").fetchone()[0])
+        self.assertEqual({'base64': 'AQI='}, archived['SessionData'])
+        self.assertEqual(1, archived['PlayerProfileId'])
+        self.assertEqual([(1, 2, 3), (4, 2, 3)], self.db.execute('SELECT Id,PlayerProfileId,RivalPlayerProfileId FROM Grid2RivalAssignments ORDER BY Id').fetchall())
+        self.assertEqual((2, 42), self.db.execute('SELECT PlayerProfileId,Score FROM Grid2GlobalScores').fetchone())
+        self.assertEqual(0, self.apply(reconcile_grid2_history=True)['archived_grid2_records'])
+
+    def test_grid2_history_requires_explicit_option(self):
+        self.grid2_history()
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.apply()
+
+    def test_grid2_active_assignment_conflict_rolls_back_snapshot_archival(self):
+        self.grid2_history()
+        self.db.execute("UPDATE Grid2RivalAssignments SET ExpiresAt='9999-01-01T00:00:00+00:00'")
+        self.db.commit()
+        with self.assertRaisesRegex(ValueError, 'active'):
+            self.apply(reconcile_grid2_history=True)
+        self.assertEqual(2, self.db.execute('SELECT count(*) FROM Grid2RivalSessionData').fetchone()[0])
+        self.assertEqual(4, self.db.execute('SELECT count(*) FROM Grid2RivalAssignments').fetchone()[0])
+        self.assertIsNone(self.db.execute("SELECT 1 FROM sqlite_master WHERE name='PlayerIdentityRepairArchive'").fetchone())
+
+    def test_grid2_equal_snapshot_times_with_different_data_abort(self):
+        self.grid2_history()
+        self.db.execute("UPDATE Grid2RivalSessionData SET UpdatedAt='2020-01-01T00:00:00+00:00'")
+        self.db.commit()
+        with self.assertRaisesRegex(ValueError, 'same timestamp'):
+            self.apply(reconcile_grid2_history=True)
+
+    def test_grid2_newer_source_snapshot_is_retained(self):
+        self.grid2_history()
+        self.db.execute("UPDATE Grid2RivalSessionData SET UpdatedAt='2020-01-03T00:00:00+00:00' WHERE PlayerProfileId=1")
+        self.db.commit()
+        self.apply(reconcile_grid2_history=True)
+        self.assertEqual((2, b'\x01\x02'), self.db.execute('SELECT PlayerProfileId,SessionData FROM Grid2RivalSessionData').fetchone())
 
 
 if __name__ == '__main__':

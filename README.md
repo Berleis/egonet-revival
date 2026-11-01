@@ -238,6 +238,8 @@ Stop the server, then repeat with `--apply --server-stopped --backup-directory P
 
 The optional `--repair-friend-links` corrects friend pointers whose explicit Steam ID disagrees with the referenced Steam profile. It creates a separate friend profile if needed and never reassigns that friend's scores or ghosts. It supports the same dry-run/backup workflow.
 
+For confirmed GRID 2 identities, `--reconcile-grid2-history` additionally retains the newest Rival session snapshot and archives superseded snapshots, expired self-rivals and superseded expired Rival assignments in `PlayerIdentityRepairArchive`. Original rows (including base64-encoded blobs) remain available there and in the full backup. Active Rival conflicts and ambiguous timestamps abort the transaction; scores, XP and reward claims are never discarded to resolve a collision. Rehearse this option in dry-run mode before applying.
+
 This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the games themselves when the restored or reactivated in-game flow is completed.
 
 ## Competitive Achievement Tracking Notice
