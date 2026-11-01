@@ -7,6 +7,17 @@ namespace RaceNetShowdown.Server.Tests;
 
 public sealed class Grid2LoginTests
 {
+    [Fact]
+    public void Dirt4ReturnsCanonicalSteamIdentityInsteadOfSharedPlaceholder()
+    {
+        const ulong id = 76561198000000101;
+        var bytes = EgoNetBinary.Dictionary(EgoNetBinary.Dstr("Name", "Player"));
+        var response = Dirt4EgoNetPayloads.TryBuild("LoginService.Login",
+            new(bytes.Length, "", "", false, bytes, bytes),
+            new("session", 42, $"steam:{id}", "Player"), new Dictionary<string, string>(),
+            new Dirt4DailyStore(), new Dirt4ProTour());
+        Assert.Contains($"SteamId: ui64 value={id}", EgoNetBinaryFormatter.Format(response!.BodyBytes));
+    }
     [Theory]
     [InlineData("LoginService.Login")]
     [InlineData("RaceNet.SignIn")]

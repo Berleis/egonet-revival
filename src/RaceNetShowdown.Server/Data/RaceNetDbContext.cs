@@ -6,6 +6,8 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 {
     public DbSet<PlayerProfile> PlayerProfiles => Set<PlayerProfile>();
 
+    public DbSet<PlayerIdentityAlias> PlayerIdentityAliases => Set<PlayerIdentityAlias>();
+
     public DbSet<PlayerFriend> PlayerFriends => Set<PlayerFriend>();
 
     public DbSet<RaceNetSession> RaceNetSessions => Set<RaceNetSession>();
@@ -34,6 +36,13 @@ public sealed class RaceNetDbContext(DbContextOptions<RaceNetDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<PlayerIdentityAlias>(entity =>
+        {
+            entity.HasKey(value => value.ExternalId);
+            entity.Property(value => value.ExternalId).HasMaxLength(128);
+            entity.HasOne(value => value.PlayerProfile).WithMany()
+                .HasForeignKey(value => value.PlayerProfileId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<PlayerProfile>(entity =>
         {
             entity.HasIndex(value => value.ExternalId).IsUnique();

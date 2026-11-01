@@ -27,6 +27,7 @@ public sealed class EntityFrameworkRaceNetStore(
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        await EnsurePlayerIdentityAliasesAsync(cancellationToken);
         await EnsureDirt4CommunityStateTableAsync(cancellationToken);
         await ImportLegacyDirt4CommunityStateAsync(cancellationToken);
         await EnsureGrid2GlobalTablesAsync(cancellationToken);
@@ -52,8 +53,14 @@ public sealed class EntityFrameworkRaceNetStore(
             if (existingSession?.PlayerProfile is not null &&
                 IsWireCompatibleSessionId(existingSession.SessionId))
             {
+                existingSession.PlayerProfile = await ResolveCanonicalProfileAsync(existingSession.PlayerProfile, cancellationToken);
+                existingSession.PlayerProfileId = existingSession.PlayerProfile.Id;
                 if (!string.IsNullOrWhiteSpace(loginName))
+                {
+                    await RememberLoginNameAsync(existingSession.PlayerProfile, existingSession.PlayerProfile.DisplayName, cancellationToken);
+                    await RememberLoginNameAsync(existingSession.PlayerProfile, loginName.Trim(), cancellationToken);
                     existingSession.PlayerProfile.DisplayName = loginName.Trim();
+                }
                 existingSession.LastSeenAt = now;
                 existingSession.PlayerProfile.LastSeenAt = now;
                 await dbContext.SaveChangesAsync(cancellationToken);
@@ -74,6 +81,7 @@ public sealed class EntityFrameworkRaceNetStore(
         }
 
         var profile = await FindOrCreateProfileAsync(loginName, remoteAddress, now, cancellationToken);
+        await RememberLoginNameAsync(profile, loginName, cancellationToken);
         if (profile.Id > 0)
         {
             var recentProfileSession = await FindRecentProfileSessionAsync(
@@ -128,6 +136,8 @@ public sealed class EntityFrameworkRaceNetStore(
             return null;
         }
 
+        recentSession.PlayerProfile = await ResolveCanonicalProfileAsync(recentSession.PlayerProfile, cancellationToken);
+        recentSession.PlayerProfileId = recentSession.PlayerProfile.Id;
         recentSession.LastSeenAt = now;
         recentSession.PlayerProfile.LastSeenAt = now;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -154,6 +164,8 @@ public sealed class EntityFrameworkRaceNetStore(
             return null;
         }
 
+        recentSession.PlayerProfile = await ResolveCanonicalProfileAsync(recentSession.PlayerProfile, cancellationToken);
+        recentSession.PlayerProfileId = recentSession.PlayerProfile.Id;
         recentSession.LastSeenAt = now;
         recentSession.PlayerProfile.LastSeenAt = now;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -2150,13 +2162,30 @@ public sealed class EntityFrameworkRaceNetStore(
         CancellationToken cancellationToken)
     {
         PlayerProfile? profile = null;
+        var approvedAlias = false;
 
         if (!string.IsNullOrWhiteSpace(loginName))
         {
-            profile = await dbContext.PlayerProfiles
-                .FirstOrDefaultAsync(
-                    value => value.DisplayName == loginName || value.ExternalId == BuildNameExternalId(loginName),
-                    cancellationToken);
+            loginName = loginName.Trim();
+            var nameId = BuildNameExternalId(loginName);
+            profile = (await dbContext.PlayerIdentityAliases.Include(value => value.PlayerProfile)
+                .SingleOrDefaultAsync(value => value.ExternalId == nameId, cancellationToken))?.PlayerProfile;
+            approvedAlias = profile is not null;
+            // Never select an arbitrary namesake. Existing Steam profiles can still log in
+            // through legacy clients which send only Name; this is not Steam authentication.
+            if (profile is null)
+            {
+                var matches = await dbContext.PlayerProfiles.Where(value => value.DisplayName == loginName || value.ExternalId == nameId)
+                    .ToListAsync(cancellationToken);
+                var steam = matches.Where(value => ParseSteamExternalId(value.ExternalId) > 0).ToArray();
+                // Keep an established Steam login usable while a name-only namesake awaits
+                // operator review. This selects a session destination; it does not merge data.
+                if (steam.Length == 1 && await dbContext.RaceNetSessions.AnyAsync(value => value.PlayerProfileId == steam[0].Id, cancellationToken))
+                    profile = steam[0];
+                else
+                    profile = matches.SingleOrDefault(value => value.ExternalId == nameId)
+                        ?? (matches.Count == 1 ? matches[0] : null);
+            }
         }
 
         if (profile is null)
@@ -2180,7 +2209,10 @@ public sealed class EntityFrameworkRaceNetStore(
             }
         }
 
-        profile.DisplayName = string.IsNullOrWhiteSpace(loginName) ? profile.DisplayName : loginName;
+        var originalProfileId = profile.Id;
+        profile = await ResolveCanonicalProfileAsync(profile, cancellationToken);
+        if (!approvedAlias && originalProfileId == profile.Id && !string.IsNullOrWhiteSpace(loginName))
+            profile.DisplayName = loginName;
         profile.LastSeenAt = now;
         return profile;
     }
@@ -2194,9 +2226,6 @@ public sealed class EntityFrameworkRaceNetStore(
         var profile = await dbContext.PlayerProfiles
             .FirstOrDefaultAsync(value => value.ExternalId == externalId, cancellationToken);
 
-        profile ??= await dbContext.PlayerProfiles
-            .FirstOrDefaultAsync(value => value.DisplayName == principal.Name, cancellationToken);
-
         if (profile is null)
         {
             profile = new PlayerProfile
@@ -2208,14 +2237,57 @@ public sealed class EntityFrameworkRaceNetStore(
             };
             dbContext.PlayerProfiles.Add(profile);
         }
-        else
-        {
-            profile.ExternalId = externalId;
-            profile.DisplayName = principal.Name;
-            profile.LastSeenAt = now;
-        }
-
         return profile;
+    }
+
+    private async Task<PlayerProfile> ResolveCanonicalProfileAsync(PlayerProfile profile, CancellationToken token)
+    {
+        var alias = await dbContext.PlayerIdentityAliases.Include(value => value.PlayerProfile)
+            .SingleOrDefaultAsync(value => value.ExternalId == profile.ExternalId, token);
+        return alias?.PlayerProfile is { } target && ParseSteamExternalId(target.ExternalId) > 0 ? target : profile;
+    }
+
+    private async Task RememberLoginNameAsync(PlayerProfile profile, string? name, CancellationToken token)
+    {
+        if (profile.Id <= 0 || ParseSteamExternalId(profile.ExternalId) == 0 || string.IsNullOrWhiteSpace(name)) return;
+        var key = BuildNameExternalId(name);
+        if (dbContext.PlayerIdentityAliases.Local.Any(value => value.ExternalId == key)) return;
+        if (await dbContext.PlayerIdentityAliases.AnyAsync(value => value.ExternalId == key, token)) return;
+        if (await dbContext.PlayerProfiles.AnyAsync(value => value.Id != profile.Id &&
+            (value.ExternalId == key || value.DisplayName == name), token)) return;
+        // Several requests from an existing session may discover the same alias together.
+        // Insert without replacing a link installed by another request or an operator.
+        if (dbContext.Database.IsSqlite())
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "PlayerIdentityAliases" ("ExternalId", "PlayerProfileId")
+                VALUES ({key}, {profile.Id}) ON CONFLICT ("ExternalId") DO NOTHING;
+                """, token);
+        else if (dbContext.Database.IsSqlServer())
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [PlayerIdentityAliases] ([ExternalId], [PlayerProfileId])
+                SELECT {key}, {profile.Id}
+                WHERE NOT EXISTS (SELECT 1 FROM [PlayerIdentityAliases] WITH (UPDLOCK, HOLDLOCK)
+                    WHERE [ExternalId] = {key});
+                """, token);
+    }
+
+    private async Task EnsurePlayerIdentityAliasesAsync(CancellationToken token)
+    {
+        if (dbContext.Database.IsSqlite())
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS "PlayerIdentityAliases" (
+                    "ExternalId" TEXT NOT NULL PRIMARY KEY,
+                    "PlayerProfileId" INTEGER NOT NULL REFERENCES "PlayerProfiles" ("Id") ON DELETE RESTRICT
+                );
+                """, token);
+        else if (dbContext.Database.IsSqlServer())
+            await dbContext.Database.ExecuteSqlRawAsync("""
+                IF OBJECT_ID(N'[PlayerIdentityAliases]', N'U') IS NULL
+                    CREATE TABLE [PlayerIdentityAliases] (
+                        [ExternalId] nvarchar(128) NOT NULL PRIMARY KEY,
+                        [PlayerProfileId] bigint NOT NULL REFERENCES [PlayerProfiles] ([Id])
+                    );
+                """, token);
     }
 
     private async Task<long> GetNextChallengeIdAsync(CancellationToken cancellationToken)
