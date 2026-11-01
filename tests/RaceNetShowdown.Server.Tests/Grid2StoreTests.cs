@@ -1,4 +1,7 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.Http;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -15,6 +18,104 @@ public sealed class Grid2StoreTests
     private const ulong OwnId = 76561198000000101;
     private const ulong FriendId = 76561198000000102;
     private static readonly CancellationToken Token = CancellationToken.None;
+
+    [Fact]
+    public async Task ExistingDatabaseGetsAliasTableIdempotently()
+    {
+        await using var fixture = await Fixture.Create();
+        await fixture.Db.Database.ExecuteSqlRawAsync("DROP TABLE PlayerIdentityAliases");
+        await fixture.Store.InitializeAsync(Token);
+        await fixture.Store.InitializeAsync(Token);
+        Assert.Empty(await fixture.Db.PlayerIdentityAliases.ToArrayAsync());
+    }
+
+    [Theory]
+    [InlineData("DiRT4")]
+    [InlineData("GRID2")]
+    [InlineData("DiRT Showdown")]
+    public async Task ApprovedAliasUsesCanonicalProfileForEveryGame(string userAgent)
+    {
+        await using var fixture = await Fixture.Create();
+        var old = await fixture.AddProfile("Old Name", NameId("Old Name"));
+        var current = await fixture.AddProfile("New Name", $"steam:{OwnId}");
+        fixture.Db.PlayerIdentityAliases.Add(new() { ExternalId = old.ExternalId, PlayerProfileId = current.Id });
+        await fixture.Db.SaveChangesAsync();
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers.UserAgent = userAgent;
+        var result = await fixture.Store.EnsureSessionAsync(context, LoginBody("Old Name"), Token);
+        Assert.Equal(current.Id, result.PlayerProfileId);
+        Assert.Equal($"steam:{OwnId}", result.PlayerExternalId);
+        Assert.Equal(2, await fixture.Db.PlayerProfiles.CountAsync());
+    }
+
+    [Fact]
+    public async Task ExistingSessionFollowsApprovedAliasAndRemembersRename()
+    {
+        await using var fixture = await Fixture.Create();
+        var old = await fixture.AddProfile("Old Name", NameId("Old Name"));
+        var current = await fixture.AddProfile("New Name", $"steam:{OwnId}");
+        var context = new DefaultHttpContext();
+        var initial = await fixture.Store.EnsureSessionAsync(context, LoginBody("Old Name"), Token);
+        fixture.Db.PlayerIdentityAliases.Add(new() { ExternalId = old.ExternalId, PlayerProfileId = current.Id });
+        await fixture.Db.SaveChangesAsync();
+        context.Request.Headers["X-EgoNet-SessionID"] = initial.SessionId;
+        var resolved = await fixture.Store.EnsureSessionAsync(context, LoginBody("Renamed"), Token);
+        Assert.Equal(current.Id, resolved.PlayerProfileId);
+        Assert.Equal(current.Id, (await fixture.Db.PlayerIdentityAliases.SingleAsync(a => a.ExternalId == NameId("Renamed"))).PlayerProfileId);
+        var reconnect = await fixture.Store.EnsureSessionAsync(new DefaultHttpContext(), LoginBody("Renamed"), Token);
+        Assert.Equal(current.Id, reconnect.PlayerProfileId);
+    }
+
+    [Fact]
+    public async Task FriendObservationNeverPromotesOrRenamesANamesakeProfile()
+    {
+        await using var fixture = await Fixture.Create();
+        var self = await fixture.AddProfile("Self", $"steam:{OwnId}");
+        var legacy = await fixture.AddProfile("Same Name", NameId("Same Name"));
+        var established = await fixture.AddProfile("Same Name", $"steam:{FriendId}");
+        await fixture.Store.SavePrincipalsAsync(Session(self), [new(FriendId + 1, "Same Name"), new(FriendId, "Untrusted Rename")], Token);
+        Assert.Equal(NameId("Same Name"), legacy.ExternalId);
+        Assert.Equal($"steam:{FriendId}", established.ExternalId);
+        Assert.Equal("Same Name", established.DisplayName);
+        Assert.Empty(await fixture.Db.PlayerIdentityAliases.ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task AmbiguousNameDoesNotBorrowAnArbitrarySteamProfile()
+    {
+        await using var fixture = await Fixture.Create();
+        await fixture.AddProfile("Same", $"steam:{OwnId}");
+        await fixture.AddProfile("Same", $"steam:{FriendId}");
+        var result = await fixture.Store.EnsureSessionAsync(new DefaultHttpContext(), LoginBody("Same"), Token);
+        Assert.Equal(NameId("Same"), result.PlayerExternalId);
+    }
+
+    [Fact]
+    public async Task UnverifiedNamesakeDoesNotDisplaceEstablishedSteamLoginOrMergeScores()
+    {
+        await using var fixture = await Fixture.Create();
+        var current = await fixture.AddProfile("Same", $"steam:{OwnId}");
+        var first = await fixture.Store.EnsureSessionAsync(new DefaultHttpContext(), LoginBody("Same"), Token);
+        // Model a legacy name-only row from before alias support existed.
+        fixture.Db.PlayerIdentityAliases.RemoveRange(fixture.Db.PlayerIdentityAliases);
+        await fixture.Db.SaveChangesAsync();
+        var legacy = await fixture.AddProfile("Same", NameId("Same"));
+        var result = await fixture.Store.EnsureSessionAsync(new DefaultHttpContext(), LoginBody("Same"), Token);
+        Assert.Equal(current.Id, result.PlayerProfileId);
+        Assert.Equal(NameId("Same"), legacy.ExternalId);
+        Assert.Empty(await fixture.Db.PlayerIdentityAliases.ToArrayAsync());
+        Assert.Equal(first.PlayerExternalId, result.PlayerExternalId);
+    }
+
+    private static string NameId(string name) => "name:" + Convert.ToHexString(
+        SHA256.HashData(Encoding.UTF8.GetBytes(name.Trim().ToLowerInvariant()))).ToLowerInvariant();
+
+    private static CapturedBody LoginBody(string name)
+    {
+        var bytes = EgoNetBinary.Dictionary(EgoNetBinary.Dstr("Name", name));
+        return new(bytes.Length, "", "", false, bytes, bytes);
+    }
 
     [Fact]
     public async Task ObservingSelfAndFriendPreservesProfilesAndScoresAndExcludesSelfFromFriends()

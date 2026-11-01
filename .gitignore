@@ -37,3 +37,5 @@ external/
 Thumbs.db
 desktop.ini
 /racenet_logs_final/
+scripts/**/__pycache__/
+scripts/__pycache__/

@@ -378,10 +378,15 @@ internal sealed class Dirt4DailyStore
         return vehicleId > 0 && (allowed.Length == 0 || allowed.Contains(vehicleId));
     }
 
-    internal Dirt4ProTourProgress ProTourProgress(string displayName)
+    internal Dirt4ProTourProgress ProTourProgress(string displayName, ulong networkId = 0)
     {
         lock (_gate)
         {
+            if (networkId > 0)
+            {
+                var matches = _proTourPlayers.Values.Where(p => p.NetworkId == networkId).Take(2).ToArray();
+                return matches.Length == 1 ? matches[0] : NewProTourProgress(displayName, networkId);
+            }
             return _proTourPlayers.TryGetValue(ProTourKey(displayName), out var progress)
                 ? progress : NewProTourProgress(displayName, 0);
         }
@@ -408,6 +413,7 @@ internal sealed class Dirt4DailyStore
                 var key = ProTourKey(score.Presence.Name);
                 if (_proTourPlayers.TryGetValue(key, out var existing) && existing.NetworkId != 0 &&
                     existing.NetworkId != score.Presence.NetworkId) return false;
+                if (_proTourPlayers.Values.Count(p => p.NetworkId == score.Presence.NetworkId) > 1) return false;
             }
 
             var ranked = scores.OrderBy(score => score.ScoreMs).ThenBy(score => score.Presence.NetworkId).ToArray();
@@ -415,8 +421,9 @@ internal sealed class Dirt4DailyStore
             {
                 var score = ranked[index];
                 var key = ProTourKey(score.Presence.Name);
-                var progress = _proTourPlayers.TryGetValue(key, out var existing)
-                    ? existing : NewProTourProgress(score.Presence.Name, score.Presence.NetworkId);
+                var previousEntry = _proTourPlayers.SingleOrDefault(p => p.Value.NetworkId == score.Presence.NetworkId);
+                var progress = previousEntry.Value ?? NewProTourProgress(score.Presence.Name, score.Presence.NetworkId);
+                if (previousEntry.Key is not null && previousEntry.Key != key) _proTourPlayers.Remove(previousEntry.Key);
                 var previous = progress.Points;
                 // The original service based the table on racers who started, even when
                 // a later disconnect meant fewer classified scores were submitted.

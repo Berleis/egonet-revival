@@ -104,6 +104,21 @@ public sealed class Dirt4ProTourProgressTests
                 Body(Dirt4EgoNetPayloads.BuildLiveLadder(Now, progress)), "CurrentVehClass"));
     }
 
+    [Fact]
+    public void RenameKeepsProgressByNetworkId()
+    {
+        var store = new Dirt4DailyStore();
+        var scores = EgoNetRequestParser.ReadDirt4ProTourScores(Scores(DefaultScores));
+        Assert.True(store.RecordProTourScores([1, 2, 3], 4, scores, Now));
+        var first = scores[0];
+        Assert.Equal(1, store.ProTourProgress("Changed", first.Presence.NetworkId).EventsDone);
+        var changed = scores.Select(s => s == first ? s with { Presence = s.Presence with { Name = "Changed" } } : s).ToArray();
+        Assert.True(store.RecordProTourScores([4, 5, 6], 4, changed, Now.AddHours(1)));
+        store = new Dirt4DailyStore(store.Export());
+        Assert.Equal(2, store.ProTourProgress("Changed", first.Presence.NetworkId).EventsDone);
+        Assert.Equal(0, store.ProTourProgress("Changed", 999).EventsDone);
+    }
+
     [Theory]
     [MemberData(nameof(ScoringTables))]
     public void FullFieldUsesRecoveredScoringTable(int players, int[] expected)

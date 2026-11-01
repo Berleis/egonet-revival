@@ -226,6 +226,18 @@ The installer redirects the game's RaceNet hostnames to the replacement server a
 
 The server receives the game's original binary EgoNet payloads, reads the requested service function, and returns compatible responses. For DiRT Showdown it stores player profiles, observed friends, issued challenges, ghost uploads, ghost downloads, and challenge results in SQLite. For DiRT 4 it stores Community Event rotations, attempts, stage times, results and rewards in the shared database. For GRID 2 it stores Global Challenge events, submitted scores, weekly Rival assignments, Rival session data, and recent multiplayer opponents used by Rivals.
 
+### Player identity repair
+
+DiRT Showdown, DiRT 4 and GRID 2 share the persistent profile/session layer. Approved legacy aliases resolve to one Steam profile, including existing sessions. Friend/presence names no longer promote or overwrite unrelated profiles. DiRT 4 returns the known Steam ID at login and retains Pro Tour progress across renames by network ID. F1 2018's local activator is separate.
+
+Legacy clients can log in with only a name. Aliases are identity bookkeeping, **not Steam ticket authentication**: ambiguous names and unverified presence observations must not be automatically merged. An unknown name still needs a confirmed link before its data can be unified.
+
+For an operator-reviewed SQLite repair, first run `python3 scripts/unify-player-identities.py DATABASE --pair SOURCE_PROFILE_ID:STEAM_PROFILE_ID`. This audits DiRT 4 evidence and rehearses changes on an in-memory copy, including profile foreign keys used by other games. It never chooses a merge solely by nickname. Review every pair and reported skipped alias before proceeding.
+
+Stop the server, then repeat with `--apply --server-stopped --backup-directory PRIVATE_BACKUP_DIRECTORY`. The tool creates and checks a full SQLite backup, migrates in one transaction, preserves result-delivery flags and rejects conflicting scores or unique keys. Identical friendship links are consolidated; source profiles remain as audit/alias records. Restart the server afterward. Deploy the alias-aware server code before relying on legacy names to reconnect. For rollback, stop the server and restore the complete backup (including appropriate SQLite WAL handling), not individual JSON fragments.
+
+The optional `--repair-friend-links` corrects friend pointers whose explicit Steam ID disagrees with the referenced Steam profile. It creates a separate friend profile if needed and never reassigns that friend's scores or ghosts. It supports the same dry-run/backup workflow.
+
 This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the games themselves when the restored or reactivated in-game flow is completed.
 
 ## Competitive Achievement Tracking Notice

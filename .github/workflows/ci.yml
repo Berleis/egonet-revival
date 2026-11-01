@@ -36,6 +36,9 @@ jobs:
         # The HTTP regression uses isolated ports, certificates and a temporary SQLite database.
         run: dotnet test tests/RaceNetShowdown.Server.Tests --configuration Release --no-build
 
+      - name: Test identity repair tool
+        run: python3 -m unittest discover -s scripts/tests -v
+
       - name: Verify certificate generation
         run: dotnet run --project src/RaceNetShowdown.Server/RaceNetShowdown.Server.csproj --configuration Release --no-build -- --regenerate-certs
 

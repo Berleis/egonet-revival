@@ -1,5 +1,14 @@
 namespace RaceNetShowdown.Server.Data;
 
+// Operator-approved legacy identities and names observed within an existing session.
+// A presence/friend list alone must never grant ownership of another profile.
+public sealed class PlayerIdentityAlias
+{
+    public string ExternalId { get; set; } = string.Empty;
+    public long PlayerProfileId { get; set; }
+    public PlayerProfile? PlayerProfile { get; set; }
+}
+
 public sealed class PlayerProfile
 {
     public long Id { get; set; }

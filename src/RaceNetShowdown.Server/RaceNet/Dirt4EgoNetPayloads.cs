@@ -77,7 +77,8 @@ internal static class Dirt4EgoNetPayloads
             "AsyncChallenge.StartStage" => RecordStart(body, daily, player, now, headers),
             "DataMining.DataEvent" or "DataMining.StatsEvent" => EmptyWithRaceNet(headers),
             "GhostCar.Upload" => RecordGhostUpload(body, daily, player, session?.DisplayName, now, headers),
-            "LiveLadder.DownloadPrincipalData" => Html(BuildLiveLadder(now, daily.ProTourProgress(session?.DisplayName ?? player)), headers),
+            "LiveLadder.DownloadPrincipalData" => Html(BuildLiveLadder(now, daily.ProTourProgress(
+                session?.DisplayName ?? player, session is null ? 0 : Grid2PresenceResolver.ResolveKnownSteamId(session))), headers),
             "LiveLadder.GetSessionList" => Html(proTour.GetSessionList(body, lobbyOwner, now), headers),
             "LiveLadder.SessionConfigDownload" => Html(Dirt4ProTour.SessionConfig(now), headers),
             "LiveLadder.SubmitSession" => Html(proTour.SubmitSession(body, lobbyOwner, now), headers),
@@ -126,11 +127,12 @@ internal static class Dirt4EgoNetPayloads
     {
         var name = EgoNetRequestParser.ReadTopLevelString(body, "Name") ?? session?.DisplayName ?? "EgoNetPlayer";
         var principalId = session?.PlayerProfileId > 0 ? session.PlayerProfileId : 752_828;
+        var steamId = session is null ? 0 : Grid2PresenceResolver.ResolveKnownSteamId(session);
         return EgoNetBinary.Dictionary(
             EgoNetBinary.Si64("PrincipalId", principalId),
             EgoNetBinary.Dstr("Name", name),
             EgoNetBinary.Ui64("XUID", 0),
-            EgoNetBinary.Ui64("SteamId", 76561198000000001),
+            EgoNetBinary.Ui64("SteamId", steamId > 0 ? steamId : 76561198000000001),
             EgoNetBinary.Ui64("SubjectId", 0),
             EgoNetBinary.Ui64("OculusId", 0),
             EgoNetBinary.Si64("AccountRef", principalId),
