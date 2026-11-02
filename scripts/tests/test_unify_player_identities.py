@@ -193,6 +193,35 @@ class IdentityRepairTests(unittest.TestCase):
         self.apply(reconcile_grid2_history=True)
         self.assertEqual((2, b'\x01\x02'), self.db.execute('SELECT PlayerProfileId,SessionData FROM Grid2RivalSessionData').fetchone())
 
+    def bootstrap_session(self):
+        self.db.execute("UPDATE PlayerProfiles SET ExternalId='remote:test-address' WHERE Id=1")
+        self.db.execute('CREATE TABLE PlayerIdentityAliases (ExternalId TEXT PRIMARY KEY, PlayerProfileId INTEGER REFERENCES PlayerProfiles(Id))')
+        self.db.execute('INSERT INTO PlayerIdentityAliases VALUES (?,2)', (repair.name_key('Old'),))
+        self.db.execute('INSERT INTO RaceNetSessions VALUES (2,1)')
+        self.db.commit()
+
+    def test_bootstrap_repair_moves_one_session_without_ip_alias_or_owned_data(self):
+        self.bootstrap_session()
+        self.assertEqual(1, repair.repair_bootstrap_session(self.db, 1, 2)['rebound_sessions'])
+        self.assertEqual([(1, 2), (2, 1)], self.db.execute('SELECT Id,PlayerProfileId FROM RaceNetSessions ORDER BY Id').fetchall())
+        self.assertEqual((1, 42), self.db.execute('SELECT PlayerProfileId,Score FROM Grid2GlobalScores').fetchone())
+        self.assertEqual(json.dumps(self.state), self.db.execute('SELECT StateJson FROM Dirt4CommunityState').fetchone()[0])
+        self.assertIsNone(self.db.execute("SELECT * FROM PlayerIdentityAliases WHERE ExternalId LIKE 'remote:%'").fetchone())
+        self.assertEqual(0, repair.repair_bootstrap_session(self.db, 1, 2)['rebound_sessions'])
+
+    def test_bootstrap_repair_rejects_unknown_or_conflicting_name(self):
+        self.bootstrap_session()
+        self.db.execute("UPDATE PlayerProfiles SET DisplayName='Stranger' WHERE Id=1")
+        with self.assertRaisesRegex(ValueError, 'approved alias'):
+            repair.repair_bootstrap_session(self.db, 1, 2)
+        self.assertEqual(1, self.db.execute('SELECT PlayerProfileId FROM RaceNetSessions WHERE Id=1').fetchone()[0])
+
+    def test_bootstrap_repair_rejects_named_profile_even_with_alias(self):
+        self.bootstrap_session()
+        self.db.execute("UPDATE PlayerProfiles SET ExternalId='name:old' WHERE Id=1")
+        with self.assertRaisesRegex(ValueError, 'temporary remote'):
+            repair.repair_bootstrap_session(self.db, 1, 2)
+
 
 if __name__ == '__main__':
     unittest.main()
