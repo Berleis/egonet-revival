@@ -117,6 +117,93 @@ public sealed class Grid2StoreTests
         return new(bytes.Length, "", "", false, bytes, bytes);
     }
 
+    [Theory]
+    [InlineData("Codemasters-Egonet")]
+    [InlineData("GRID2")]
+    [InlineData("DiRT Showdown")]
+    public async Task AnonymousSessionLoginResolvesApprovedNameWithoutAliasingRemoteAddress(string userAgent)
+    {
+        await using var fixture = await Fixture.Create();
+        var current = await fixture.AddProfile("New Name", $"steam:{OwnId}");
+        fixture.Db.PlayerIdentityAliases.Add(new() { ExternalId = NameId("Old Name"), PlayerProfileId = current.Id });
+        await fixture.Db.SaveChangesAsync();
+        var context = new DefaultHttpContext();
+        context.Request.Headers.UserAgent = userAgent;
+        var anonymous = await fixture.Store.EnsureSessionAsync(context, LoginBody(""), Token);
+        Assert.StartsWith("remote:", anonymous.PlayerExternalId);
+        context.Request.Headers["X-EgoNet-SessionID"] = anonymous.SessionId;
+
+        var loggedIn = await fixture.Store.EnsureSessionAsync(context, LoginBody("oLD nAME"), Token);
+        Assert.Equal(current.Id, loggedIn.PlayerProfileId);
+        Assert.Equal(anonymous.SessionId, loggedIn.SessionId);
+        Assert.Equal($"steam:{OwnId}", loggedIn.PlayerExternalId);
+        Assert.Equal("New Name", current.DisplayName);
+        Assert.False(await fixture.Db.PlayerIdentityAliases.AnyAsync(a => a.ExternalId == anonymous.PlayerExternalId));
+        var followup = await fixture.Store.EnsureSessionAsync(context, LoginBody(""), Token);
+        Assert.Equal(current.Id, followup.PlayerProfileId);
+        // Another named login from the same address must not inherit the previous account.
+        var other = await fixture.Store.EnsureSessionAsync(new DefaultHttpContext(), LoginBody("Other"), Token);
+        Assert.NotEqual(current.Id, other.PlayerProfileId);
+    }
+
+    [Fact]
+    public async Task AnonymousSessionCanBecomeNewNamedProfileWithoutMovingRemoteData()
+    {
+        await using var fixture = await Fixture.Create();
+        var context = new DefaultHttpContext();
+        var anonymous = await fixture.Store.EnsureSessionAsync(context, LoginBody(""), Token);
+        // Older servers renamed the temporary profile without resolving the named identity.
+        (await fixture.Db.PlayerProfiles.FindAsync(anonymous.PlayerProfileId))!.DisplayName = "New Driver";
+        await fixture.Db.SaveChangesAsync();
+        context.Request.Headers["X-EgoNet-SessionID"] = anonymous.SessionId;
+        var loggedIn = await fixture.Store.EnsureSessionAsync(context, LoginBody("New Driver"), Token);
+        Assert.Equal(NameId("New Driver"), loggedIn.PlayerExternalId);
+        Assert.NotEqual(anonymous.PlayerProfileId, loggedIn.PlayerProfileId);
+        Assert.Equal(anonymous.PlayerExternalId, (await fixture.Db.PlayerProfiles.FindAsync(anonymous.PlayerProfileId))!.ExternalId);
+    }
+
+    [Fact]
+    public async Task MonthlyRewardIsAvailableAfterAnonymousSessionLogsIntoApprovedAlias()
+    {
+        await using var fixture = await Fixture.Create();
+        var current = await fixture.AddProfile("New Name", $"steam:{OwnId}");
+        fixture.Db.PlayerIdentityAliases.Add(new() { ExternalId = NameId("Old Name"), PlayerProfileId = current.Id });
+        await fixture.Db.SaveChangesAsync();
+        var at = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var (history, round) = Dirt4RewardTests.CreateRound(at, 4);
+        Dirt4RewardTests.Finish(history, round, at, current.ExternalId);
+        var ended = DateTimeOffset.FromUnixTimeSeconds(round.ExpiresAt);
+        var context = new DefaultHttpContext();
+        var anonymous = await fixture.Store.EnsureSessionAsync(context, LoginBody(""), Token);
+        Assert.Empty(history.PendingResults(anonymous.PlayerExternalId, ended));
+        context.Request.Headers["X-EgoNet-SessionID"] = anonymous.SessionId;
+        await fixture.Store.EnsureSessionAsync(context, LoginBody("Old Name"), Token);
+        var followup = await fixture.Store.EnsureSessionAsync(context, LoginBody(""), Token);
+        Assert.Equal(round.EventId, Assert.Single(history.PendingResults(followup.PlayerExternalId, ended)).EventId);
+        var response = EgoNetBinaryFormatter.Format(Dirt4CommunityEvents.BuildResults(
+            ended, history, followup.PlayerExternalId, [round.EventId]));
+        Assert.Contains("Results: vvtr count=1", response);
+        Assert.Contains("ActCredReward: si32 value=", response);
+        Assert.DoesNotContain("parse-stopped", response);
+        Assert.Equal(Dirt4ResultDelivery.Issued, history.Find(round.EventId)!.Runs[current.ExternalId].ResultDelivery);
+    }
+
+    [Fact]
+    public async Task NamedSteamSessionIsNotSwitchedToAnotherAccountsAliasDuringRename()
+    {
+        await using var fixture = await Fixture.Create();
+        var self = await fixture.AddProfile("Self", $"steam:{OwnId}");
+        var other = await fixture.AddProfile("Other", $"steam:{FriendId}");
+        fixture.Db.PlayerIdentityAliases.Add(new() { ExternalId = NameId("Other"), PlayerProfileId = other.Id });
+        await fixture.Db.SaveChangesAsync();
+        var context = new DefaultHttpContext();
+        var initial = await fixture.Store.EnsureSessionAsync(context, LoginBody("Self"), Token);
+        context.Request.Headers["X-EgoNet-SessionID"] = initial.SessionId;
+        var renamed = await fixture.Store.EnsureSessionAsync(context, LoginBody("Other"), Token);
+        Assert.Equal(self.Id, renamed.PlayerProfileId);
+        Assert.Equal(other.Id, (await fixture.Db.PlayerIdentityAliases.SingleAsync(a => a.ExternalId == NameId("Other"))).PlayerProfileId);
+    }
+
     [Fact]
     public async Task ObservingSelfAndFriendPreservesProfilesAndScoresAndExcludesSelfFromFriends()
     {

@@ -54,13 +54,23 @@ public sealed class EntityFrameworkRaceNetStore(
                 IsWireCompatibleSessionId(existingSession.SessionId))
             {
                 existingSession.PlayerProfile = await ResolveCanonicalProfileAsync(existingSession.PlayerProfile, cancellationToken);
-                existingSession.PlayerProfileId = existingSession.PlayerProfile.Id;
                 if (!string.IsNullOrWhiteSpace(loginName))
                 {
-                    await RememberLoginNameAsync(existingSession.PlayerProfile, existingSession.PlayerProfile.DisplayName, cancellationToken);
-                    await RememberLoginNameAsync(existingSession.PlayerProfile, loginName.Trim(), cancellationToken);
-                    existingSession.PlayerProfile.DisplayName = loginName.Trim();
+                    if (existingSession.PlayerProfile.ExternalId.StartsWith("remote:", StringComparison.Ordinal))
+                    {
+                        // Pre-login calls can already carry a session token. Resolve the named
+                        // login normally, changing this session only, never aliasing an IP address.
+                        existingSession.PlayerProfile = await FindOrCreateProfileAsync(loginName, remoteAddress, now, cancellationToken);
+                        await RememberLoginNameAsync(existingSession.PlayerProfile, loginName, cancellationToken);
+                    }
+                    else
+                    {
+                        await RememberLoginNameAsync(existingSession.PlayerProfile, existingSession.PlayerProfile.DisplayName, cancellationToken);
+                        await RememberLoginNameAsync(existingSession.PlayerProfile, loginName.Trim(), cancellationToken);
+                        existingSession.PlayerProfile.DisplayName = loginName.Trim();
+                    }
                 }
+                existingSession.PlayerProfileId = existingSession.PlayerProfile.Id;
                 existingSession.LastSeenAt = now;
                 existingSession.PlayerProfile.LastSeenAt = now;
                 await dbContext.SaveChangesAsync(cancellationToken);
@@ -2175,7 +2185,8 @@ public sealed class EntityFrameworkRaceNetStore(
             // through legacy clients which send only Name; this is not Steam authentication.
             if (profile is null)
             {
-                var matches = await dbContext.PlayerProfiles.Where(value => value.DisplayName == loginName || value.ExternalId == nameId)
+                var matches = await dbContext.PlayerProfiles.Where(value => !value.ExternalId.StartsWith("remote:") &&
+                    (value.DisplayName == loginName || value.ExternalId == nameId))
                     .ToListAsync(cancellationToken);
                 var steam = matches.Where(value => ParseSteamExternalId(value.ExternalId) > 0).ToArray();
                 // Keep an established Steam login usable while a name-only namesake awaits

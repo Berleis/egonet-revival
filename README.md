@@ -238,6 +238,10 @@ Stop the server, then repeat with `--apply --server-stopped --backup-directory P
 
 The optional `--repair-friend-links` corrects friend pointers whose explicit Steam ID disagrees with the referenced Steam profile. It creates a separate friend profile if needed and never reassigns that friend's scores or ghosts. It supports the same dry-run/backup workflow.
 
+For confirmed GRID 2 identities, `--reconcile-grid2-history` additionally retains the newest Rival session snapshot and archives superseded snapshots, expired self-rivals and superseded expired Rival assignments in `PlayerIdentityRepairArchive`. Original rows (including base64-encoded blobs) remain available there and in the full backup. Active Rival conflicts and ambiguous timestamps abort the transaction; scores, XP and reward claims are never discarded to resolve a collision. Rehearse this option in dry-run mode before applying.
+
+A named login on a temporary `remote:` session resolves through the same profile/alias lookup as a fresh login. For a reviewed session stranded by older server versions, `--bootstrap-session SESSION_ROW_ID:STEAM_PROFILE_ID` repairs only that session if its stored login name already has an approved alias to the target. It uses the same dry-run/backup workflow, leaves results and other sessions untouched, and never creates a permanent IP-to-account alias.
+
 This is not an achievement unlocker, save editor, or Steam stats editor. Achievements are still triggered by the games themselves when the restored or reactivated in-game flow is completed.
 
 ## Competitive Achievement Tracking Notice

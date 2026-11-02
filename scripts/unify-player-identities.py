@@ -6,6 +6,7 @@ Apply only with the server stopped, --apply --server-stopped --backup-directory 
 Aliases are durable links, NOT authentication. Never select accounts by display name alone.
 """
 import argparse
+import base64
 import datetime
 import hashlib
 import json
@@ -57,7 +58,70 @@ def move_key(mapping, source, target):
     return 1
 
 
-def unify(db, source_id, target_id):
+def reconcile_grid2(db, source_id, target_id):
+    """Archive superseded snapshots and expired rival slots, never race results."""
+    archived = 0
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    def timestamp(value):
+        parsed = datetime.datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            raise ValueError('Rival timestamp has no timezone')
+        return parsed
+
+    def rows(table):
+        if not db.execute('SELECT 1 FROM sqlite_master WHERE name=?', (table,)).fetchone():
+            return []
+        cursor = db.execute(f'SELECT * FROM {quote(table)} WHERE PlayerProfileId IN (?,?)',
+                            (source_id, target_id))
+        columns = [c[0] for c in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor]
+
+    def archive(table, row, reason):
+        nonlocal archived
+        db.execute('''CREATE TABLE IF NOT EXISTS PlayerIdentityRepairArchive (
+            Id INTEGER PRIMARY KEY, SourceProfileId INTEGER NOT NULL, TargetProfileId INTEGER NOT NULL,
+            TableName TEXT NOT NULL, OriginalRowId INTEGER NOT NULL, RowJson TEXT NOT NULL,
+            Reason TEXT NOT NULL, ArchivedAt TEXT NOT NULL)''')
+        payload = {k: ({'base64': base64.b64encode(v).decode('ascii')} if isinstance(v, bytes) else v)
+                   for k, v in row.items()}
+        db.execute('''INSERT INTO PlayerIdentityRepairArchive
+            (SourceProfileId,TargetProfileId,TableName,OriginalRowId,RowJson,Reason,ArchivedAt)
+            VALUES (?,?,?,?,?,?,?)''',
+                   (source_id, target_id, table, row['Id'], json.dumps(payload), reason, now.isoformat()))
+        db.execute(f'DELETE FROM {quote(table)} WHERE Id=?', (row['Id'],))
+        archived += 1
+
+    snapshots = rows('Grid2RivalSessionData')
+    if len(snapshots) == 2:
+        snapshots.sort(key=lambda r: timestamp(r['UpdatedAt']))
+        if (timestamp(snapshots[0]['UpdatedAt']) == timestamp(snapshots[1]['UpdatedAt'])
+                and snapshots[0]['SessionData'] != snapshots[1]['SessionData']):
+            raise ValueError('Conflicting rival snapshots have the same timestamp')
+        archive('Grid2RivalSessionData', snapshots[0], 'Superseded by latest rival session snapshot')
+
+    # Only historical assignments can be reconciled; active rival conflicts need review.
+    slots = {}
+    for row in rows('Grid2RivalAssignments'):
+        if row['RivalPlayerProfileId'] in (source_id, target_id):
+            if timestamp(row['ExpiresAt']) > now:
+                raise ValueError('Merge would create an active self-rival')
+            archive('Grid2RivalAssignments', row, 'Expired self-rival after identity unification')
+            continue
+        slots.setdefault((row['StartsAt'], row['Type']), []).append(row)
+    for group in slots.values():
+        if len(group) < 2:
+            continue
+        if any(timestamp(r['ExpiresAt']) > now for r in group):
+            raise ValueError('Conflicting active rival assignments require review')
+        group.sort(key=lambda r: timestamp(r['CreatedAt']))
+        if timestamp(group[0]['CreatedAt']) == timestamp(group[1]['CreatedAt']):
+            raise ValueError('Conflicting rival assignments have the same timestamp')
+        archive('Grid2RivalAssignments', group[0], 'Superseded expired rival slot; latest assignment retained')
+    return archived
+
+
+def unify(db, source_id, target_id, reconcile_grid2_history=False):
     if source_id == target_id:
         raise ValueError('Source and target must differ')
     source = db.execute('SELECT ExternalId, DisplayName FROM PlayerProfiles WHERE Id=?', (source_id,)).fetchone()
@@ -110,6 +174,9 @@ def unify(db, source_id, target_id):
                        (json.dumps(state, ensure_ascii=False), datetime.datetime.now(datetime.timezone.utc).isoformat(), row_id))
         report['moved_json_entries'] += moved
 
+    if reconcile_grid2_history:
+        report['archived_grid2_records'] = reconcile_grid2(db, source_id, target_id)
+
     # Discover all FK references, including tables introduced by newer game versions.
     # Unique-key collisions abort the entire transaction rather than dropping either record.
     tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")]
@@ -159,25 +226,52 @@ def repair_friend_links(db):
     return report
 
 
+def repair_bootstrap_session(db, session_row_id, target_id):
+    """Rebind one reviewed session via an approved name; never create an IP alias."""
+    row = db.execute('''SELECT s.PlayerProfileId,p.ExternalId,p.DisplayName
+        FROM RaceNetSessions s JOIN PlayerProfiles p ON p.Id=s.PlayerProfileId
+        WHERE s.Id=?''', (session_row_id,)).fetchone()
+    target = db.execute('SELECT ExternalId FROM PlayerProfiles WHERE Id=?', (target_id,)).fetchone()
+    if not row or not target or not target[0].startswith('steam:') or int(target[0][6:]) <= 0:
+        raise ValueError('Expected an existing session and Steam target')
+    report = {'session_row': session_row_id, 'target_profile': target_id, 'rebound_sessions': 0}
+    if row[0] == target_id:
+        return report
+    if not row[1].startswith('remote:'):
+        raise ValueError('Only a temporary remote session can be repaired this way')
+    alias = db.execute('SELECT PlayerProfileId FROM PlayerIdentityAliases WHERE ExternalId=?',
+                       (name_key(row[2]),)).fetchone()
+    if not alias or alias[0] != target_id:
+        raise ValueError('Session login name has no approved alias to this target')
+    db.execute('UPDATE RaceNetSessions SET PlayerProfileId=? WHERE Id=?', (target_id, session_row_id))
+    report['rebound_sessions'] = 1
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('database', type=Path)
     parser.add_argument('--pair', action='append', default=[], help='Reviewed source:target profile IDs')
+    parser.add_argument('--bootstrap-session', action='append', default=[],
+                        help='Reviewed session row ID:Steam profile ID; rebind session only via approved name alias')
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--repair-friend-links', action='store_true', help='Repair mismatched friend pointers by explicit Steam ID, without moving scores')
+    parser.add_argument('--reconcile-grid2-history', action='store_true',
+                        help='Archive superseded rival snapshots and expired conflicting assignments; never scores')
     parser.add_argument('--server-stopped', action='store_true')
     parser.add_argument('--backup-directory', type=Path)
     args = parser.parse_args()
     if args.apply and (not args.server_stopped or not args.backup_directory):
         parser.error('Apply requires --server-stopped and --backup-directory')
     pairs = [tuple(map(int, value.split(':'))) for value in args.pair]
-    if any(len(pair) != 2 for pair in pairs):
+    sessions = [tuple(map(int, value.split(':'))) for value in args.bootstrap_session]
+    if any(len(pair) != 2 for pair in pairs + sessions):
         parser.error('Pairs must have source:target IDs')
     if len({p[0] for p in pairs}) != len(pairs):
         parser.error('Source profile repeated')
     with sqlite3.connect(args.database.resolve().as_uri() + '?mode=' + ('rw' if args.apply else 'ro'), uri=True) as original:
         print(json.dumps({'candidate_pairs_requiring_review': candidates(original)}))
-        if not pairs and not args.repair_friend_links:
+        if not pairs and not sessions and not args.repair_friend_links:
             return
         if args.apply:
             args.backup_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -197,7 +291,8 @@ def main():
         db.execute('PRAGMA foreign_keys=ON')
         db.execute('BEGIN IMMEDIATE')
         try:
-            reports = [unify(db, *pair) for pair in pairs]
+            reports = [unify(db, *pair, reconcile_grid2_history=args.reconcile_grid2_history) for pair in pairs]
+            reports.extend(repair_bootstrap_session(db, *pair) for pair in sessions)
             if args.repair_friend_links:
                 reports.append(repair_friend_links(db))
             if db.execute('PRAGMA foreign_key_check').fetchall():
